@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import Editor, { OnMount, loader } from '@monaco-editor/react';
+import Editor, { OnMount } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
 import { useTheme } from '../../hooks/useTheme';
 import { registerSlashCommands } from './SlashCommands';

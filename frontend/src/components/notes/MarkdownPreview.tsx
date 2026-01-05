@@ -6,15 +6,16 @@ interface MarkdownPreviewProps {
   content: string;
 }
 
+// Configure marked once
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  async: false
+});
+
 export function MarkdownPreview({ content }: MarkdownPreviewProps) {
   const html = useMemo(() => {
-    // Configure marked for security
-    marked.setOptions({
-      breaks: true,
-      gfm: true
-    });
-
-    return marked(content);
+    return marked.parse(content) as string;
   }, [content]);
 
   if (!content) {
