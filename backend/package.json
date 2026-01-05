@@ -1,6 +1,7 @@
 {
   "name": "note-app-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend for note-taking application",
   "main": "dist/index.js",
   "scripts": {
