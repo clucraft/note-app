@@ -61,20 +61,33 @@ The app will be available at `http://localhost:5173`
 
 ### Production (Docker)
 
+Deploy with a single command using pre-built images from GitHub Container Registry:
+
 ```bash
-# Clone the repository
-git clone https://github.com/clucraft/note-app.git
-cd note-app
+# Download docker-compose.yml
+curl -O https://raw.githubusercontent.com/clucraft/note-app/main/docker-compose.yml
 
-# Create environment file
-cp .env.example .env
-# Edit .env and set secure secrets for ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET
+# Create environment file with secure secrets
+cat > .env << EOF
+ACCESS_TOKEN_SECRET=$(openssl rand -hex 32)
+REFRESH_TOKEN_SECRET=$(openssl rand -hex 32)
+EOF
 
-# Start with Docker Compose
+# Start the application
 docker-compose up -d
 ```
 
 The app will be available at `http://localhost`
+
+### Build from Source (Alternative)
+
+If you prefer to build the images yourself:
+
+```bash
+git clone https://github.com/clucraft/note-app.git
+cd note-app
+docker-compose -f docker-compose.dev.yml up -d
+```
 
 ## Environment Variables
 

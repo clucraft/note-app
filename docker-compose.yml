@@ -2,23 +2,17 @@ version: '3.8'
 
 services:
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/clucraft/note-app-frontend:latest
     ports:
       - "80:80"
     depends_on:
       - backend
-    environment:
-      - VITE_API_URL=/api
     networks:
       - app-network
     restart: unless-stopped
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/clucraft/note-app-backend:latest
     ports:
       - "3001:3001"
     environment:
