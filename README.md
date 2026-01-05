@@ -77,7 +77,7 @@ EOF
 docker-compose up -d
 ```
 
-The app will be available at `http://localhost`
+The app will be available at `http://localhost:8088`
 
 ### Build from Source (Alternative)
 
