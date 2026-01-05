@@ -318,3 +318,55 @@ export async function toggleExpand(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to toggle expansion' });
   }
 }
+
+export async function searchNotes(req: Request, res: Response) {
+  try {
+    const query = req.query.q as string;
+    if (!query || query.trim().length < 2) {
+      res.json([]);
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const searchTerm = `%${query.trim()}%`;
+
+    const results = db.prepare(`
+      SELECT id, title, title_emoji, content, updated_at
+      FROM notes
+      WHERE user_id = ? AND (title LIKE ? OR content LIKE ?)
+      ORDER BY updated_at DESC
+      LIMIT 20
+    `).all(userId, searchTerm, searchTerm) as any[];
+
+    // Generate preview snippets with matched text
+    const formattedResults = results.map(note => {
+      let preview = '';
+      const lowerQuery = query.toLowerCase();
+      const lowerContent = note.content.toLowerCase();
+      const matchIndex = lowerContent.indexOf(lowerQuery);
+
+      if (matchIndex !== -1) {
+        const start = Math.max(0, matchIndex - 40);
+        const end = Math.min(note.content.length, matchIndex + query.length + 40);
+        preview = (start > 0 ? '...' : '') +
+                  note.content.slice(start, end) +
+                  (end < note.content.length ? '...' : '');
+      } else {
+        preview = note.content.slice(0, 80) + (note.content.length > 80 ? '...' : '');
+      }
+
+      return {
+        id: note.id,
+        title: note.title,
+        titleEmoji: note.title_emoji,
+        preview,
+        updatedAt: note.updated_at
+      };
+    });
+
+    res.json(formattedResults);
+  } catch (error) {
+    console.error('Search notes error:', error);
+    res.status(500).json({ error: 'Failed to search notes' });
+  }
+}

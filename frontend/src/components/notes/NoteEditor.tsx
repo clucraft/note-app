@@ -4,6 +4,7 @@ import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { MonacoWrapper } from '../editor/MonacoWrapper';
 import { MarkdownPreview } from './MarkdownPreview';
 import { EmojiButton } from '../common/EmojiPicker';
+import { ShareModal } from './ShareModal';
 import styles from './NoteEditor.module.css';
 
 type ViewMode = 'edit' | 'split' | 'preview';
@@ -13,6 +14,7 @@ export function NoteEditor() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Sync local state with selected note
   useEffect(() => {
@@ -111,6 +113,14 @@ export function NoteEditor() {
             Preview
           </button>
         </div>
+
+        <button
+          className={styles.shareButton}
+          onClick={() => setShowShareModal(true)}
+          title="Share note"
+        >
+          Share
+        </button>
       </div>
 
       <div className={`${styles.content} ${styles[viewMode]}`}>
@@ -128,6 +138,14 @@ export function NoteEditor() {
           </div>
         )}
       </div>
+
+      {showShareModal && (
+        <ShareModal
+          noteId={selectedNote.id}
+          noteTitle={selectedNote.title}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ interface NotesContextType {
   isLoading: boolean;
   error: string | null;
   loadNotes: () => Promise<void>;
-  selectNote: (note: Note | null) => void;
+  selectNote: (noteOrId: Note | number | null) => void;
   createNote: (input: CreateNoteInput) => Promise<Note>;
   updateNote: (id: number, input: UpdateNoteInput) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
@@ -42,8 +42,23 @@ export function NotesProvider({ children }: NotesProviderProps) {
     }
   }, []);
 
-  const selectNote = useCallback((note: Note | null) => {
-    setSelectedNote(note);
+  const selectNote = useCallback(async (noteOrId: Note | number | null) => {
+    if (noteOrId === null) {
+      setSelectedNote(null);
+      return;
+    }
+
+    if (typeof noteOrId === 'number') {
+      // Fetch the note by ID
+      try {
+        const note = await notesApi.getNote(noteOrId);
+        setSelectedNote(note);
+      } catch (err) {
+        console.error('Failed to select note:', err);
+      }
+    } else {
+      setSelectedNote(noteOrId);
+    }
   }, []);
 
   const createNote = useCallback(async (input: CreateNoteInput): Promise<Note> => {

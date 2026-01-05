@@ -126,7 +126,7 @@ export function MonacoWrapper({ value, onChange }: MonacoWrapperProps) {
         options={{
           minimap: { enabled: false },
           wordWrap: 'on',
-          lineNumbers: 'off',
+          lineNumbers: 'on',
           fontSize: 14,
           fontFamily: 'var(--font-mono)',
           padding: { top: 16, bottom: 16 },

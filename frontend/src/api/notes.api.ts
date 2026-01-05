@@ -37,3 +37,16 @@ export async function toggleExpand(id: number): Promise<{ isExpanded: boolean }>
   const response = await api.put<{ isExpanded: boolean }>(`/notes/${id}/toggle-expand`);
   return response.data;
 }
+
+export interface SearchResult {
+  id: number;
+  title: string;
+  titleEmoji: string | null;
+  preview: string;
+  updatedAt: string;
+}
+
+export async function searchNotes(query: string): Promise<SearchResult[]> {
+  const response = await api.get<SearchResult[]>('/notes/search', { params: { q: query } });
+  return response.data;
+}

@@ -50,12 +50,25 @@ export function initializeDatabase() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    -- Shared notes table
+    CREATE TABLE IF NOT EXISTS shared_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      note_id INTEGER NOT NULL,
+      share_token TEXT NOT NULL UNIQUE,
+      password_hash TEXT DEFAULT NULL,
+      expires_at DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      view_count INTEGER DEFAULT 0,
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+    );
+
     -- Indexes for performance
     CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
     CREATE INDEX IF NOT EXISTS idx_notes_parent_id ON notes(parent_id);
     CREATE INDEX IF NOT EXISTS idx_notes_user_parent ON notes(user_id, parent_id);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_shared_notes_token ON shared_notes(share_token);
   `);
 
   console.log('Database initialized successfully');

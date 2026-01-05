@@ -7,7 +7,8 @@ import {
   deleteNote,
   moveNote,
   reorderNote,
-  toggleExpand
+  toggleExpand,
+  searchNotes
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -17,6 +18,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', getNotesTree);
+router.get('/search', searchNotes);
 router.get('/:id', getNote);
 router.post('/', createNote);
 router.put('/:id', updateNote);
