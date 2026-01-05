@@ -21,7 +21,7 @@ services:
       - DATABASE_PATH=/data/notes.db
       - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-change-this-secret-in-production}
       - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET:-change-this-refresh-secret-in-production}
-      - CORS_ORIGIN=http://localhost
+      - CORS_ORIGIN=http://localhost:8088
     volumes:
       - sqlite-data:/data
     networks:
