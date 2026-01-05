@@ -1,9 +1,9 @@
-import Database from 'better-sqlite3';
+import Database, { Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../data/notes.db');
 
-export const db = new Database(dbPath);
+export const db: DatabaseType = new Database(dbPath);
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
