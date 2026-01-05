@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    environment:
+      - VITE_API_URL=http://localhost:3001/api
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/src:/app/src
+      - sqlite-data:/data
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_PATH=/data/notes.db
+      - ACCESS_TOKEN_SECRET=dev-access-secret
+      - REFRESH_TOKEN_SECRET=dev-refresh-secret
+      - CORS_ORIGIN=http://localhost:5173
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  sqlite-data:
