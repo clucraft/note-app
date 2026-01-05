@@ -7,18 +7,11 @@ export interface SlashCommand {
   category: 'emoji' | 'format' | 'structure';
 }
 
+export const EMOJI_COMMAND_PLACEHOLDER = '__EMOJI_PICKER__';
+
 export const slashCommands: SlashCommand[] = [
-  // Emoji commands
-  { label: '/smile', insertText: '😊', documentation: 'Smile emoji', category: 'emoji' },
-  { label: '/heart', insertText: '❤️', documentation: 'Heart emoji', category: 'emoji' },
-  { label: '/star', insertText: '⭐', documentation: 'Star emoji', category: 'emoji' },
-  { label: '/check', insertText: '✅', documentation: 'Checkmark', category: 'emoji' },
-  { label: '/warning', insertText: '⚠️', documentation: 'Warning', category: 'emoji' },
-  { label: '/fire', insertText: '🔥', documentation: 'Fire emoji', category: 'emoji' },
-  { label: '/rocket', insertText: '🚀', documentation: 'Rocket emoji', category: 'emoji' },
-  { label: '/thumbsup', insertText: '👍', documentation: 'Thumbs up', category: 'emoji' },
-  { label: '/idea', insertText: '💡', documentation: 'Light bulb', category: 'emoji' },
-  { label: '/bug', insertText: '🐛', documentation: 'Bug emoji', category: 'emoji' },
+  // Emoji picker - triggers emoji picker popup
+  { label: '/emoji', insertText: EMOJI_COMMAND_PLACEHOLDER, documentation: 'Open emoji picker', category: 'emoji' },
 
   // Format commands
   { label: '/bold', insertText: '**${1:text}**', documentation: 'Bold text', category: 'format' },

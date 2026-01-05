@@ -6,11 +6,13 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { EmojiButton } from '../common/EmojiPicker';
 import styles from './NoteEditor.module.css';
 
+type ViewMode = 'edit' | 'split' | 'preview';
+
 export function NoteEditor() {
   const { selectedNote, updateNote } = useNotes();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('split');
 
   // Sync local state with selected note
   useEffect(() => {
@@ -86,23 +88,44 @@ export function NoteEditor() {
           className={styles.titleInput}
           placeholder="Untitled"
         />
-        <button
-          className={`${styles.previewToggle} ${showPreview ? styles.active : ''}`}
-          onClick={() => setShowPreview(!showPreview)}
-          title={showPreview ? 'Hide preview' : 'Show preview'}
-        >
-          {showPreview ? 'Edit' : 'Preview'}
-        </button>
+        <div className={styles.viewModeToggle}>
+          <button
+            className={`${styles.viewModeBtn} ${viewMode === 'edit' ? styles.active : ''}`}
+            onClick={() => setViewMode('edit')}
+            title="Edit only"
+          >
+            Edit
+          </button>
+          <button
+            className={`${styles.viewModeBtn} ${viewMode === 'split' ? styles.active : ''}`}
+            onClick={() => setViewMode('split')}
+            title="Split view"
+          >
+            Split
+          </button>
+          <button
+            className={`${styles.viewModeBtn} ${viewMode === 'preview' ? styles.active : ''}`}
+            onClick={() => setViewMode('preview')}
+            title="Preview only"
+          >
+            Preview
+          </button>
+        </div>
       </div>
 
-      <div className={styles.content}>
-        {showPreview ? (
-          <MarkdownPreview content={content} />
-        ) : (
-          <MonacoWrapper
-            value={content}
-            onChange={handleContentChange}
-          />
+      <div className={`${styles.content} ${styles[viewMode]}`}>
+        {(viewMode === 'edit' || viewMode === 'split') && (
+          <div className={styles.editorPane}>
+            <MonacoWrapper
+              value={content}
+              onChange={handleContentChange}
+            />
+          </div>
+        )}
+        {(viewMode === 'preview' || viewMode === 'split') && (
+          <div className={styles.previewPane}>
+            <MarkdownPreview content={content} />
+          </div>
         )}
       </div>
     </div>
