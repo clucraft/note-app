@@ -116,14 +116,29 @@ export function getNoteTree(userId: number) {
   return stmt.all(userId);
 }
 
+// Transform database snake_case to camelCase
+function transformNote(note: any) {
+  return {
+    id: note.id,
+    parentId: note.parent_id,
+    title: note.title,
+    titleEmoji: note.title_emoji,
+    content: note.content,
+    sortOrder: note.sort_order,
+    isExpanded: !!note.is_expanded,
+    createdAt: note.created_at,
+    updatedAt: note.updated_at
+  };
+}
+
 // Build hierarchical tree structure from flat results
 export function buildTreeStructure(flatNotes: any[]): any[] {
   const noteMap = new Map<number, any>();
   const roots: any[] = [];
 
-  // First pass: create map of all notes
+  // First pass: create map of all notes with transformed field names
   for (const note of flatNotes) {
-    noteMap.set(note.id, { ...note, children: [] });
+    noteMap.set(note.id, { ...transformNote(note), children: [] });
   }
 
   // Second pass: build tree
