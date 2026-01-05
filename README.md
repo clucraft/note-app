@@ -2,7 +2,8 @@
 
 A modern, self-hosted note-taking web application with hierarchical organization, Markdown support, and multiple themes.
 
-![Note App Screenshot](https://via.placeholder.com/800x450?text=Note+App+Screenshot)
+## Note App Screenshot
+<img width="2319" height="914" alt="image" src="https://github.com/user-attachments/assets/7fa7155f-a4a9-4f12-a409-450a2c4dd85d" />
 
 ## Features
 
