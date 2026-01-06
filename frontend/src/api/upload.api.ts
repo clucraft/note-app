@@ -12,11 +12,8 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('image', file);
 
-  const response = await api.post<UploadResponse>('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  // Don't set Content-Type header - axios will set it automatically with correct boundary
+  const response = await api.post<UploadResponse>('/upload', formData);
 
   return response.data;
 }
