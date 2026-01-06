@@ -100,8 +100,22 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
     return <div className={styles.loading}>Loading editor...</div>;
   }
 
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    // Focus editor when clicking in empty space
+    const target = e.target as HTMLElement;
+    const editorElement = target.closest('.ProseMirror');
+
+    if (!editorElement) {
+      // Clicked outside the ProseMirror editor area, focus at end
+      editor?.chain().focus('end').run();
+    } else if (!editor?.isFocused) {
+      // Clicked inside but editor not focused, let it focus naturally
+      editor?.chain().focus().run();
+    }
+  }, [editor]);
+
   return (
-    <div className={styles.container}>
+    <div className={styles.container} onClick={handleContainerClick}>
       {editor && (
         <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
           <div className={styles.bubbleMenu}>
