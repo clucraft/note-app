@@ -1,6 +1,8 @@
-import { createContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import type { Note, CreateNoteInput, UpdateNoteInput } from '../types/note.types';
 import * as notesApi from '../api/notes.api';
+
+const SELECTED_NOTE_KEY = 'selectedNoteId';
 
 interface NotesContextType {
   notes: Note[];
@@ -42,9 +44,26 @@ export function NotesProvider({ children }: NotesProviderProps) {
     }
   }, []);
 
+  // Restore selected note from localStorage after notes load
+  useEffect(() => {
+    if (notes.length > 0 && !selectedNote) {
+      const savedNoteId = localStorage.getItem(SELECTED_NOTE_KEY);
+      if (savedNoteId) {
+        const noteId = parseInt(savedNoteId, 10);
+        if (!isNaN(noteId)) {
+          // Fetch and select the saved note
+          notesApi.getNote(noteId)
+            .then(note => setSelectedNote(note))
+            .catch(() => localStorage.removeItem(SELECTED_NOTE_KEY));
+        }
+      }
+    }
+  }, [notes, selectedNote]);
+
   const selectNote = useCallback(async (noteOrId: Note | number | null) => {
     if (noteOrId === null) {
       setSelectedNote(null);
+      localStorage.removeItem(SELECTED_NOTE_KEY);
       return;
     }
 
@@ -53,11 +72,14 @@ export function NotesProvider({ children }: NotesProviderProps) {
       try {
         const note = await notesApi.getNote(noteOrId);
         setSelectedNote(note);
+        localStorage.setItem(SELECTED_NOTE_KEY, String(noteOrId));
       } catch (err) {
         console.error('Failed to select note:', err);
+        localStorage.removeItem(SELECTED_NOTE_KEY);
       }
     } else {
       setSelectedNote(noteOrId);
+      localStorage.setItem(SELECTED_NOTE_KEY, String(noteOrId.id));
     }
   }, []);
 

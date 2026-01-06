@@ -7,13 +7,24 @@ import { ShareModal } from './ShareModal';
 import type { Note } from '../../types/note.types';
 import styles from './NoteEditor.module.css';
 
+type EditorWidth = 'centered' | 'full';
+const EDITOR_WIDTH_KEY = 'editorWidth';
+
 export function NoteEditor() {
   const { selectedNote, updateNote, notes } = useNotes();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [editorWidth, setEditorWidth] = useState<EditorWidth>(() => {
+    return (localStorage.getItem(EDITOR_WIDTH_KEY) as EditorWidth) || 'centered';
+  });
   const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleWidthChange = useCallback((width: EditorWidth) => {
+    setEditorWidth(width);
+    localStorage.setItem(EDITOR_WIDTH_KEY, width);
+  }, []);
 
   // Sync local state with selected note
   useEffect(() => {
@@ -259,9 +270,26 @@ export function NoteEditor() {
         >
           Share
         </button>
+
+        <div className={styles.widthToggle}>
+          <button
+            className={`${styles.widthBtn} ${editorWidth === 'centered' ? styles.active : ''}`}
+            onClick={() => handleWidthChange('centered')}
+            title="Centered width"
+          >
+            ▐░░▌
+          </button>
+          <button
+            className={`${styles.widthBtn} ${editorWidth === 'full' ? styles.active : ''}`}
+            onClick={() => handleWidthChange('full')}
+            title="Full width"
+          >
+            ▐██▌
+          </button>
+        </div>
       </div>
 
-      <div className={styles.content}>
+      <div className={`${styles.content} ${styles[editorWidth]}`}>
         <TiptapEditor
           content={content}
           onChange={handleContentChange}

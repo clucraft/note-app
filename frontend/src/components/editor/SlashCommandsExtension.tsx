@@ -136,6 +136,87 @@ const commands: CommandItem[] = [
       editor.chain().focus().deleteRange(range).toggleStrike().run();
     },
   },
+  // Emoji shortcuts
+  {
+    title: 'Emoji: Smile',
+    description: 'Insert smile emoji',
+    icon: '😊',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('😊').run();
+    },
+  },
+  {
+    title: 'Emoji: Heart',
+    description: 'Insert heart emoji',
+    icon: '❤️',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('❤️').run();
+    },
+  },
+  {
+    title: 'Emoji: Thumbs Up',
+    description: 'Insert thumbs up emoji',
+    icon: '👍',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('👍').run();
+    },
+  },
+  {
+    title: 'Emoji: Star',
+    description: 'Insert star emoji',
+    icon: '⭐',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('⭐').run();
+    },
+  },
+  {
+    title: 'Emoji: Check',
+    description: 'Insert checkmark emoji',
+    icon: '✅',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('✅').run();
+    },
+  },
+  {
+    title: 'Emoji: Warning',
+    description: 'Insert warning emoji',
+    icon: '⚠️',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('⚠️').run();
+    },
+  },
+  {
+    title: 'Emoji: Fire',
+    description: 'Insert fire emoji',
+    icon: '🔥',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('🔥').run();
+    },
+  },
+  {
+    title: 'Emoji: Rocket',
+    description: 'Insert rocket emoji',
+    icon: '🚀',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('🚀').run();
+    },
+  },
+  {
+    title: 'Emoji: Lightbulb',
+    description: 'Insert idea/lightbulb emoji',
+    icon: '💡',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('💡').run();
+    },
+  },
+  {
+    title: 'Emoji: Question',
+    description: 'Insert question mark emoji',
+    icon: '❓',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('❓').run();
+    },
+  },
 ];
 
 interface CommandListProps {

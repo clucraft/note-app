@@ -225,3 +225,48 @@
   margin: 0 0.5rem;
   color: var(--text-muted);
 }
+
+.widthToggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.widthBtn {
+  padding: 0.375rem 0.5rem;
+  background-color: var(--bg-surface);
+  border: none;
+  border-right: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: monospace;
+}
+
+.widthBtn:last-child {
+  border-right: none;
+}
+
+.widthBtn:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.widthBtn.active {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.content.centered {
+  justify-content: center;
+}
+
+.content.centered > * {
+  max-width: 800px;
+  width: 100%;
+}
+
+.content.full > * {
+  width: 100%;
+}
