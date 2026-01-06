@@ -125,7 +125,8 @@
 }
 
 .menuItem {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   padding: 0.5rem 0.75rem;
   text-align: left;
@@ -143,6 +144,35 @@
 
 .menuItem.danger {
   color: var(--color-error);
+}
+
+.menuIcon {
+  margin-right: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.menuArrow {
+  margin-left: auto;
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background-color: var(--border-color);
+}
+
+.subMenu {
+  max-height: 200px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.subMenu .menuItem {
+  padding-left: 1.5rem;
+  font-size: 0.75rem;
 }
 
 .children {

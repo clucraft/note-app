@@ -50,3 +50,8 @@ export async function searchNotes(query: string): Promise<SearchResult[]> {
   const response = await api.get<SearchResult[]>('/notes/search', { params: { q: query } });
   return response.data;
 }
+
+export async function duplicateNote(id: number): Promise<Note> {
+  const response = await api.post<Note>(`/notes/${id}/duplicate`);
+  return response.data;
+}

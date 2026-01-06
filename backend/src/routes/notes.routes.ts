@@ -8,7 +8,8 @@ import {
   moveNote,
   reorderNote,
   toggleExpand,
-  searchNotes
+  searchNotes,
+  duplicateNote
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -26,5 +27,6 @@ router.delete('/:id', deleteNote);
 router.put('/:id/move', moveNote);
 router.put('/:id/reorder', reorderNote);
 router.put('/:id/toggle-expand', toggleExpand);
+router.post('/:id/duplicate', duplicateNote);
 
 export default router;

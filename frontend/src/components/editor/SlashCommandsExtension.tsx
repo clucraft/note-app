@@ -3,6 +3,8 @@ import { ReactRenderer } from '@tiptap/react';
 import Suggestion from '@tiptap/suggestion';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 import styles from './SlashCommands.module.css';
 
 interface CommandItem {
@@ -10,9 +12,17 @@ interface CommandItem {
   description: string;
   icon: string;
   command: (props: { editor: any; range: any }) => void;
+  isEmojiPicker?: boolean;
 }
 
 const commands: CommandItem[] = [
+  {
+    title: 'Emoji',
+    description: 'Search and insert emoji',
+    icon: '😀',
+    isEmojiPicker: true,
+    command: () => {}, // Handled specially
+  },
   {
     title: 'Heading 1',
     description: 'Large section heading',
@@ -136,114 +146,54 @@ const commands: CommandItem[] = [
       editor.chain().focus().deleteRange(range).toggleStrike().run();
     },
   },
-  // Emoji shortcuts
-  {
-    title: 'Emoji: Smile',
-    description: 'Insert smile emoji',
-    icon: '😊',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('😊').run();
-    },
-  },
-  {
-    title: 'Emoji: Heart',
-    description: 'Insert heart emoji',
-    icon: '❤️',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('❤️').run();
-    },
-  },
-  {
-    title: 'Emoji: Thumbs Up',
-    description: 'Insert thumbs up emoji',
-    icon: '👍',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('👍').run();
-    },
-  },
-  {
-    title: 'Emoji: Star',
-    description: 'Insert star emoji',
-    icon: '⭐',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('⭐').run();
-    },
-  },
-  {
-    title: 'Emoji: Check',
-    description: 'Insert checkmark emoji',
-    icon: '✅',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('✅').run();
-    },
-  },
-  {
-    title: 'Emoji: Warning',
-    description: 'Insert warning emoji',
-    icon: '⚠️',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('⚠️').run();
-    },
-  },
-  {
-    title: 'Emoji: Fire',
-    description: 'Insert fire emoji',
-    icon: '🔥',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('🔥').run();
-    },
-  },
-  {
-    title: 'Emoji: Rocket',
-    description: 'Insert rocket emoji',
-    icon: '🚀',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('🚀').run();
-    },
-  },
-  {
-    title: 'Emoji: Lightbulb',
-    description: 'Insert idea/lightbulb emoji',
-    icon: '💡',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('💡').run();
-    },
-  },
-  {
-    title: 'Emoji: Question',
-    description: 'Insert question mark emoji',
-    icon: '❓',
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).insertContent('❓').run();
-    },
-  },
 ];
 
 interface CommandListProps {
   items: CommandItem[];
   command: (item: CommandItem) => void;
+  editor: any;
+  range: any;
 }
 
 interface CommandListRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, command }, ref) => {
+const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, command, editor, range }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const selectItem = useCallback((index: number) => {
     const item = items[index];
     if (item) {
-      command(item);
+      if (item.isEmojiPicker) {
+        setShowEmojiPicker(true);
+      } else {
+        command(item);
+      }
     }
   }, [items, command]);
 
+  const handleEmojiSelect = useCallback((emoji: { native: string }) => {
+    editor.chain().focus().deleteRange(range).insertContent(emoji.native).run();
+    setShowEmojiPicker(false);
+  }, [editor, range]);
+
   useEffect(() => {
     setSelectedIndex(0);
+    setShowEmojiPicker(false);
   }, [items]);
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+      if (showEmojiPicker) {
+        if (event.key === 'Escape') {
+          setShowEmojiPicker(false);
+          return true;
+        }
+        return false;
+      }
+
       if (event.key === 'ArrowUp') {
         setSelectedIndex((prev) => (prev + items.length - 1) % items.length);
         return true;
@@ -261,7 +211,22 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
 
       return false;
     },
-  }), [items.length, selectedIndex, selectItem]);
+  }), [items.length, selectedIndex, selectItem, showEmojiPicker]);
+
+  if (showEmojiPicker) {
+    return (
+      <div className={styles.emojiPickerWrapper}>
+        <Picker
+          data={data}
+          onEmojiSelect={handleEmojiSelect}
+          theme="auto"
+          previewPosition="none"
+          skinTonePosition="none"
+          autoFocus={true}
+        />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return <div className={styles.noResults}>No results</div>;
@@ -320,7 +285,11 @@ export const SlashCommands = Extension.create({
           return {
             onStart: (props: any) => {
               component = new ReactRenderer(CommandList, {
-                props,
+                props: {
+                  ...props,
+                  editor: props.editor,
+                  range: props.range,
+                },
                 editor: props.editor,
               });
 
@@ -340,7 +309,11 @@ export const SlashCommands = Extension.create({
             },
 
             onUpdate(props: any) {
-              component?.updateProps(props);
+              component?.updateProps({
+                ...props,
+                editor: props.editor,
+                range: props.range,
+              });
 
               if (!props.clientRect) {
                 return;

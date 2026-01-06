@@ -16,6 +16,7 @@ interface NotesContextType {
   deleteNote: (id: number) => Promise<void>;
   moveNote: (id: number, parentId: number | null) => Promise<void>;
   toggleExpand: (id: number) => Promise<void>;
+  duplicateNote: (id: number) => Promise<Note>;
 }
 
 export const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -145,6 +146,12 @@ export function NotesProvider({ children }: NotesProviderProps) {
     setNotes(prev => updateInTree(prev));
   }, []);
 
+  const duplicateNote = useCallback(async (id: number): Promise<Note> => {
+    const newNote = await notesApi.duplicateNote(id);
+    await loadNotes();
+    return newNote;
+  }, [loadNotes]);
+
   return (
     <NotesContext.Provider
       value={{
@@ -158,7 +165,8 @@ export function NotesProvider({ children }: NotesProviderProps) {
         updateNote,
         deleteNote,
         moveNote,
-        toggleExpand
+        toggleExpand,
+        duplicateNote
       }}
     >
       {children}

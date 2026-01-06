@@ -319,6 +319,60 @@ export async function toggleExpand(req: Request, res: Response) {
   }
 }
 
+export async function duplicateNote(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const userId = req.user!.userId;
+
+    // Get the note to duplicate
+    const note = db.prepare(`
+      SELECT id, parent_id, title, title_emoji, content
+      FROM notes WHERE id = ? AND user_id = ?
+    `).get(noteId, userId) as any;
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    // Get max sort order for siblings
+    const maxOrder = db.prepare(`
+      SELECT COALESCE(MAX(sort_order), -1) as max_order
+      FROM notes WHERE user_id = ? AND parent_id IS ?
+    `).get(userId, note.parent_id) as { max_order: number };
+
+    const sortOrder = maxOrder.max_order + 1;
+
+    // Create duplicate with "(Copy)" suffix
+    const stmt = db.prepare(`
+      INSERT INTO notes (user_id, parent_id, title, title_emoji, content, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    const insertResult = stmt.run(
+      userId,
+      note.parent_id,
+      `${note.title} (Copy)`,
+      note.title_emoji,
+      note.content,
+      sortOrder
+    );
+
+    res.status(201).json({
+      id: insertResult.lastInsertRowid,
+      parentId: note.parent_id,
+      title: `${note.title} (Copy)`,
+      titleEmoji: note.title_emoji,
+      content: note.content,
+      sortOrder,
+      isExpanded: true,
+      children: []
+    });
+  } catch (error) {
+    console.error('Duplicate note error:', error);
+    res.status(500).json({ error: 'Failed to duplicate note' });
+  }
+}
+
 export async function searchNotes(req: Request, res: Response) {
   try {
     const query = req.query.q as string;
