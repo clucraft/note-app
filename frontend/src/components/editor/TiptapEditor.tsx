@@ -14,6 +14,7 @@ import { common, createLowlight } from 'lowlight';
 import { useEffect, useCallback } from 'react';
 import { SlashCommands } from './SlashCommandsExtension';
 import { ResizableImage } from './ImageExtension';
+import { uploadImageFromBlob } from '../../api/upload.api';
 import styles from './TiptapEditor.module.css';
 
 const lowlight = createLowlight(common);
@@ -84,6 +85,44 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
       }, 0);
     }
   }, [content, editor]);
+
+  // Handle image paste from clipboard
+  useEffect(() => {
+    if (!editor) return;
+
+    const handlePaste = async (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          event.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            try {
+              const result = await uploadImageFromBlob(file, file.name || 'pasted-image.png');
+              editor.chain().focus().insertContent({
+                type: 'resizableImage',
+                attrs: { src: result.url },
+              }).run();
+            } catch (err) {
+              console.error('Failed to upload pasted image:', err);
+            }
+          }
+          return;
+        }
+      }
+    };
+
+    // Add listener to the editor's DOM element
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener('paste', handlePaste as unknown as EventListener);
+
+    return () => {
+      editorElement.removeEventListener('paste', handlePaste as unknown as EventListener);
+    };
+  }, [editor]);
 
   const setLink = useCallback(() => {
     if (!editor) return;

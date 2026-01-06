@@ -16,3 +16,16 @@
   overflow: hidden;
   background-color: var(--bg-primary);
 }
+
+.resizer {
+  width: 4px;
+  background-color: var(--border-color);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.resizer:hover,
+.resizer.resizing {
+  background-color: var(--color-primary);
+}

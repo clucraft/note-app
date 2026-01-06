@@ -181,57 +181,13 @@ function ImageNodeView({ node, updateAttributes, selected }: any) {
   );
 }
 
-// Plugin to handle paste and drop of images
+// Plugin to handle drop of images
 const imageUploadPluginKey = new PluginKey('imageUpload');
 
 function createImageUploadPlugin(uploadFn: (file: File) => Promise<string>) {
   return new Plugin({
     key: imageUploadPluginKey,
     props: {
-      handlePaste(view: EditorView, event: ClipboardEvent) {
-        // Check for files in clipboard
-        const files = event.clipboardData?.files;
-        if (files && files.length > 0) {
-          const imageFile = Array.from(files).find(file => file.type.startsWith('image/'));
-          if (imageFile) {
-            event.preventDefault();
-            uploadFn(imageFile).then(url => {
-              const { schema } = view.state;
-              const node = schema.nodes.resizableImage.create({ src: url });
-              const transaction = view.state.tr.replaceSelectionWith(node);
-              view.dispatch(transaction);
-            }).catch(err => {
-              console.error('Failed to upload pasted image:', err);
-            });
-            return true;
-          }
-        }
-
-        // Also check items for screenshots/copied images
-        const items = event.clipboardData?.items;
-        if (items) {
-          for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item.type.startsWith('image/')) {
-              const file = item.getAsFile();
-              if (file) {
-                event.preventDefault();
-                uploadFn(file).then(url => {
-                  const { schema } = view.state;
-                  const node = schema.nodes.resizableImage.create({ src: url });
-                  const transaction = view.state.tr.replaceSelectionWith(node);
-                  view.dispatch(transaction);
-                }).catch(err => {
-                  console.error('Failed to upload pasted image:', err);
-                });
-                return true;
-              }
-            }
-          }
-        }
-
-        return false;
-      },
       handleDrop(view: EditorView, event: DragEvent) {
         const hasFiles = event.dataTransfer?.files && event.dataTransfer.files.length > 0;
         if (!hasFiles) return false;
