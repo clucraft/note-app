@@ -13,7 +13,8 @@ const createNoteSchema = z.object({
 const updateNoteSchema = z.object({
   title: z.string().optional(),
   titleEmoji: z.string().nullable().optional(),
-  content: z.string().optional()
+  content: z.string().optional(),
+  editorWidth: z.enum(['centered', 'full']).optional()
 });
 
 const moveNoteSchema = z.object({
@@ -40,7 +41,7 @@ export async function getNote(req: Request, res: Response) {
     const noteId = parseInt(req.params.id);
 
     const note = db.prepare(`
-      SELECT id, user_id, parent_id, title, title_emoji, content, sort_order, is_expanded, created_at, updated_at
+      SELECT id, user_id, parent_id, title, title_emoji, content, sort_order, is_expanded, editor_width, created_at, updated_at
       FROM notes WHERE id = ? AND user_id = ?
     `).get(noteId, req.user!.userId) as any;
 
@@ -57,6 +58,7 @@ export async function getNote(req: Request, res: Response) {
       content: note.content,
       sortOrder: note.sort_order,
       isExpanded: !!note.is_expanded,
+      editorWidth: note.editor_width || 'centered',
       createdAt: note.created_at,
       updatedAt: note.updated_at
     });
@@ -126,7 +128,7 @@ export async function updateNote(req: Request, res: Response) {
       return;
     }
 
-    const { title, titleEmoji, content } = result.data;
+    const { title, titleEmoji, content, editorWidth } = result.data;
     const userId = req.user!.userId;
 
     // Verify note belongs to user
@@ -153,6 +155,10 @@ export async function updateNote(req: Request, res: Response) {
       updates.push('content = ?');
       params.push(content);
     }
+    if (editorWidth !== undefined) {
+      updates.push('editor_width = ?');
+      params.push(editorWidth);
+    }
 
     params.push(noteId);
 
@@ -160,7 +166,7 @@ export async function updateNote(req: Request, res: Response) {
 
     // Return updated note
     const updated = db.prepare(`
-      SELECT id, parent_id, title, title_emoji, content, sort_order, is_expanded, updated_at
+      SELECT id, parent_id, title, title_emoji, content, sort_order, is_expanded, editor_width, updated_at
       FROM notes WHERE id = ?
     `).get(noteId) as any;
 
@@ -172,6 +178,7 @@ export async function updateNote(req: Request, res: Response) {
       content: updated.content,
       sortOrder: updated.sort_order,
       isExpanded: !!updated.is_expanded,
+      editorWidth: updated.editor_width || 'centered',
       updatedAt: updated.updated_at
     });
   } catch (error) {

@@ -1,3 +1,5 @@
+export type EditorWidth = 'centered' | 'full';
+
 export interface Note {
   id: number;
   parentId: number | null;
@@ -6,6 +8,7 @@ export interface Note {
   content: string;
   sortOrder: number;
   isExpanded: boolean;
+  editorWidth: EditorWidth;
   createdAt?: string;
   updatedAt?: string;
   children: Note[];
@@ -22,4 +25,5 @@ export interface UpdateNoteInput {
   title?: string;
   titleEmoji?: string | null;
   content?: string;
+  editorWidth?: EditorWidth;
 }

@@ -4,11 +4,8 @@ import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { EmojiButton } from '../common/EmojiPicker';
 import { ShareModal } from './ShareModal';
-import type { Note } from '../../types/note.types';
+import type { Note, EditorWidth } from '../../types/note.types';
 import styles from './NoteEditor.module.css';
-
-type EditorWidth = 'centered' | 'full';
-const EDITOR_WIDTH_KEY = 'editorWidth';
 
 export function NoteEditor() {
   const { selectedNote, updateNote, notes } = useNotes();
@@ -16,15 +13,16 @@ export function NoteEditor() {
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [editorWidth, setEditorWidth] = useState<EditorWidth>(() => {
-    return (localStorage.getItem(EDITOR_WIDTH_KEY) as EditorWidth) || 'centered';
-  });
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  const handleWidthChange = useCallback((width: EditorWidth) => {
-    setEditorWidth(width);
-    localStorage.setItem(EDITOR_WIDTH_KEY, width);
-  }, []);
+  // Get editor width from note, default to 'centered'
+  const editorWidth: EditorWidth = selectedNote?.editorWidth || 'centered';
+
+  const handleWidthChange = useCallback(async (width: EditorWidth) => {
+    if (selectedNote) {
+      await updateNote(selectedNote.id, { editorWidth: width });
+    }
+  }, [selectedNote, updateNote]);
 
   // Sync local state with selected note
   useEffect(() => {

@@ -71,6 +71,17 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_shared_notes_token ON shared_notes(share_token);
   `);
 
+  // Migration: Add editor_width column if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN editor_width TEXT DEFAULT 'centered'`);
+    console.log('Added editor_width column to notes table');
+  } catch (e: any) {
+    // Column already exists, ignore error
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 
@@ -87,6 +98,7 @@ export function getNoteTree(userId: number) {
         content,
         sort_order,
         is_expanded,
+        editor_width,
         created_at,
         updated_at,
         0 AS depth
@@ -104,6 +116,7 @@ export function getNoteTree(userId: number) {
         n.content,
         n.sort_order,
         n.is_expanded,
+        n.editor_width,
         n.created_at,
         n.updated_at,
         nt.depth + 1
@@ -126,6 +139,7 @@ function transformNote(note: any) {
     content: note.content,
     sortOrder: note.sort_order,
     isExpanded: !!note.is_expanded,
+    editorWidth: note.editor_width || 'centered',
     createdAt: note.created_at,
     updatedAt: note.updated_at
   };
