@@ -43,7 +43,7 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
         },
       }),
       Placeholder.configure({
-        placeholder: 'Start typing, or press "/" for commands...',
+        placeholder: 'Write anything. Enter / for commands',
       }),
       TaskList,
       TaskItem.configure({

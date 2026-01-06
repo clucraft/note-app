@@ -4,10 +4,11 @@ import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { EmojiButton } from '../common/EmojiPicker';
 import { ShareModal } from './ShareModal';
+import type { Note } from '../../types/note.types';
 import styles from './NoteEditor.module.css';
 
 export function NoteEditor() {
-  const { selectedNote, updateNote } = useNotes();
+  const { selectedNote, updateNote, notes } = useNotes();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
@@ -92,6 +93,26 @@ export function NoteEditor() {
       minute: '2-digit'
     });
   };
+
+  // Build breadcrumb path from root to current note
+  const breadcrumbPath = useMemo(() => {
+    if (!selectedNote) return [];
+
+    const findPath = (nodes: Note[], targetId: number, path: Note[] = []): Note[] | null => {
+      for (const node of nodes) {
+        if (node.id === targetId) {
+          return [...path, node];
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findPath(node.children, targetId, [...path, node]);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    return findPath(notes, selectedNote.id) || [selectedNote];
+  }, [notes, selectedNote]);
 
   const handleExportHTML = useCallback(() => {
     if (!selectedNote) return;
@@ -184,6 +205,20 @@ export function NoteEditor() {
 
   return (
     <div className={styles.editor}>
+      {breadcrumbPath.length > 1 && (
+        <div className={styles.breadcrumb}>
+          {breadcrumbPath.slice(0, -1).map((note, index) => (
+            <span key={note.id}>
+              {index > 0 && <span className={styles.breadcrumbSeparator}>/</span>}
+              <span className={styles.breadcrumbItem}>
+                {note.titleEmoji && <span>{note.titleEmoji} </span>}
+                {note.title}
+              </span>
+            </span>
+          ))}
+          <span className={styles.breadcrumbSeparator}>/</span>
+        </div>
+      )}
       <div className={styles.header}>
         <EmojiButton
           emoji={selectedNote.titleEmoji}
