@@ -74,10 +74,14 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
     },
   });
 
-  // Update content when prop changes (e.g., when switching notes)
+  // Update content when prop changes (e.g., when switching notes) and focus
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
+      // Focus editor at the end after a brief delay to ensure content is rendered
+      setTimeout(() => {
+        editor.commands.focus('end');
+      }, 0);
     }
   }, [content, editor]);
 
