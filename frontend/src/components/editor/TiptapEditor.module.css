@@ -1,0 +1,285 @@
+.container {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+}
+
+.editor {
+  min-height: 100%;
+  padding: 1rem;
+  outline: none;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.editor > * + * {
+  margin-top: 0.75em;
+}
+
+/* Headings */
+.editor h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+/* Paragraph */
+.editor p {
+  margin: 0;
+}
+
+/* Lists */
+.editor ul,
+.editor ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.editor li {
+  margin: 0.25rem 0;
+}
+
+.editor li p {
+  margin: 0;
+}
+
+/* Task list */
+.editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.editor ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.editor ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.editor ul[data-type="taskList"] input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/* Blockquote */
+.editor blockquote {
+  border-left: 4px solid var(--color-primary);
+  margin: 1rem 0;
+  padding-left: 1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Code */
+.editor code {
+  background-color: var(--bg-surface);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  color: var(--color-primary);
+}
+
+.editor pre {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.editor pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Horizontal rule */
+.editor hr {
+  border: none;
+  border-top: 2px solid var(--border-color);
+  margin: 1.5rem 0;
+}
+
+/* Links */
+.link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Images */
+.image {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: 1rem 0;
+}
+
+/* Tables */
+.editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.editor th,
+.editor td {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  min-width: 100px;
+}
+
+.editor th {
+  background-color: var(--bg-surface);
+  font-weight: 600;
+}
+
+.editor td {
+  background-color: var(--bg-primary);
+}
+
+/* Placeholder */
+.editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Selection */
+.editor ::selection {
+  background-color: var(--color-primary-light);
+}
+
+/* Bubble menu */
+.bubbleMenu {
+  display: flex;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.bubbleMenu button {
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.bubbleMenu button:last-child {
+  border-right: none;
+}
+
+.bubbleMenu button:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.bubbleMenu button.active {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* Code block syntax highlighting */
+.editor .hljs-comment,
+.editor .hljs-quote {
+  color: #6a737d;
+}
+
+.editor .hljs-variable,
+.editor .hljs-template-variable,
+.editor .hljs-attribute,
+.editor .hljs-tag,
+.editor .hljs-name,
+.editor .hljs-regexp,
+.editor .hljs-link,
+.editor .hljs-selector-id,
+.editor .hljs-selector-class {
+  color: #e36209;
+}
+
+.editor .hljs-number,
+.editor .hljs-meta,
+.editor .hljs-built_in,
+.editor .hljs-builtin-name,
+.editor .hljs-literal,
+.editor .hljs-type,
+.editor .hljs-params {
+  color: #005cc5;
+}
+
+.editor .hljs-string,
+.editor .hljs-symbol,
+.editor .hljs-bullet {
+  color: #22863a;
+}
+
+.editor .hljs-title,
+.editor .hljs-section {
+  color: #6f42c1;
+}
+
+.editor .hljs-keyword,
+.editor .hljs-selector-tag {
+  color: #d73a49;
+}
+
+.editor .hljs-emphasis {
+  font-style: italic;
+}
+
+.editor .hljs-strong {
+  font-weight: 700;
+}

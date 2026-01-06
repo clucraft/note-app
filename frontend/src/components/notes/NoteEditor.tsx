@@ -1,20 +1,15 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNotes } from '../../hooks/useNotes';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
-import { MonacoWrapper } from '../editor/MonacoWrapper';
-import { MarkdownPreview } from './MarkdownPreview';
+import { TiptapEditor } from '../editor/TiptapEditor';
 import { EmojiButton } from '../common/EmojiPicker';
 import { ShareModal } from './ShareModal';
-import { marked } from 'marked';
 import styles from './NoteEditor.module.css';
-
-type ViewMode = 'edit' | 'split' | 'preview';
 
 export function NoteEditor() {
   const { selectedNote, updateNote } = useNotes();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -78,10 +73,11 @@ export function NoteEditor() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Calculate stats
+  // Calculate stats - strip HTML tags for accurate count
   const stats = useMemo(() => {
-    const charCount = content.length;
-    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const textContent = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+    const charCount = textContent.length;
+    const wordCount = textContent.trim() ? textContent.trim().split(/\s+/).length : 0;
     return { charCount, wordCount };
   }, [content]);
 
@@ -107,18 +103,27 @@ export function NoteEditor() {
   <title>${selectedNote.title}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
-    h1 { border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    h1, h2, h3, h4 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    h1 { font-size: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
     pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
-    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; }
-    blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #666; }
+    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; font-family: monospace; }
+    pre code { background: none; padding: 0; }
+    blockquote { border-left: 4px solid #ddd; margin: 1rem 0; padding-left: 1rem; color: #666; font-style: italic; }
     img { max-width: 100%; }
-    table { border-collapse: collapse; width: 100%; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
     th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+    th { background-color: #f5f5f5; }
+    ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+    ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
+    ul[data-type="taskList"] input { margin-top: 0.25rem; }
+    hr { border: none; border-top: 2px solid #eee; margin: 1.5rem 0; }
   </style>
 </head>
 <body>
   <h1>${selectedNote.titleEmoji || ''} ${selectedNote.title}</h1>
-  ${marked.parse(content)}
+  ${content}
 </body>
 </html>`;
     const blob = new Blob([html], { type: 'text/html' });
@@ -139,15 +144,19 @@ export function NoteEditor() {
   <title>${selectedNote.title}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
-    h1 { border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    h1, h2, h3, h4 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    h1 { font-size: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
     pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
-    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; }
-    blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #666; }
+    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; font-family: monospace; }
+    pre code { background: none; padding: 0; }
+    blockquote { border-left: 4px solid #ddd; margin: 1rem 0; padding-left: 1rem; color: #666; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
   </style>
 </head>
 <body>
   <h1>${selectedNote.titleEmoji || ''} ${selectedNote.title}</h1>
-  ${marked.parse(content)}
+  ${content}
 </body>
 </html>`;
     const printWindow = window.open('', '_blank');
@@ -187,29 +196,6 @@ export function NoteEditor() {
           className={styles.titleInput}
           placeholder="Untitled"
         />
-        <div className={styles.viewModeToggle}>
-          <button
-            className={`${styles.viewModeBtn} ${viewMode === 'edit' ? styles.active : ''}`}
-            onClick={() => setViewMode('edit')}
-            title="Edit only"
-          >
-            Edit
-          </button>
-          <button
-            className={`${styles.viewModeBtn} ${viewMode === 'split' ? styles.active : ''}`}
-            onClick={() => setViewMode('split')}
-            title="Split view"
-          >
-            Split
-          </button>
-          <button
-            className={`${styles.viewModeBtn} ${viewMode === 'preview' ? styles.active : ''}`}
-            onClick={() => setViewMode('preview')}
-            title="Preview only"
-          >
-            Preview
-          </button>
-        </div>
 
         <div className={styles.exportContainer} ref={exportMenuRef}>
           <button
@@ -240,20 +226,11 @@ export function NoteEditor() {
         </button>
       </div>
 
-      <div className={`${styles.content} ${styles[viewMode]}`}>
-        {(viewMode === 'edit' || viewMode === 'split') && (
-          <div className={styles.editorPane}>
-            <MonacoWrapper
-              value={content}
-              onChange={handleContentChange}
-            />
-          </div>
-        )}
-        {(viewMode === 'preview' || viewMode === 'split') && (
-          <div className={styles.previewPane}>
-            <MarkdownPreview content={content} />
-          </div>
-        )}
+      <div className={styles.content}>
+        <TiptapEditor
+          content={content}
+          onChange={handleContentChange}
+        />
       </div>
 
       <div className={styles.statusBar}>
