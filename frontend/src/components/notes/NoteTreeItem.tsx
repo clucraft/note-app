@@ -53,11 +53,13 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
     }
   };
 
+  const indent = depth * 16 + 8;
+
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ '--tree-indent': `${indent}px` } as React.CSSProperties}>
       <div
-        className={`${styles.item} ${isSelected ? styles.selected : ''}`}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        className={`${styles.item} ${isSelected ? styles.selected : ''} ${depth > 0 ? styles.itemWithLine : ''}`}
+        style={{ paddingLeft: `${indent}px` }}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
       >
@@ -98,7 +100,7 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
       )}
 
       {hasChildren && note.isExpanded && (
-        <div className={styles.children}>
+        <div className={styles.children} style={{ '--tree-indent': `${indent}px` } as React.CSSProperties}>
           {note.children.map((child) => (
             <NoteTreeItem key={child.id} note={child} depth={depth + 1} />
           ))}

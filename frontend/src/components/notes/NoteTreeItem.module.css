@@ -11,6 +11,29 @@
   cursor: pointer;
   transition: background-color var(--transition-fast);
   user-select: none;
+  position: relative;
+}
+
+/* Tree connection line - vertical */
+.itemWithLine::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--tree-indent) - 8px);
+  top: 0;
+  bottom: 50%;
+  width: 1px;
+  background-color: var(--border-color);
+}
+
+/* Tree connection line - horizontal */
+.itemWithLine::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--tree-indent) - 8px);
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background-color: var(--border-color);
 }
 
 .item:hover {
@@ -125,4 +148,16 @@
 .children {
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* Vertical line through children */
+.children::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--tree-indent) + 4px);
+  top: 0;
+  bottom: 0.75rem;
+  width: 1px;
+  background-color: var(--border-color);
 }
