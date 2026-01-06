@@ -110,7 +110,10 @@ const commands: CommandItem[] = [
     command: ({ editor, range }) => {
       const url = window.prompt('Enter image URL:');
       if (url) {
-        editor.chain().focus().deleteRange(range).setImage({ src: url }).run();
+        editor.chain().focus().deleteRange(range).insertContent({
+          type: 'resizableImage',
+          attrs: { src: url }
+        }).run();
       }
     },
   },

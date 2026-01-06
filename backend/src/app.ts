@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import routes from './routes/index.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
 
@@ -13,8 +14,12 @@ app.use(cors({
   credentials: true
 }));
 
-// Parse JSON bodies
-app.use(express.json());
+// Parse JSON bodies (with increased limit for base64 images)
+app.use(express.json({ limit: '50mb' }));
+
+// Serve uploaded images
+const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsDir));
 
 // Parse cookies
 app.use(cookieParser());

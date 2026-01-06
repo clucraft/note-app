@@ -2,7 +2,6 @@ import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -14,6 +13,7 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useCallback } from 'react';
 import { SlashCommands } from './SlashCommandsExtension';
+import { ResizableImage } from './ImageExtension';
 import styles from './TiptapEditor.module.css';
 
 const lowlight = createLowlight(common);
@@ -37,7 +37,7 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
           class: styles.link,
         },
       }),
-      Image.configure({
+      ResizableImage.configure({
         HTMLAttributes: {
           class: styles.image,
         },

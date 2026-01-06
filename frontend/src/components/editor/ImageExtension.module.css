@@ -1,0 +1,89 @@
+.imageWrapper {
+  display: block;
+  margin: 1rem 0;
+}
+
+.imageContainer {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.imageContainer img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.imageContainer.selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.imageContainer.resizing img {
+  opacity: 0.7;
+}
+
+.resizeHandle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--color-primary);
+  border: 2px solid var(--bg-primary);
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.resizeHandle.nw {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+
+.resizeHandle.ne {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+
+.resizeHandle.sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+
+.resizeHandle.se {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+
+.contextMenu {
+  position: fixed;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  z-index: 1000;
+  min-width: 160px;
+}
+
+.contextMenu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.contextMenu button:hover {
+  background: var(--bg-surface-hover);
+}
