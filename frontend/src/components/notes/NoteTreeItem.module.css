@@ -84,6 +84,7 @@
 .title {
   flex: 1;
   font-size: 0.875rem;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
