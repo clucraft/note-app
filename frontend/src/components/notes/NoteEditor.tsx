@@ -26,6 +26,7 @@ export function NoteEditor() {
   const [activityKey, setActivityKey] = useState(0);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const prevStatsRef = useRef({ charCount: 0, wordCount: 0 });
+  const pendingActivityRef = useRef({ charCount: 0, wordCount: 0 });
 
   // Get editor width from note, default to 'centered'
   const editorWidth: EditorWidth = selectedNote?.editorWidth || 'centered';
@@ -88,10 +89,13 @@ export function NoteEditor() {
 
   // Debounced activity recording (every 5 seconds)
   const debouncedRecordActivity = useDebouncedCallback(
-    async (charDelta: number, wordDelta: number) => {
-      if (charDelta > 0 || wordDelta > 0) {
+    async () => {
+      const { charCount, wordCount } = pendingActivityRef.current;
+      if (charCount > 0 || wordCount > 0) {
         try {
-          await recordActivity(charDelta, wordDelta);
+          await recordActivity(charCount, wordCount);
+          // Reset pending counts after successful send
+          pendingActivityRef.current = { charCount: 0, wordCount: 0 };
           // Force re-render of activity tracker
           setActivityKey(k => k + 1);
         } catch (err) {
@@ -118,7 +122,10 @@ export function NoteEditor() {
       prevStatsRef.current = { charCount: newCharCount, wordCount: newWordCount };
 
       if (charDelta > 0 || wordDelta > 0) {
-        debouncedRecordActivity(charDelta, wordDelta);
+        // Accumulate deltas
+        pendingActivityRef.current.charCount += charDelta;
+        pendingActivityRef.current.wordCount += wordDelta;
+        debouncedRecordActivity();
       }
     }
   }, [selectedNote, debouncedSaveContent, debouncedRecordActivity]);
