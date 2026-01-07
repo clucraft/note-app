@@ -114,14 +114,35 @@ export function NotesProvider({ children }: NotesProviderProps) {
   }, [selectedNote]);
 
   const deleteNote = useCallback(async (id: number) => {
+    // Check if the note to delete is the selected note or an ancestor of it
+    const isSelectedOrAncestor = (noteId: number, nodes: Note[]): boolean => {
+      for (const node of nodes) {
+        if (node.id === noteId) {
+          // Found the note being deleted - check if selected note is this or a descendant
+          const isDescendant = (n: Note): boolean => {
+            if (n.id === selectedNote?.id) return true;
+            return n.children.some(isDescendant);
+          };
+          return node.id === selectedNote?.id || isDescendant(node);
+        }
+        if (node.children.length > 0 && isSelectedOrAncestor(noteId, node.children)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const shouldClearSelection = selectedNote && isSelectedOrAncestor(id, notes);
+
     await notesApi.deleteNote(id);
 
-    if (selectedNote?.id === id) {
+    if (shouldClearSelection) {
       setSelectedNote(null);
+      localStorage.removeItem(SELECTED_NOTE_KEY);
     }
 
     await loadNotes();
-  }, [loadNotes, selectedNote]);
+  }, [loadNotes, selectedNote, notes]);
 
   const moveNote = useCallback(async (id: number, parentId: number | null) => {
     await notesApi.moveNote(id, parentId);
