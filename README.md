@@ -1,4 +1,4 @@
-# Note App
+# Cache Notes
 
 A modern, self-hosted note-taking web application with hierarchical organization, rich text editing, and multiple themes.
 
