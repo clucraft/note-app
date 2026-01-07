@@ -215,6 +215,47 @@ export async function getSharedNote(req: Request, res: Response) {
   }
 }
 
+// List all shared notes for the current user
+export async function listUserShares(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    const shares = db.prepare(`
+      SELECT
+        s.id,
+        s.note_id,
+        s.share_token,
+        s.password_hash,
+        s.expires_at,
+        s.created_at,
+        s.view_count,
+        n.title,
+        n.title_emoji
+      FROM shared_notes s
+      JOIN notes n ON s.note_id = n.id
+      WHERE n.user_id = ?
+      ORDER BY s.created_at DESC
+    `).all(userId) as any[];
+
+    const result = shares.map(share => ({
+      id: share.id,
+      noteId: share.note_id,
+      noteTitle: share.title,
+      noteTitleEmoji: share.title_emoji,
+      shareToken: share.share_token,
+      hasPassword: !!share.password_hash,
+      expiresAt: share.expires_at,
+      createdAt: share.created_at,
+      viewCount: share.view_count
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error('List user shares error:', error);
+    res.status(500).json({ error: 'Failed to list shared notes' });
+  }
+}
+
 // Check if password is required (no auth needed)
 export async function checkShareAccess(req: Request, res: Response) {
   try {

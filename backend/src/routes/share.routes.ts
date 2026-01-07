@@ -4,7 +4,8 @@ import {
   getShareInfo,
   deleteShare,
   getSharedNote,
-  checkShareAccess
+  checkShareAccess,
+  listUserShares
 } from '../controllers/share.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -15,6 +16,7 @@ router.get('/public/:token', checkShareAccess);
 router.post('/public/:token', getSharedNote);
 
 // Protected routes (require auth)
+router.get('/list/all', authenticate, listUserShares);
 router.post('/:id', authenticate, createShare);
 router.get('/:id', authenticate, getShareInfo);
 router.delete('/:id', authenticate, deleteShare);

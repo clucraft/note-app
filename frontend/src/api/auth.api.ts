@@ -32,3 +32,13 @@ export async function refreshToken(): Promise<string> {
 export async function updateTheme(theme: string): Promise<void> {
   await api.put('/auth/theme', { theme });
 }
+
+export interface UpdatePreferencesInput {
+  language?: string;
+  timezone?: string;
+}
+
+export async function updatePreferences(preferences: UpdatePreferencesInput): Promise<{ language: string; timezone: string }> {
+  const response = await api.put<{ language: string; timezone: string }>('/auth/preferences', preferences);
+  return response.data;
+}

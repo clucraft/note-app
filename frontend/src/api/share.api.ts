@@ -40,6 +40,24 @@ export async function deleteShare(noteId: number): Promise<void> {
   await api.delete(`/share/${noteId}`);
 }
 
+// List all shared notes for the current user
+export interface UserShare {
+  id: number;
+  noteId: number;
+  noteTitle: string;
+  noteTitleEmoji: string | null;
+  shareToken: string;
+  hasPassword: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+  viewCount: number;
+}
+
+export async function listUserShares(): Promise<UserShare[]> {
+  const response = await api.get<UserShare[]>('/share/list/all');
+  return response.data;
+}
+
 // Public endpoints (no auth required)
 export async function checkShareAccess(token: string): Promise<{ requiresPassword: boolean }> {
   const response = await api.get<{ requiresPassword: boolean }>(`/share/public/${token}`);

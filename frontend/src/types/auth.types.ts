@@ -5,6 +5,8 @@ export interface User {
   displayName: string;
   role: 'admin' | 'user';
   themePreference?: string;
+  language?: string;
+  timezone?: string;
   createdAt?: string;
 }
 

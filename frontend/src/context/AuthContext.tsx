@@ -10,6 +10,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +58,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const userData = await authApi.getMe();
+      setUser(userData);
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -65,7 +75,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthenticated: !!user,
         login,
         register,
-        logout
+        logout,
+        refreshUser
       }}
     >
       {children}

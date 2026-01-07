@@ -82,6 +82,26 @@ export function initializeDatabase() {
     }
   }
 
+  // Migration: Add language column to users table
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en-US'`);
+    console.log('Added language column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
+  // Migration: Add timezone column to users table
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN timezone TEXT DEFAULT 'UTC'`);
+    console.log('Added timezone column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 

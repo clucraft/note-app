@@ -140,17 +140,15 @@ export function Header() {
                 <span className={styles.dropdownEmail}>{user?.email}</span>
               </div>
               <div className={styles.dropdownDivider} />
-              {user?.role === 'admin' && (
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    navigate('/admin/users');
-                    setShowMenu(false);
-                  }}
-                >
-                  Manage Users
-                </button>
-              )}
+              <button
+                className={styles.dropdownItem}
+                onClick={() => {
+                  navigate('/settings');
+                  setShowMenu(false);
+                }}
+              >
+                Settings
+              </button>
               <button className={styles.dropdownItem} onClick={handleLogout}>
                 Sign Out
               </button>

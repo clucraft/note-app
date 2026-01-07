@@ -94,7 +94,7 @@ export async function login(req: Request, res: Response) {
 
     // Find user
     const user = db.prepare(`
-      SELECT id, username, email, password_hash, display_name, role, theme_preference
+      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone
       FROM users WHERE email = ?
     `).get(email) as any;
 
@@ -135,7 +135,9 @@ export async function login(req: Request, res: Response) {
         email: user.email,
         displayName: user.display_name,
         role: user.role,
-        themePreference: user.theme_preference
+        themePreference: user.theme_preference,
+        language: user.language || 'en-US',
+        timezone: user.timezone || 'UTC'
       }
     });
   } catch (error) {
@@ -198,7 +200,7 @@ export async function logout(req: Request, res: Response) {
 export async function getMe(req: Request, res: Response) {
   try {
     const user = db.prepare(`
-      SELECT id, username, email, display_name, role, theme_preference, created_at
+      SELECT id, username, email, display_name, role, theme_preference, language, timezone, created_at
       FROM users WHERE id = ?
     `).get(req.user!.userId) as any;
 
@@ -214,6 +216,8 @@ export async function getMe(req: Request, res: Response) {
       displayName: user.display_name,
       role: user.role,
       themePreference: user.theme_preference,
+      language: user.language || 'en-US',
+      timezone: user.timezone || 'UTC',
       createdAt: user.created_at
     });
   } catch (error) {
@@ -239,5 +243,56 @@ export async function updateTheme(req: Request, res: Response) {
   } catch (error) {
     console.error('Update theme error:', error);
     res.status(500).json({ error: 'Failed to update theme' });
+  }
+}
+
+const updatePreferencesSchema = z.object({
+  language: z.string().optional(),
+  timezone: z.string().optional()
+});
+
+export async function updatePreferences(req: Request, res: Response) {
+  try {
+    const result = updatePreferencesSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { language, timezone } = result.data;
+    const validLanguages = ['en-US', 'zh-CN', 'hi-IN', 'es-ES', 'ar-SA'];
+
+    if (language && !validLanguages.includes(language)) {
+      res.status(400).json({ error: 'Invalid language' });
+      return;
+    }
+
+    const updates: string[] = ['updated_at = CURRENT_TIMESTAMP'];
+    const params: any[] = [];
+
+    if (language) {
+      updates.push('language = ?');
+      params.push(language);
+    }
+    if (timezone) {
+      updates.push('timezone = ?');
+      params.push(timezone);
+    }
+
+    params.push(req.user!.userId);
+
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+    // Return updated preferences
+    const user = db.prepare('SELECT language, timezone FROM users WHERE id = ?')
+      .get(req.user!.userId) as any;
+
+    res.json({
+      language: user.language || 'en-US',
+      timezone: user.timezone || 'UTC'
+    });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Failed to update preferences' });
   }
 }
