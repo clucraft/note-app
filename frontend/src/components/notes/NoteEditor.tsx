@@ -257,7 +257,7 @@ export function NoteEditor() {
             <span key={note.id}>
               {index > 0 && <span className={styles.breadcrumbSeparator}>/</span>}
               <span className={index === breadcrumbPath.length - 1 ? styles.breadcrumbCurrent : styles.breadcrumbItem}>
-                {note.titleEmoji && <span>{note.titleEmoji} </span>}
+                <span className={styles.breadcrumbEmoji}>{note.titleEmoji || '📄'}</span>
                 {index === breadcrumbPath.length - 1 ? displayTitle : note.title}
               </span>
             </span>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNotes } from '../../hooks/useNotes';
+import { EmojiPicker } from '../common/EmojiPicker';
 import type { Note } from '../../types/note.types';
 import styles from './NoteTreeItem.module.css';
 
@@ -9,10 +10,13 @@ interface NoteTreeItemProps {
 }
 
 export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
-  const { selectedNote, selectNote, createNote, deleteNote, toggleExpand, duplicateNote, moveNote, notes } = useNotes();
+  const { selectedNote, selectNote, createNote, deleteNote, toggleExpand, duplicateNote, moveNote, updateNote, notes } = useNotes();
   const [showMenu, setShowMenu] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  const emojiRef = useRef<HTMLSpanElement>(null);
 
   const isSelected = selectedNote?.id === note.id;
   const hasChildren = note.children.length > 0;
@@ -28,6 +32,23 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleEmojiClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (emojiRef.current) {
+      const rect = emojiRef.current.getBoundingClientRect();
+      setEmojiPickerPosition({
+        top: rect.bottom + 4,
+        left: rect.left
+      });
+    }
+    setShowEmojiPicker(true);
+  };
+
+  const handleEmojiSelect = async (emoji: string) => {
+    await updateNote(note.id, { titleEmoji: emoji });
+    setShowEmojiPicker(false);
+  };
 
   const handleClick = () => {
     selectNote(note);
@@ -45,7 +66,7 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
 
   const handleAddChild = async () => {
     setShowMenu(false);
-    await createNote({ parentId: note.id, title: 'Untitled' });
+    await createNote({ parentId: note.id, title: 'Untitled', titleEmoji: '📄' });
   };
 
   const handleDelete = async () => {
@@ -120,14 +141,25 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
         onClick={handleClick}
         onContextMenu={handleContextMenu}
       >
-        <button
-          className={`${styles.expandButton} ${!hasChildren ? styles.hidden : ''}`}
-          onClick={handleToggleExpand}
-        >
-          <span className={note.isExpanded ? styles.expanded : ''}>&#9656;</span>
-        </button>
+        {hasChildren ? (
+          <button
+            className={styles.expandButton}
+            onClick={handleToggleExpand}
+          >
+            <span className={note.isExpanded ? styles.expanded : ''}>&#9656;</span>
+          </button>
+        ) : (
+          <span className={styles.leafDot}>•</span>
+        )}
 
-        <span className={styles.emoji}>{note.titleEmoji || '📄'}</span>
+        <span
+          ref={emojiRef}
+          className={styles.emoji}
+          onClick={handleEmojiClick}
+          title="Change emoji"
+        >
+          {note.titleEmoji || '📄'}
+        </span>
         <span className={styles.title}>{note.title}</span>
 
         <button
@@ -140,6 +172,14 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
           &#8943;
         </button>
       </div>
+
+      {showEmojiPicker && (
+        <EmojiPicker
+          onSelect={handleEmojiSelect}
+          onClose={() => setShowEmojiPicker(false)}
+          position={emojiPickerPosition}
+        />
+      )}
 
       {showMenu && (
         <div

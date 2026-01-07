@@ -10,7 +10,7 @@ export function Sidebar() {
   const [showAIChat, setShowAIChat] = useState(false);
 
   const handleNewNote = async () => {
-    await createNote({ title: 'Untitled' });
+    await createNote({ title: 'Untitled', titleEmoji: '📄' });
   };
 
   return (

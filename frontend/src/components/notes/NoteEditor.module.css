@@ -245,6 +245,10 @@
   flex-shrink: 0;
 }
 
+.breadcrumbEmoji {
+  margin-right: 0.25rem;
+}
+
 .widthToggle {
   display: flex;
   border: 1px solid var(--border-color);

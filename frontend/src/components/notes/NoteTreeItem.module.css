@@ -63,10 +63,6 @@
   color: var(--text-primary);
 }
 
-.expandButton.hidden {
-  visibility: hidden;
-}
-
 .expandButton span {
   display: inline-block;
   transition: transform var(--transition-fast);
@@ -76,9 +72,28 @@
   transform: rotate(90deg);
 }
 
+.leafDot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.625rem;
+  flex-shrink: 0;
+}
+
 .emoji {
   font-size: 0.875rem;
   flex-shrink: 0;
+  cursor: pointer;
+  padding: 0.125rem;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.emoji:hover {
+  background-color: var(--bg-surface-hover);
 }
 
 .title {
