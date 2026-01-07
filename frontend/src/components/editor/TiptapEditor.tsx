@@ -23,9 +23,10 @@ interface TiptapEditorProps {
   content: string;
   onChange: (html: string) => void;
   onReady?: () => void;
+  noteId?: number;
 }
 
-export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) {
+export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -75,9 +76,9 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
     },
   });
 
-  // Update content when prop changes (e.g., when switching notes) and focus
+  // Update content only when switching notes (noteId changes), not on every keystroke
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor) {
       editor.commands.setContent(content);
       // Focus editor after content is set
       setTimeout(() => {
@@ -96,7 +97,9 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
         }
       }, 0);
     }
-  }, [content, editor]);
+    // Only depend on noteId, not content - content changes on every keystroke
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteId, editor]);
 
   const [isExpanding, setIsExpanding] = useState(false);
 

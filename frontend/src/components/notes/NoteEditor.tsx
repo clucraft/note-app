@@ -367,6 +367,7 @@ export function NoteEditor() {
         <TiptapEditor
           content={content}
           onChange={handleContentChange}
+          noteId={selectedNote.id}
         />
       </div>
 
