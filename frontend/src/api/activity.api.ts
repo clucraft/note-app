@@ -22,11 +22,24 @@ export interface DailyActivity {
 }
 
 export async function recordActivity(charCount: number, wordCount: number): Promise<void> {
-  await api.post('/activity', { charCount, wordCount });
+  // Send local date and hour from client
+  const now = new Date();
+  const date = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+  const hour = now.getHours();
+
+  await api.post('/activity', { charCount, wordCount, date, hour });
 }
 
 export async function getTodayActivity(): Promise<TodayActivity> {
-  const response = await api.get<TodayActivity>('/activity/today');
+  // Send local date from client
+  const now = new Date();
+  const date = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+
+  const response = await api.get<TodayActivity>('/activity/today', { params: { date } });
   return response.data;
 }
 

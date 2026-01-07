@@ -5,6 +5,8 @@ import { db } from '../database/db.js';
 const recordActivitySchema = z.object({
   charCount: z.number().min(0),
   wordCount: z.number().min(0),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD from client
+  hour: z.number().min(0).max(23),
 });
 
 export async function recordActivity(req: Request, res: Response) {
@@ -17,10 +19,7 @@ export async function recordActivity(req: Request, res: Response) {
       return;
     }
 
-    const { charCount, wordCount } = validation.data;
-    const now = new Date();
-    const date = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    const hour = now.getHours();
+    const { charCount, wordCount, date, hour } = validation.data;
 
     // Upsert: insert or update if exists
     db.prepare(`
@@ -42,7 +41,8 @@ export async function recordActivity(req: Request, res: Response) {
 export async function getTodayActivity(req: Request, res: Response) {
   try {
     const userId = req.user!.userId;
-    const today = new Date().toISOString().split('T')[0];
+    // Use date from client query param (client's local date)
+    const today = (req.query.date as string) || new Date().toISOString().split('T')[0];
 
     const activities = db.prepare(`
       SELECT hour, char_count, word_count

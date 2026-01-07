@@ -23,9 +23,9 @@ export function NoteEditor() {
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [activityKey, setActivityKey] = useState(0);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const prevStatsRef = useRef({ charCount: 0, wordCount: 0 });
-  const activityTrackerRef = useRef<number>(0);
 
   // Get editor width from note, default to 'centered'
   const editorWidth: EditorWidth = selectedNote?.editorWidth || 'centered';
@@ -93,7 +93,7 @@ export function NoteEditor() {
         try {
           await recordActivity(charDelta, wordDelta);
           // Force re-render of activity tracker
-          activityTrackerRef.current += 1;
+          setActivityKey(k => k + 1);
         } catch (err) {
           console.error('Failed to record activity:', err);
         }
@@ -376,7 +376,7 @@ export function NoteEditor() {
           Created: {formatDate(selectedNote.createdAt)}
         </span>
         <span className={styles.statusDivider}>|</span>
-        <ActivityTracker key={activityTrackerRef.current} />
+        <ActivityTracker key={activityKey} />
       </div>
 
       {showShareModal && (
