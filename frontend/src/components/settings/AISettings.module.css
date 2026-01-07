@@ -26,6 +26,12 @@
   margin-bottom: 0.25rem;
 }
 
+.optional {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
 .description {
   font-size: 0.875rem;
   color: var(--text-secondary);

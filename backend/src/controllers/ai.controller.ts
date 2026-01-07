@@ -6,10 +6,16 @@ import type { AISettings, AIProvider } from '../services/ai.service.js';
 
 const aiSettingsSchema = z.object({
   provider: z.enum(['openai', 'anthropic', 'openwebui']),
-  apiKey: z.string().min(1, 'API key is required'),
+  apiKey: z.string(), // Optional for openwebui/Ollama
   model: z.string().min(1, 'Model is required'),
   endpoint: z.string().url().optional().nullable(),
-});
+}).refine((data) => {
+  // API key is required for OpenAI and Anthropic, optional for OpenWebUI
+  if (data.provider !== 'openwebui' && !data.apiKey) {
+    return false;
+  }
+  return true;
+}, { message: 'API key is required for this provider' });
 
 const summarizeSchema = z.object({
   results: z.array(z.object({
@@ -24,6 +30,7 @@ const expandSchema = z.object({
 });
 
 function maskApiKey(apiKey: string): string {
+  if (!apiKey) return '';
   if (apiKey.length <= 8) return '••••••••';
   return '••••••••' + apiKey.slice(-4);
 }
@@ -45,7 +52,7 @@ export async function getAISettings(req: Request, res: Response) {
     res.json({
       ...settings,
       apiKey: maskApiKey(settings.apiKey),
-      hasApiKey: true,
+      hasApiKey: !!settings.apiKey,
     });
   } catch (error) {
     console.error('Get AI settings error:', error);

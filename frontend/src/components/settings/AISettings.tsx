@@ -61,7 +61,9 @@ export function AISettings() {
     setError('');
     setSuccess('');
 
-    if (!apiKey || apiKey.startsWith('••••') && !settings?.hasApiKey) {
+    // API key is required for OpenAI and Anthropic, optional for OpenWebUI/Ollama
+    const needsApiKey = provider !== 'openwebui';
+    if (needsApiKey && (!apiKey || (apiKey.startsWith('••••') && !settings?.hasApiKey))) {
       setError('API key is required');
       return;
     }
@@ -73,7 +75,7 @@ export function AISettings() {
     }
 
     if (provider === 'openwebui' && !endpoint) {
-      setError('Endpoint URL is required for OpenWebUI');
+      setError('Endpoint URL is required for OpenWebUI/Ollama');
       return;
     }
 
@@ -151,9 +153,13 @@ export function AISettings() {
       </div>
 
       <div className={styles.section}>
-        <h3 className={styles.label}>API Key</h3>
+        <h3 className={styles.label}>
+          API Key {provider === 'openwebui' && <span className={styles.optional}>(Optional)</span>}
+        </h3>
         <p className={styles.description}>
-          Your API key for {AI_PROVIDER_NAMES[provider]}
+          {provider === 'openwebui'
+            ? 'API key for authentication (leave empty for local Ollama)'
+            : `Your API key for ${AI_PROVIDER_NAMES[provider]}`}
         </p>
         <div className={styles.inputGroup}>
           <input
@@ -161,7 +167,7 @@ export function AISettings() {
             className={styles.input}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your API key"
+            placeholder={provider === 'openwebui' ? 'Optional - leave empty for Ollama' : 'Enter your API key'}
           />
           <button
             type="button"
@@ -204,14 +210,14 @@ export function AISettings() {
         <div className={styles.section}>
           <h3 className={styles.label}>Endpoint URL</h3>
           <p className={styles.description}>
-            Your OpenWebUI API endpoint (e.g., http://localhost:3000/v1)
+            API endpoint URL (Ollama default: http://localhost:11434/v1)
           </p>
           <input
             type="text"
             className={styles.input}
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
-            placeholder="http://localhost:3000/v1"
+            placeholder="http://localhost:11434/v1"
           />
         </div>
       )}
@@ -220,7 +226,7 @@ export function AISettings() {
         <button
           className={styles.testButton}
           onClick={handleTest}
-          disabled={isTesting || !settings?.hasApiKey}
+          disabled={isTesting || !settings || (provider !== 'openwebui' && !settings.hasApiKey)}
         >
           {isTesting ? 'Testing...' : 'Test Connection'}
         </button>

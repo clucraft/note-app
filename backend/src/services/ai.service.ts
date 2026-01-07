@@ -29,12 +29,18 @@ async function callOpenAI(
   const endpoint = settings.endpoint || DEFAULT_ENDPOINTS.openai;
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Only add Authorization header if API key is provided (Ollama doesn't need it)
+    if (settings.apiKey) {
+      headers['Authorization'] = `Bearer ${settings.apiKey}`;
+    }
+
     const response = await fetch(`${endpoint}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model: settings.model,
         messages,
