@@ -9,7 +9,13 @@ import {
   reorderNote,
   toggleExpand,
   searchNotes,
-  duplicateNote
+  duplicateNote,
+  getDeletedNotes,
+  restoreNotes,
+  permanentlyDeleteNotes,
+  getAutoDeleteDays,
+  updateAutoDeleteDays,
+  emptyTrash
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -20,6 +26,12 @@ router.use(authenticate);
 
 router.get('/', getNotesTree);
 router.get('/search', searchNotes);
+router.get('/trash', getDeletedNotes);
+router.post('/trash/restore', restoreNotes);
+router.post('/trash/permanent-delete', permanentlyDeleteNotes);
+router.delete('/trash/empty', emptyTrash);
+router.get('/trash/settings', getAutoDeleteDays);
+router.put('/trash/settings', updateAutoDeleteDays);
 router.get('/:id', getNote);
 router.post('/', createNote);
 router.put('/:id', updateNote);

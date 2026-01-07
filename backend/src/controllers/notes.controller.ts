@@ -193,17 +193,24 @@ export async function deleteNote(req: Request, res: Response) {
     const userId = req.user!.userId;
 
     // Verify note belongs to user
-    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ? AND deleted_at IS NULL')
       .get(noteId, userId);
     if (!note) {
       res.status(404).json({ error: 'Note not found' });
       return;
     }
 
-    // Delete note (cascade will delete children)
-    db.prepare('DELETE FROM notes WHERE id = ?').run(noteId);
+    // Soft delete: set deleted_at for the note and all its children
+    db.prepare(`
+      WITH RECURSIVE descendants AS (
+        SELECT id FROM notes WHERE id = ?
+        UNION ALL
+        SELECT n.id FROM notes n INNER JOIN descendants d ON n.parent_id = d.id
+      )
+      UPDATE notes SET deleted_at = CURRENT_TIMESTAMP WHERE id IN (SELECT id FROM descendants)
+    `).run(noteId);
 
-    res.json({ message: 'Note deleted successfully' });
+    res.json({ message: 'Note moved to trash' });
   } catch (error) {
     console.error('Delete note error:', error);
     res.status(500).json({ error: 'Failed to delete note' });
@@ -394,7 +401,7 @@ export async function searchNotes(req: Request, res: Response) {
     const results = db.prepare(`
       SELECT id, title, title_emoji, content, updated_at
       FROM notes
-      WHERE user_id = ? AND (title LIKE ? OR content LIKE ?)
+      WHERE user_id = ? AND deleted_at IS NULL AND (title LIKE ? OR content LIKE ?)
       ORDER BY updated_at DESC
       LIMIT 20
     `).all(userId, searchTerm, searchTerm) as any[];
@@ -429,5 +436,178 @@ export async function searchNotes(req: Request, res: Response) {
   } catch (error) {
     console.error('Search notes error:', error);
     res.status(500).json({ error: 'Failed to search notes' });
+  }
+}
+
+// Trash functions
+
+export async function getDeletedNotes(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    // Get all deleted notes (only root deleted notes, not children that were deleted as part of parent)
+    const deletedNotes = db.prepare(`
+      SELECT id, title, title_emoji, created_at, deleted_at
+      FROM notes
+      WHERE user_id = ? AND deleted_at IS NOT NULL
+      ORDER BY deleted_at DESC
+    `).all(userId) as any[];
+
+    const formatted = deletedNotes.map(note => ({
+      id: note.id,
+      title: note.title,
+      titleEmoji: note.title_emoji,
+      createdAt: note.created_at,
+      deletedAt: note.deleted_at
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Get deleted notes error:', error);
+    res.status(500).json({ error: 'Failed to get deleted notes' });
+  }
+}
+
+const restoreNotesSchema = z.object({
+  noteIds: z.array(z.number()).min(1)
+});
+
+export async function restoreNotes(req: Request, res: Response) {
+  try {
+    const result = restoreNotesSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { noteIds } = result.data;
+    const userId = req.user!.userId;
+
+    // Verify all notes belong to user and are deleted
+    const placeholders = noteIds.map(() => '?').join(',');
+    const notes = db.prepare(`
+      SELECT id FROM notes
+      WHERE id IN (${placeholders}) AND user_id = ? AND deleted_at IS NOT NULL
+    `).all(...noteIds, userId) as any[];
+
+    if (notes.length !== noteIds.length) {
+      res.status(400).json({ error: 'Some notes not found or not deleted' });
+      return;
+    }
+
+    // Restore notes by clearing deleted_at
+    // Also restore all children
+    for (const noteId of noteIds) {
+      db.prepare(`
+        WITH RECURSIVE descendants AS (
+          SELECT id FROM notes WHERE id = ?
+          UNION ALL
+          SELECT n.id FROM notes n INNER JOIN descendants d ON n.parent_id = d.id
+        )
+        UPDATE notes SET deleted_at = NULL WHERE id IN (SELECT id FROM descendants)
+      `).run(noteId);
+    }
+
+    res.json({ message: 'Notes restored successfully', count: noteIds.length });
+  } catch (error) {
+    console.error('Restore notes error:', error);
+    res.status(500).json({ error: 'Failed to restore notes' });
+  }
+}
+
+const permanentDeleteSchema = z.object({
+  noteIds: z.array(z.number()).min(1)
+});
+
+export async function permanentlyDeleteNotes(req: Request, res: Response) {
+  try {
+    const result = permanentDeleteSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { noteIds } = result.data;
+    const userId = req.user!.userId;
+
+    // Verify all notes belong to user and are deleted
+    const placeholders = noteIds.map(() => '?').join(',');
+    const notes = db.prepare(`
+      SELECT id FROM notes
+      WHERE id IN (${placeholders}) AND user_id = ? AND deleted_at IS NOT NULL
+    `).all(...noteIds, userId) as any[];
+
+    if (notes.length !== noteIds.length) {
+      res.status(400).json({ error: 'Some notes not found or not in trash' });
+      return;
+    }
+
+    // Permanently delete notes (cascade will delete children)
+    db.prepare(`DELETE FROM notes WHERE id IN (${placeholders})`).run(...noteIds);
+
+    res.json({ message: 'Notes permanently deleted', count: noteIds.length });
+  } catch (error) {
+    console.error('Permanent delete error:', error);
+    res.status(500).json({ error: 'Failed to permanently delete notes' });
+  }
+}
+
+export async function getAutoDeleteDays(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    const user = db.prepare('SELECT auto_delete_days FROM users WHERE id = ?').get(userId) as any;
+
+    res.json({ autoDeleteDays: user?.auto_delete_days ?? 30 });
+  } catch (error) {
+    console.error('Get auto delete days error:', error);
+    res.status(500).json({ error: 'Failed to get setting' });
+  }
+}
+
+const updateAutoDeleteSchema = z.object({
+  days: z.number().min(1).max(365)
+});
+
+export async function updateAutoDeleteDays(req: Request, res: Response) {
+  try {
+    const result = updateAutoDeleteSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { days } = result.data;
+    const userId = req.user!.userId;
+
+    db.prepare('UPDATE users SET auto_delete_days = ? WHERE id = ?').run(days, userId);
+
+    // Also permanently delete notes that exceed the new threshold
+    db.prepare(`
+      DELETE FROM notes
+      WHERE user_id = ?
+      AND deleted_at IS NOT NULL
+      AND deleted_at < datetime('now', '-' || ? || ' days')
+    `).run(userId, days);
+
+    res.json({ autoDeleteDays: days });
+  } catch (error) {
+    console.error('Update auto delete days error:', error);
+    res.status(500).json({ error: 'Failed to update setting' });
+  }
+}
+
+export async function emptyTrash(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    const result = db.prepare(`
+      DELETE FROM notes WHERE user_id = ? AND deleted_at IS NOT NULL
+    `).run(userId);
+
+    res.json({ message: 'Trash emptied', count: result.changes });
+  } catch (error) {
+    console.error('Empty trash error:', error);
+    res.status(500).json({ error: 'Failed to empty trash' });
   }
 }

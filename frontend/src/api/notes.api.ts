@@ -55,3 +55,43 @@ export async function duplicateNote(id: number): Promise<Note> {
   const response = await api.post<Note>(`/notes/${id}/duplicate`);
   return response.data;
 }
+
+// Trash API functions
+
+export interface DeletedNote {
+  id: number;
+  title: string;
+  titleEmoji: string | null;
+  createdAt: string;
+  deletedAt: string;
+}
+
+export async function getDeletedNotes(): Promise<DeletedNote[]> {
+  const response = await api.get<DeletedNote[]>('/notes/trash');
+  return response.data;
+}
+
+export async function restoreNotes(noteIds: number[]): Promise<{ message: string; count: number }> {
+  const response = await api.post<{ message: string; count: number }>('/notes/trash/restore', { noteIds });
+  return response.data;
+}
+
+export async function permanentlyDeleteNotes(noteIds: number[]): Promise<{ message: string; count: number }> {
+  const response = await api.post<{ message: string; count: number }>('/notes/trash/permanent-delete', { noteIds });
+  return response.data;
+}
+
+export async function emptyTrash(): Promise<{ message: string; count: number }> {
+  const response = await api.delete<{ message: string; count: number }>('/notes/trash/empty');
+  return response.data;
+}
+
+export async function getAutoDeleteDays(): Promise<{ autoDeleteDays: number }> {
+  const response = await api.get<{ autoDeleteDays: number }>('/notes/trash/settings');
+  return response.data;
+}
+
+export async function updateAutoDeleteDays(days: number): Promise<{ autoDeleteDays: number }> {
+  const response = await api.put<{ autoDeleteDays: number }>('/notes/trash/settings', { days });
+  return response.data;
+}

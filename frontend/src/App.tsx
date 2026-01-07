@@ -8,6 +8,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { UserManagement } from './components/admin/UserManagement';
 import { SharedNotePage } from './components/notes/SharedNotePage';
 import { Settings } from './components/settings/Settings';
+import { DeletedNotes } from './components/trash/DeletedNotes';
 import './styles/global.css';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/shared/:token" element={<SharedNotePage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<AppLayout />} />
+              <Route path="/deleted" element={<DeletedNotes />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin/users" element={<UserManagement />} />
             </Route>

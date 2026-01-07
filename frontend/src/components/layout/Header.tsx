@@ -143,6 +143,15 @@ export function Header() {
               <button
                 className={styles.dropdownItem}
                 onClick={() => {
+                  navigate('/deleted');
+                  setShowMenu(false);
+                }}
+              >
+                Deleted Notes
+              </button>
+              <button
+                className={styles.dropdownItem}
+                onClick={() => {
                   navigate('/settings');
                   setShowMenu(false);
                 }}

@@ -102,10 +102,37 @@ export function initializeDatabase() {
     }
   }
 
+  // Migration: Add deleted_at column to notes table for soft delete
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN deleted_at DATETIME DEFAULT NULL`);
+    console.log('Added deleted_at column to notes table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
+  // Migration: Add auto_delete_days column to users table
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN auto_delete_days INTEGER DEFAULT 30`);
+    console.log('Added auto_delete_days column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
+  // Create index for deleted notes
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_notes_deleted_at ON notes(deleted_at)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   console.log('Database initialized successfully');
 }
 
-// Get note tree for a user using recursive CTE
+// Get note tree for a user using recursive CTE (excludes deleted notes)
 export function getNoteTree(userId: number) {
   const stmt = db.prepare(`
     WITH RECURSIVE note_tree AS (
@@ -123,7 +150,7 @@ export function getNoteTree(userId: number) {
         updated_at,
         0 AS depth
       FROM notes
-      WHERE user_id = ? AND parent_id IS NULL
+      WHERE user_id = ? AND parent_id IS NULL AND deleted_at IS NULL
 
       UNION ALL
 
@@ -142,6 +169,7 @@ export function getNoteTree(userId: number) {
         nt.depth + 1
       FROM notes n
       INNER JOIN note_tree nt ON n.parent_id = nt.id
+      WHERE n.deleted_at IS NULL
     )
     SELECT * FROM note_tree ORDER BY depth, sort_order
   `);
