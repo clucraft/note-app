@@ -218,11 +218,11 @@ export async function aiChat(req: Request, res: Response) {
       return;
     }
 
-    // Fetch all user notes for context
+    // Fetch all user notes for context (exclude soft-deleted notes)
     const notes = db.prepare(`
       SELECT id, title, content
       FROM notes
-      WHERE user_id = ? AND is_deleted = 0
+      WHERE user_id = ? AND deleted_at IS NULL
       ORDER BY updated_at DESC
     `).all(userId) as Array<{ id: number; title: string; content: string }>;
 
