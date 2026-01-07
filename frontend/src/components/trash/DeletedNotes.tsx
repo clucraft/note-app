@@ -143,7 +143,10 @@ export function DeletedNotes() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString(undefined, {
+    // SQLite stores dates in UTC without timezone indicator
+    // Append 'Z' if no timezone info to ensure correct parsing as UTC
+    const isoDateStr = dateString.includes('T') ? dateString : dateString.replace(' ', 'T') + 'Z';
+    return new Date(isoDateStr).toLocaleString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

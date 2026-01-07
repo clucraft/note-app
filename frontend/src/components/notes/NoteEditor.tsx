@@ -93,8 +93,11 @@ export function NoteEditor() {
 
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
+    // SQLite stores dates in UTC without timezone indicator
+    // Append 'Z' if no timezone info to ensure correct parsing as UTC
+    const isoDateStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+    const date = new Date(isoDateStr);
+    return date.toLocaleString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

@@ -35,7 +35,10 @@ export function SecuritySettings() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
+    // SQLite stores dates in UTC without timezone indicator
+    // Append 'Z' if no timezone info to ensure correct parsing as UTC
+    const isoDateStr = dateString.includes('T') ? dateString : dateString.replace(' ', 'T') + 'Z';
+    return new Date(isoDateStr).toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
