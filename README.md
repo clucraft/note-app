@@ -1,37 +1,73 @@
 # Note App
 
-A modern, self-hosted note-taking web application with hierarchical organization, Markdown support, and multiple themes.
+A modern, self-hosted note-taking web application with hierarchical organization, rich text editing, and multiple themes.
 
-## Note App Screenshot
-<img width="2319" height="914" alt="image" src="https://github.com/user-attachments/assets/7fa7155f-a4a9-4f12-a409-450a2c4dd85d" />
+## Screenshot
+
+<img width="2319" height="914" alt="Note App Screenshot" src="https://github.com/user-attachments/assets/7fa7155f-a4a9-4f12-a409-450a2c4dd85d" />
 
 ## Features
 
-- **Markdown Editor** - Full Markdown support powered by Monaco Editor (the same editor used in VS Code)
-- **Slash Commands** - Type `/` to access quick formatting commands:
-  - `/bold`, `/italic`, `/underline`, `/strike` - Text formatting
-  - `/h1`, `/h2`, `/h3`, `/h4` - Headings
-  - `/table`, `/ul`, `/ol`, `/checklist` - Lists and tables
-  - `/code`, `/quote`, `/link`, `/image` - Code blocks, quotes, and media
-  - `/smile`, `/heart`, `/star`, `/fire`, `/rocket` - Emoji shortcuts
-- **Hierarchical Notes** - Organize notes in a tree structure with unlimited nesting
-- **Multi-User Support** - Local authentication with JWT tokens
-- **5 Built-in Themes** - Light, Dark, Dracula, Solarized, and Nord
-- **Emoji Picker** - Add emojis to note titles for visual organization
-- **Admin Panel** - User management for administrators
-- **Auto-Save** - Notes are automatically saved as you type
-- **Docker Ready** - Easy deployment with Docker Compose
+### Rich Text Editor
+- **WYSIWYG Editing** - Powered by TipTap with real-time formatting
+- **Slash Commands** - Type `/` to access quick formatting:
+  - Text: `/bold`, `/italic`, `/underline`, `/strike`
+  - Headings: `/h1`, `/h2`, `/h3`, `/h4`
+  - Lists: `/ul`, `/ol`, `/checklist`
+  - Blocks: `/table`, `/code`, `/quote`, `/link`
+  - Media: `/image` (insert by URL)
+  - Emoji: `/smile`, `/heart`, `/star`, `/fire`, `/rocket`
+- **Bubble Menu** - Select text to reveal formatting toolbar
+- **Code Blocks** - Syntax highlighting for common languages
+
+### Image Support
+- **Paste from Clipboard** - Paste images directly into the editor
+- **Drag & Drop** - Drop image files to upload
+- **Resizable Images** - Drag corners to resize
+- **Context Menu** - Right-click images to copy, copy URL, or open in new tab
+
+### Note Organization
+- **Hierarchical Tree** - Unlimited nesting with drag-and-drop reordering
+- **Emoji Titles** - Add emojis to note titles for visual organization
+- **Expand/Collapse** - Hide or show child notes
+- **Search** - Full-text search across all notes
+- **Resizable Sidebar** - Adjust the width of the note tree panel
+
+### Sharing
+- **Public Links** - Share notes via unique URLs
+- **Password Protection** - Optionally require a password to view
+- **Expiration** - Set links to expire after 1 hour, 1 day, 7 days, or 30 days
+- **View Count** - Track how many times shared notes are viewed
+
+### Trash & Recovery
+- **Soft Delete** - Deleted notes go to trash instead of permanent deletion
+- **Restore Notes** - Recover accidentally deleted notes
+- **Auto-Delete** - Configure automatic permanent deletion after X days (1-365)
+- **Empty Trash** - Permanently delete all trashed notes at once
+
+### Settings
+- **Themes** - 5 built-in themes: Light, Dark, Dracula, Solarized, Nord
+- **Language** - UI language preference (English, Chinese, Hindi, Spanish, Arabic)
+- **Timezone** - Set your preferred timezone
+- **Security** - View and manage all shared notes
+- **Members** - User management for administrators
+
+### Multi-User
+- **JWT Authentication** - Secure login with access and refresh tokens
+- **Role-Based Access** - Admin and user roles
+- **First User = Admin** - First registered user becomes administrator
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
 | Frontend | React 18, TypeScript, Vite |
-| Editor | Monaco Editor |
+| Editor | TipTap (ProseMirror-based) |
 | Backend | Node.js, Express, TypeScript |
 | Database | SQLite (better-sqlite3) |
 | Auth | JWT + bcrypt |
 | Styling | CSS Modules + CSS Variables |
+| Font | Inter |
 | Deployment | Docker, Nginx |
 
 ## Quick Start
@@ -80,7 +116,7 @@ docker-compose up -d
 
 The app will be available at `http://localhost:8088`
 
-### Build from Source (Alternative)
+### Build from Source
 
 If you prefer to build the images yourself:
 
@@ -106,69 +142,99 @@ docker-compose -f docker-compose.dev.yml up -d
 note-app/
 ├── frontend/                 # React frontend
 │   ├── src/
-│   │   ├── components/      # React components
+│   │   ├── components/
 │   │   │   ├── auth/        # Login, Register, ProtectedRoute
 │   │   │   ├── common/      # Button, Modal, EmojiPicker
-│   │   │   ├── editor/      # MonacoWrapper, SlashCommands
+│   │   │   ├── editor/      # TipTap editor, SlashCommands, ImageExtension
 │   │   │   ├── layout/      # AppLayout, Header, Sidebar
-│   │   │   ├── notes/       # NoteTree, NoteEditor, MarkdownPreview
-│   │   │   └── themes/      # ThemeSwitcher
-│   │   ├── context/         # React Context providers
-│   │   ├── hooks/           # Custom React hooks
+│   │   │   ├── notes/       # NoteTree, NoteEditor, ShareModal
+│   │   │   ├── settings/    # Settings page (General, Security, Members)
+│   │   │   ├── themes/      # ThemeSwitcher
+│   │   │   └── trash/       # DeletedNotes page
+│   │   ├── context/         # Auth, Theme, Notes context providers
+│   │   ├── hooks/           # useAuth, useNotes, useTheme
 │   │   ├── api/             # API client functions
-│   │   ├── styles/          # Global styles and theme variables
-│   │   └── types/           # TypeScript type definitions
+│   │   ├── styles/          # Global styles and theme CSS variables
+│   │   └── types/           # TypeScript definitions
 │   ├── Dockerfile
 │   └── nginx.conf
 │
 ├── backend/                  # Express backend
 │   ├── src/
-│   │   ├── controllers/     # Route handlers
-│   │   ├── database/        # SQLite setup and queries
-│   │   ├── middleware/      # Auth and error middleware
+│   │   ├── controllers/     # Auth, Notes, Users, Share, Upload
+│   │   ├── database/        # SQLite setup and migrations
+│   │   ├── middleware/      # Auth middleware
 │   │   ├── routes/          # API route definitions
 │   │   └── utils/           # JWT and password utilities
+│   ├── uploads/             # Uploaded images storage
 │   └── Dockerfile
 │
-├── docker-compose.yml        # Production Docker config
-├── docker-compose.dev.yml    # Development Docker config
+├── docker-compose.yml        # Production config (uses GHCR images)
+├── docker-compose.dev.yml    # Development/build-from-source config
 └── .env.example              # Environment template
 ```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout
-- `POST /api/auth/refresh` - Refresh access token
-- `GET /api/auth/me` - Get current user
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/logout` | Logout |
+| POST | `/api/auth/refresh` | Refresh access token |
+| GET | `/api/auth/me` | Get current user |
+| PUT | `/api/auth/theme` | Update theme preference |
+| PUT | `/api/auth/preferences` | Update language/timezone |
 
 ### Notes
-- `GET /api/notes` - Get note tree
-- `GET /api/notes/:id` - Get single note
-- `POST /api/notes` - Create note
-- `PUT /api/notes/:id` - Update note
-- `DELETE /api/notes/:id` - Delete note
-- `PUT /api/notes/:id/move` - Move note to new parent
-- `PUT /api/notes/:id/toggle-expand` - Toggle tree expansion
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notes` | Get note tree |
+| GET | `/api/notes/search` | Search notes |
+| GET | `/api/notes/:id` | Get single note |
+| POST | `/api/notes` | Create note |
+| PUT | `/api/notes/:id` | Update note |
+| DELETE | `/api/notes/:id` | Move note to trash |
+| PUT | `/api/notes/:id/move` | Move note to new parent |
+| PUT | `/api/notes/:id/reorder` | Change sort order |
+| PUT | `/api/notes/:id/toggle-expand` | Toggle tree expansion |
+| POST | `/api/notes/:id/duplicate` | Duplicate note |
 
-### Users (Admin only)
-- `GET /api/users` - List all users
-- `POST /api/users` - Create user
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+### Trash
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notes/trash` | List deleted notes |
+| POST | `/api/notes/trash/restore` | Restore notes |
+| POST | `/api/notes/trash/permanent-delete` | Permanently delete |
+| DELETE | `/api/notes/trash/empty` | Empty trash |
+| GET | `/api/notes/trash/settings` | Get auto-delete days |
+| PUT | `/api/notes/trash/settings` | Update auto-delete days |
 
-## First-Time Setup
+### Sharing
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/share/:noteId` | Get share status |
+| POST | `/api/share/:noteId` | Create share link |
+| DELETE | `/api/share/:noteId` | Remove share |
+| GET | `/api/share/list/all` | List user's shared notes |
+| GET | `/api/share/public/:token` | Check if password required |
+| POST | `/api/share/public/:token` | Access shared note |
 
-1. Start the application
-2. Register the first user account
-3. The first user automatically becomes an admin
-4. Create additional users via the admin panel at `/admin/users`
+### Upload
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/upload/image` | Upload image file |
+
+### Users (Admin)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/users` | List all users |
+| POST | `/api/users` | Create user |
+| PUT | `/api/users/:id` | Update user |
+| DELETE | `/api/users/:id` | Delete user |
 
 ## Themes
-
-Switch between themes using the theme button in the header:
 
 | Theme | Description |
 |-------|-------------|
@@ -178,10 +244,19 @@ Switch between themes using the theme button in the header:
 | Solarized | Precision colors for machines and people |
 | Nord | Arctic, bluish color palette |
 
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `/` | Open slash command menu |
+| `Ctrl+B` | Bold |
+| `Ctrl+I` | Italic |
+| `Ctrl+U` | Underline |
+
 ## License
 
 MIT
 
 ---
 
-Built with Claude Code
+Built with [Claude Code](https://claude.com/claude-code)
