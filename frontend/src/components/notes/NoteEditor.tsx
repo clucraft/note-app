@@ -35,6 +35,18 @@ export function NoteEditor() {
     }
   }, [selectedNote]);
 
+  // Update browser tab title
+  useEffect(() => {
+    if (title) {
+      document.title = `${title} - Cache`;
+    } else {
+      document.title = 'Cache';
+    }
+    return () => {
+      document.title = 'Cache';
+    };
+  }, [title]);
+
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback(
     async (id: number, newContent: string) => {

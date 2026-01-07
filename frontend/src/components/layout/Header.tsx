@@ -80,7 +80,7 @@ export function Header() {
     <header className={styles.header}>
       <div className={styles.logo}>
         <span className={styles.logoIcon}>📝</span>
-        <span className={styles.logoText}>Notes</span>
+        <span className={styles.logoText}>Cache</span>
       </div>
 
       <div className={styles.searchContainer} ref={searchRef}>

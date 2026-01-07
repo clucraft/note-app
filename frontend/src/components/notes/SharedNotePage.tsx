@@ -135,7 +135,7 @@ export function SharedNotePage() {
           <MarkdownPreview content={note.content} />
         </div>
         <div className={styles.footer}>
-          <span>Shared via Notes App</span>
+          <span>Shared via Cache</span>
         </div>
       </div>
     </div>
