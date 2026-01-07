@@ -42,3 +42,16 @@ export async function updatePreferences(preferences: UpdatePreferencesInput): Pr
   const response = await api.put<{ language: string; timezone: string }>('/auth/preferences', preferences);
   return response.data;
 }
+
+export interface UpdateProfileInput {
+  displayName?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  profilePicture?: string | null;
+}
+
+export async function updateProfile(profile: UpdateProfileInput): Promise<User> {
+  const response = await api.put<User>('/auth/profile', profile);
+  return response.data;
+}

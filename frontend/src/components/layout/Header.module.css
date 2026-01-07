@@ -176,6 +176,13 @@
   font-weight: 600;
 }
 
+.avatarImage {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .userName {
   color: var(--text-primary);
   font-size: 0.875rem;

@@ -127,9 +127,13 @@ export function Header() {
             className={styles.userButton}
             onClick={() => setShowMenu(!showMenu)}
           >
-            <span className={styles.avatar}>
-              {user?.displayName?.charAt(0).toUpperCase() || 'U'}
-            </span>
+            {user?.profilePicture ? (
+              <img src={user.profilePicture} alt="" className={styles.avatarImage} />
+            ) : (
+              <span className={styles.avatar}>
+                {user?.displayName?.charAt(0).toUpperCase() || 'U'}
+              </span>
+            )}
             <span className={styles.userName}>{user?.displayName}</span>
           </button>
 
@@ -140,6 +144,15 @@ export function Header() {
                 <span className={styles.dropdownEmail}>{user?.email}</span>
               </div>
               <div className={styles.dropdownDivider} />
+              <button
+                className={styles.dropdownItem}
+                onClick={() => {
+                  navigate('/profile');
+                  setShowMenu(false);
+                }}
+              >
+                Profile
+              </button>
               <button
                 className={styles.dropdownItem}
                 onClick={() => {

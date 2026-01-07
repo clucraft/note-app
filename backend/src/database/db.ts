@@ -129,6 +129,16 @@ export function initializeDatabase() {
     // Ignore if already exists
   }
 
+  // Migration: Add profile_picture column to users table
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN profile_picture TEXT DEFAULT NULL`);
+    console.log('Added profile_picture column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 

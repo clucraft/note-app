@@ -94,7 +94,7 @@ export async function login(req: Request, res: Response) {
 
     // Find user
     const user = db.prepare(`
-      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone
+      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone, profile_picture
       FROM users WHERE email = ?
     `).get(email) as any;
 
@@ -137,7 +137,8 @@ export async function login(req: Request, res: Response) {
         role: user.role,
         themePreference: user.theme_preference,
         language: user.language || 'en-US',
-        timezone: user.timezone || 'UTC'
+        timezone: user.timezone || 'UTC',
+        profilePicture: user.profile_picture
       }
     });
   } catch (error) {
@@ -200,7 +201,7 @@ export async function logout(req: Request, res: Response) {
 export async function getMe(req: Request, res: Response) {
   try {
     const user = db.prepare(`
-      SELECT id, username, email, display_name, role, theme_preference, language, timezone, created_at
+      SELECT id, username, email, display_name, role, theme_preference, language, timezone, profile_picture, created_at
       FROM users WHERE id = ?
     `).get(req.user!.userId) as any;
 
@@ -218,6 +219,7 @@ export async function getMe(req: Request, res: Response) {
       themePreference: user.theme_preference,
       language: user.language || 'en-US',
       timezone: user.timezone || 'UTC',
+      profilePicture: user.profile_picture,
       createdAt: user.created_at
     });
   } catch (error) {
@@ -294,5 +296,108 @@ export async function updatePreferences(req: Request, res: Response) {
   } catch (error) {
     console.error('Update preferences error:', error);
     res.status(500).json({ error: 'Failed to update preferences' });
+  }
+}
+
+const updateProfileSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  email: z.string().email().optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(6).optional(),
+  profilePicture: z.string().nullable().optional()
+});
+
+export async function updateProfile(req: Request, res: Response) {
+  try {
+    const result = updateProfileSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { displayName, email, currentPassword, newPassword, profilePicture } = result.data;
+    const userId = req.user!.userId;
+
+    // Get current user
+    const currentUser = db.prepare('SELECT email, password_hash FROM users WHERE id = ?')
+      .get(userId) as any;
+
+    if (!currentUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // If changing email, check it's not already taken
+    if (email && email !== currentUser.email) {
+      const existingEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?')
+        .get(email, userId);
+      if (existingEmail) {
+        res.status(400).json({ error: 'Email already in use' });
+        return;
+      }
+    }
+
+    // If changing password, verify current password
+    if (newPassword) {
+      if (!currentPassword) {
+        res.status(400).json({ error: 'Current password is required to change password' });
+        return;
+      }
+      const validPassword = await verifyPassword(currentPassword, currentUser.password_hash);
+      if (!validPassword) {
+        res.status(400).json({ error: 'Current password is incorrect' });
+        return;
+      }
+    }
+
+    // Build update query
+    const updates: string[] = ['updated_at = CURRENT_TIMESTAMP'];
+    const params: any[] = [];
+
+    if (displayName !== undefined) {
+      updates.push('display_name = ?');
+      params.push(displayName);
+    }
+
+    if (email !== undefined) {
+      updates.push('email = ?');
+      params.push(email);
+    }
+
+    if (newPassword) {
+      const passwordHash = await hashPassword(newPassword);
+      updates.push('password_hash = ?');
+      params.push(passwordHash);
+    }
+
+    if (profilePicture !== undefined) {
+      updates.push('profile_picture = ?');
+      params.push(profilePicture);
+    }
+
+    params.push(userId);
+
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+    // Return updated user info
+    const updatedUser = db.prepare(`
+      SELECT id, username, email, display_name, role, theme_preference, language, timezone, profile_picture
+      FROM users WHERE id = ?
+    `).get(userId) as any;
+
+    res.json({
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      displayName: updatedUser.display_name,
+      role: updatedUser.role,
+      themePreference: updatedUser.theme_preference,
+      language: updatedUser.language || 'en-US',
+      timezone: updatedUser.timezone || 'UTC',
+      profilePicture: updatedUser.profile_picture
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 }

@@ -7,6 +7,7 @@ export interface User {
   themePreference?: string;
   language?: string;
   timezone?: string;
+  profilePicture?: string | null;
   createdAt?: string;
 }
 
