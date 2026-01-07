@@ -24,8 +24,14 @@ export function NoteTree() {
 
   return (
     <div className={styles.tree}>
-      {notes.map((note) => (
-        <NoteTreeItem key={note.id} note={note} depth={0} />
+      {notes.map((note, index) => (
+        <NoteTreeItem
+          key={note.id}
+          note={note}
+          depth={0}
+          index={index}
+          parentId={null}
+        />
       ))}
     </div>
   );

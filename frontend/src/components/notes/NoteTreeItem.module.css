@@ -207,3 +207,22 @@
   width: 1px;
   background-color: var(--border-color);
 }
+
+/* Drag and Drop styles */
+.item.dragging {
+  opacity: 0.5;
+}
+
+.item.dragOverAbove {
+  box-shadow: 0 -2px 0 0 var(--color-primary);
+}
+
+.item.dragOverBelow {
+  box-shadow: 0 2px 0 0 var(--color-primary);
+}
+
+.item.dragOverInside {
+  background-color: var(--color-primary-light) !important;
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}

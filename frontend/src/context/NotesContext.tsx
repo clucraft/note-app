@@ -15,6 +15,7 @@ interface NotesContextType {
   updateNote: (id: number, input: UpdateNoteInput) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
   moveNote: (id: number, parentId: number | null) => Promise<void>;
+  reorderNote: (id: number, parentId: number | null, newIndex: number) => Promise<void>;
   toggleExpand: (id: number) => Promise<void>;
   duplicateNote: (id: number) => Promise<Note>;
 }
@@ -149,6 +150,14 @@ export function NotesProvider({ children }: NotesProviderProps) {
     await loadNotes();
   }, [loadNotes]);
 
+  const reorderNote = useCallback(async (id: number, parentId: number | null, newIndex: number) => {
+    // First move to new parent if different
+    await notesApi.moveNote(id, parentId);
+    // Then set sort order
+    await notesApi.reorderNote(id, newIndex);
+    await loadNotes();
+  }, [loadNotes]);
+
   const toggleExpand = useCallback(async (id: number) => {
     const result = await notesApi.toggleExpand(id);
 
@@ -186,6 +195,7 @@ export function NotesProvider({ children }: NotesProviderProps) {
         updateNote,
         deleteNote,
         moveNote,
+        reorderNote,
         toggleExpand,
         duplicateNote
       }}
