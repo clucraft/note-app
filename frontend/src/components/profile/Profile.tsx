@@ -1,8 +1,29 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { updateProfile } from '../../api/auth.api';
+import { updateProfile, updatePreferences } from '../../api/auth.api';
 import styles from './Profile.module.css';
+
+const LANGUAGES = [
+  { code: 'en-US', name: 'English (US)' },
+  { code: 'zh-CN', name: '中文 (简体)' },
+  { code: 'hi-IN', name: 'हिन्दी' },
+  { code: 'es-ES', name: 'Español' },
+  { code: 'ar-SA', name: 'العربية' },
+];
+
+const COMMON_TIMEZONES = [
+  'UTC',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'America/Vancouver', 'America/Mexico_City', 'America/Sao_Paulo',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
+  'Europe/Amsterdam', 'Europe/Brussels', 'Europe/Stockholm', 'Europe/Moscow',
+  'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Seoul',
+  'Asia/Mumbai', 'Asia/Dubai', 'Asia/Bangkok', 'Asia/Jakarta',
+  'Australia/Sydney', 'Australia/Melbourne', 'Australia/Perth',
+  'Pacific/Auckland', 'Pacific/Honolulu',
+  'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos',
+];
 
 export function Profile() {
   const navigate = useNavigate();
@@ -20,12 +41,26 @@ export function Profile() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [language, setLanguage] = useState(user?.language || 'en-US');
+  const [timezone, setTimezone] = useState(user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [timezones, setTimezones] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Initialize timezones list
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const zones = COMMON_TIMEZONES.includes(userTz)
+      ? COMMON_TIMEZONES
+      : [userTz, ...COMMON_TIMEZONES];
+    setTimezones(zones);
+  }, []);
 
   useEffect(() => {
     if (user) {
       setDisplayName(user.displayName);
       setEmail(user.email);
       setProfilePicture(user.profilePicture || null);
+      setLanguage(user.language || 'en-US');
+      setTimezone(user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
     }
   }, [user]);
 
@@ -130,6 +165,32 @@ export function Profile() {
 
   const getInitial = () => {
     return (user?.displayName || user?.username || 'U')[0].toUpperCase();
+  };
+
+  const handleLanguageChange = async (newLanguage: string) => {
+    setLanguage(newLanguage);
+    try {
+      await updatePreferences({ language: newLanguage });
+      refreshUser();
+      setSuccess('Language updated');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Failed to update language:', error);
+      setError('Failed to update language');
+    }
+  };
+
+  const handleTimezoneChange = async (newTimezone: string) => {
+    setTimezone(newTimezone);
+    try {
+      await updatePreferences({ timezone: newTimezone });
+      refreshUser();
+      setSuccess('Timezone updated');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Failed to update timezone:', error);
+      setError('Failed to update timezone');
+    }
   };
 
   return (
@@ -264,6 +325,44 @@ export function Profile() {
             {isChangingPassword ? 'Changing...' : 'Change Password'}
           </button>
         </form>
+      </div>
+
+      <div className={styles.divider} />
+
+      <div className={styles.section}>
+        <h3 className={styles.label}>Language</h3>
+        <p className={styles.description}>Select your preferred language</p>
+        <select
+          className={styles.select}
+          value={language}
+          onChange={(e) => handleLanguageChange(e.target.value)}
+        >
+          {LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className={styles.divider} />
+
+      <div className={styles.section}>
+        <h3 className={styles.label}>Timezone</h3>
+        <p className={styles.description}>
+          Your detected timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+        </p>
+        <select
+          className={styles.select}
+          value={timezone}
+          onChange={(e) => handleTimezoneChange(e.target.value)}
+        >
+          {timezones.map((tz) => (
+            <option key={tz} value={tz}>
+              {tz.replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
