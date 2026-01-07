@@ -1,0 +1,18 @@
+import { Router } from 'express';
+import {
+  recordActivity,
+  getTodayActivity,
+  getActivityHistory,
+} from '../controllers/activity.controller.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+
+const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
+
+router.post('/', recordActivity);
+router.get('/today', getTodayActivity);
+router.get('/history', getActivityHistory);
+
+export default router;

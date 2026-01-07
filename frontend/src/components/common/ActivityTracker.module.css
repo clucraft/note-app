@@ -1,0 +1,68 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.blocks {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 16px;
+}
+
+.block {
+  width: 4px;
+  min-height: 2px;
+  height: 2px;
+  background-color: var(--border-color);
+  border-radius: 1px;
+  transition: height 0.2s ease, background-color 0.2s ease;
+}
+
+.block.future {
+  opacity: 0.3;
+}
+
+.block.current {
+  box-shadow: 0 0 2px var(--color-primary);
+}
+
+/* Activity levels - height and color intensity */
+.level0 {
+  height: 2px;
+  background-color: var(--border-color);
+}
+
+.level1 {
+  height: 5px;
+  background-color: var(--color-success-light, #a3e4a3);
+}
+
+.level2 {
+  height: 8px;
+  background-color: var(--color-success, #28a745);
+}
+
+.level3 {
+  height: 12px;
+  background-color: var(--color-primary-light, #6fa8dc);
+}
+
+.level4 {
+  height: 16px;
+  background-color: var(--color-primary);
+}
+
+.count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 2rem;
+}

@@ -159,6 +159,29 @@ export function initializeDatabase() {
     }
   }
 
+  // Create activity_logs table for tracking typing activity
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      hour INTEGER NOT NULL CHECK(hour >= 0 AND hour <= 23),
+      char_count INTEGER DEFAULT 0,
+      word_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, date, hour)
+    )
+  `);
+
+  // Create index for activity lookups
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_user_date ON activity_logs(user_id, date)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   console.log('Database initialized successfully');
 }
 

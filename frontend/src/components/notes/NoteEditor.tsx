@@ -3,6 +3,8 @@ import { useNotes } from '../../hooks/useNotes';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { ShareModal } from './ShareModal';
+import { ActivityTracker } from '../common/ActivityTracker';
+import { recordActivity } from '../../api/activity.api';
 import type { Note, EditorWidth } from '../../types/note.types';
 import styles from './NoteEditor.module.css';
 
@@ -22,6 +24,8 @@ export function NoteEditor() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const prevStatsRef = useRef({ charCount: 0, wordCount: 0 });
+  const activityTrackerRef = useRef<number>(0);
 
   // Get editor width from note, default to 'centered'
   const editorWidth: EditorWidth = selectedNote?.editorWidth || 'centered';
@@ -36,13 +40,23 @@ export function NoteEditor() {
   useEffect(() => {
     if (selectedNote) {
       // If note has no content or just empty, initialize with H1 Untitled
+      let initialContent: string;
       if (!selectedNote.content || selectedNote.content === '<p></p>' || selectedNote.content === '') {
-        setContent('<h1>Untitled</h1><p></p>');
+        initialContent = '<h1>Untitled</h1><p></p>';
       } else {
-        setContent(selectedNote.content);
+        initialContent = selectedNote.content;
       }
+      setContent(initialContent);
+
+      // Reset activity tracking baseline for new note
+      const textContent = initialContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+      prevStatsRef.current = {
+        charCount: textContent.length,
+        wordCount: textContent.trim() ? textContent.trim().split(/\s+/).length : 0,
+      };
     } else {
       setContent('');
+      prevStatsRef.current = { charCount: 0, wordCount: 0 };
     }
   }, [selectedNote]);
 
@@ -72,12 +86,42 @@ export function NoteEditor() {
     1000
   );
 
+  // Debounced activity recording (every 5 seconds)
+  const debouncedRecordActivity = useDebouncedCallback(
+    async (charDelta: number, wordDelta: number) => {
+      if (charDelta > 0 || wordDelta > 0) {
+        try {
+          await recordActivity(charDelta, wordDelta);
+          // Force re-render of activity tracker
+          activityTrackerRef.current += 1;
+        } catch (err) {
+          console.error('Failed to record activity:', err);
+        }
+      }
+    },
+    5000
+  );
+
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
     if (selectedNote) {
       debouncedSaveContent(selectedNote.id, newContent);
+
+      // Calculate activity delta
+      const textContent = newContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+      const newCharCount = textContent.length;
+      const newWordCount = textContent.trim() ? textContent.trim().split(/\s+/).length : 0;
+
+      const charDelta = Math.max(0, newCharCount - prevStatsRef.current.charCount);
+      const wordDelta = Math.max(0, newWordCount - prevStatsRef.current.wordCount);
+
+      prevStatsRef.current = { charCount: newCharCount, wordCount: newWordCount };
+
+      if (charDelta > 0 || wordDelta > 0) {
+        debouncedRecordActivity(charDelta, wordDelta);
+      }
     }
-  }, [selectedNote, debouncedSaveContent]);
+  }, [selectedNote, debouncedSaveContent, debouncedRecordActivity]);
 
   // Close actions menu when clicking outside
   useEffect(() => {
@@ -331,6 +375,8 @@ export function NoteEditor() {
         <span className={styles.statusItem}>
           Created: {formatDate(selectedNote.createdAt)}
         </span>
+        <span className={styles.statusDivider}>|</span>
+        <ActivityTracker key={activityTrackerRef.current} />
       </div>
 
       {showShareModal && (
