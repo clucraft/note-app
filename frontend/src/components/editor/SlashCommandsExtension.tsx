@@ -149,6 +149,31 @@ const commands: CommandItem[] = [
       editor.chain().focus().deleteRange(range).toggleStrike().run();
     },
   },
+  {
+    title: 'Date',
+    description: 'Insert current date',
+    icon: '📅',
+    command: ({ editor, range }) => {
+      const date = new Date().toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      editor.chain().focus().deleteRange(range).insertContent(date).run();
+    },
+  },
+  {
+    title: 'Time',
+    description: 'Insert current time',
+    icon: '🕐',
+    command: ({ editor, range }) => {
+      const time = new Date().toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      editor.chain().focus().deleteRange(range).insertContent(time).run();
+    },
+  },
 ];
 
 interface CommandListProps {
