@@ -94,7 +94,7 @@ export async function login(req: Request, res: Response) {
 
     // Find user
     const user = db.prepare(`
-      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone, profile_picture
+      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone, profile_picture, custom_colors
       FROM users WHERE email = ?
     `).get(email) as any;
 
@@ -138,7 +138,8 @@ export async function login(req: Request, res: Response) {
         themePreference: user.theme_preference,
         language: user.language || 'en-US',
         timezone: user.timezone || 'UTC',
-        profilePicture: user.profile_picture
+        profilePicture: user.profile_picture,
+        customColors: user.custom_colors ? JSON.parse(user.custom_colors) : null
       }
     });
   } catch (error) {
@@ -201,7 +202,7 @@ export async function logout(req: Request, res: Response) {
 export async function getMe(req: Request, res: Response) {
   try {
     const user = db.prepare(`
-      SELECT id, username, email, display_name, role, theme_preference, language, timezone, profile_picture, created_at
+      SELECT id, username, email, display_name, role, theme_preference, language, timezone, profile_picture, custom_colors, created_at
       FROM users WHERE id = ?
     `).get(req.user!.userId) as any;
 
@@ -220,6 +221,7 @@ export async function getMe(req: Request, res: Response) {
       language: user.language || 'en-US',
       timezone: user.timezone || 'UTC',
       profilePicture: user.profile_picture,
+      customColors: user.custom_colors ? JSON.parse(user.custom_colors) : null,
       createdAt: user.created_at
     });
   } catch (error) {
@@ -399,5 +401,37 @@ export async function updateProfile(req: Request, res: Response) {
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+}
+
+const customColorsSchema = z.object({
+  editorBg: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
+  textPrimary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
+  colorPrimary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
+  bgSurface: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable()
+}).nullable();
+
+export async function updateCustomColors(req: Request, res: Response) {
+  try {
+    const result = customColorsSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const customColors = result.data;
+    const userId = req.user!.userId;
+
+    // If all values are null/undefined or object is null, clear custom colors
+    const hasAnyColor = customColors && Object.values(customColors).some(v => v != null);
+    const colorJson = hasAnyColor ? JSON.stringify(customColors) : null;
+
+    db.prepare('UPDATE users SET custom_colors = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run(colorJson, userId);
+
+    res.json({ customColors: hasAnyColor ? customColors : null });
+  } catch (error) {
+    console.error('Update custom colors error:', error);
+    res.status(500).json({ error: 'Failed to update custom colors' });
   }
 }

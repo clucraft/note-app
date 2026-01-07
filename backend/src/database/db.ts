@@ -139,6 +139,16 @@ export function initializeDatabase() {
     }
   }
 
+  // Migration: Add custom_colors column to users table for theme customization
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN custom_colors TEXT DEFAULT NULL`);
+    console.log('Added custom_colors column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 

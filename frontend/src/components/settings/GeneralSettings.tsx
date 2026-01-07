@@ -3,6 +3,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { updatePreferences } from '../../api/auth.api';
 import type { ThemeName } from '../../types/theme.types';
+import { ThemeCustomization } from './ThemeCustomization';
 import styles from './GeneralSettings.module.css';
 
 const LANGUAGES = [
@@ -145,6 +146,8 @@ export function GeneralSettings() {
           ))}
         </select>
       </div>
+
+      <ThemeCustomization />
     </div>
   );
 }

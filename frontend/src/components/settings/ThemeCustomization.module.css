@@ -1,0 +1,138 @@
+.container {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.colorList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.colorLabel {
+  flex: 0 0 160px;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.colorInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorSwatch {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.colorSwatch:hover {
+  border-color: var(--color-primary);
+}
+
+.colorInput {
+  position: absolute;
+  opacity: 0;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+}
+
+.hexInput {
+  width: 90px;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.hexInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.resetButton {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.resetButton:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  border-color: var(--border-color-hover);
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.resetAllButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.resetAllButton:hover:not(:disabled) {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-color-hover);
+}
+
+.resetAllButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saving {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

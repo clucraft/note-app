@@ -55,3 +55,15 @@ export async function updateProfile(profile: UpdateProfileInput): Promise<User> 
   const response = await api.put<User>('/auth/profile', profile);
   return response.data;
 }
+
+export interface CustomColorsInput {
+  editorBg?: string | null;
+  textPrimary?: string | null;
+  colorPrimary?: string | null;
+  bgSurface?: string | null;
+}
+
+export async function updateCustomColors(colors: CustomColorsInput | null): Promise<{ customColors: CustomColorsInput | null }> {
+  const response = await api.put<{ customColors: CustomColorsInput | null }>('/auth/custom-colors', colors);
+  return response.data;
+}

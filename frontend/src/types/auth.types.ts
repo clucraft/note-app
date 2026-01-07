@@ -1,3 +1,10 @@
+export interface CustomColors {
+  editorBg?: string | null;
+  textPrimary?: string | null;
+  colorPrimary?: string | null;
+  bgSurface?: string | null;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -8,6 +15,7 @@ export interface User {
   language?: string;
   timezone?: string;
   profilePicture?: string | null;
+  customColors?: CustomColors | null;
   createdAt?: string;
 }
 

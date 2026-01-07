@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
+import { useTheme } from './hooks/useTheme';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -12,24 +15,45 @@ import { DeletedNotes } from './components/trash/DeletedNotes';
 import { Profile } from './components/profile/Profile';
 import './styles/global.css';
 
+// Syncs user's custom colors from AuthContext to ThemeContext
+function CustomColorsSync() {
+  const { user } = useAuth();
+  const { setCustomColors } = useTheme();
+
+  useEffect(() => {
+    setCustomColors(user?.customColors || null);
+  }, [user?.customColors, setCustomColors]);
+
+  return null;
+}
+
+function AppRoutes() {
+  return (
+    <>
+      <CustomColorsSync />
+      <Routes>
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<RegisterForm />} />
+        <Route path="/shared/:token" element={<SharedNotePage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<AppLayout />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/deleted" element={<DeletedNotes />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginForm />} />
-            <Route path="/register" element={<RegisterForm />} />
-            <Route path="/shared/:token" element={<SharedNotePage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<AppLayout />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/deleted" element={<DeletedNotes />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/admin/users" element={<UserManagement />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AppRoutes />
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
