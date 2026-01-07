@@ -15,6 +15,12 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .title {
   font-size: 0.875rem;
   font-weight: 600;

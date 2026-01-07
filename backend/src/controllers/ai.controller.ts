@@ -29,6 +29,14 @@ const expandSchema = z.object({
   context: z.string().optional(),
 });
 
+const chatSchema = z.object({
+  message: z.string().min(1, 'Message is required'),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).optional().default([]),
+});
+
 function maskApiKey(apiKey: string): string {
   if (!apiKey) return '';
   if (apiKey.length <= 8) return '••••••••';
@@ -190,5 +198,50 @@ export async function expandText(req: Request, res: Response) {
   } catch (error) {
     console.error('Expand text error:', error);
     res.status(500).json({ error: 'Failed to expand text' });
+  }
+}
+
+export async function aiChat(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    const validation = chatSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error.errors[0].message });
+      return;
+    }
+
+    const user = db.prepare('SELECT ai_settings FROM users WHERE id = ?').get(userId) as any;
+
+    if (!user || !user.ai_settings) {
+      res.status(400).json({ error: 'AI settings not configured. Please configure AI in Settings.' });
+      return;
+    }
+
+    // Fetch all user notes for context
+    const notes = db.prepare(`
+      SELECT id, title, content
+      FROM notes
+      WHERE user_id = ? AND is_deleted = 0
+      ORDER BY updated_at DESC
+    `).all(userId) as Array<{ id: number; title: string; content: string }>;
+
+    const settings: AISettings = JSON.parse(user.ai_settings);
+    const result = await aiService.chat(
+      settings,
+      validation.data.message,
+      notes,
+      validation.data.history
+    );
+
+    if (result.error) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+
+    res.json({ response: result.content });
+  } catch (error) {
+    console.error('AI chat error:', error);
+    res.status(500).json({ error: 'Failed to process chat message' });
   }
 }

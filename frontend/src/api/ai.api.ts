@@ -27,3 +27,16 @@ export async function expandText(text: string, context?: string): Promise<string
   const response = await api.post<{ expanded: string }>('/ai/expand', { text, context });
   return response.data.expanded;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function aiChat(
+  message: string,
+  history: ChatMessage[] = []
+): Promise<string> {
+  const response = await api.post<{ response: string }>('/ai/chat', { message, history });
+  return response.data.response;
+}

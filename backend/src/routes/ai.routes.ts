@@ -6,6 +6,7 @@ import {
   testAIConnection,
   summarizeSearch,
   expandText,
+  aiChat,
 } from '../controllers/ai.controller.js';
 
 const router = Router();
@@ -21,5 +22,6 @@ router.post('/test', testAIConnection);
 // AI operation endpoints
 router.post('/summarize', summarizeSearch);
 router.post('/expand', expandText);
+router.post('/chat', aiChat);
 
 export default router;

@@ -168,3 +168,53 @@ export async function testConnection(settings: AISettings): Promise<AIResponse> 
 
   return callAI(settings, messages);
 }
+
+export interface NoteContext {
+  id: number;
+  title: string;
+  content: string;
+}
+
+export async function chat(
+  settings: AISettings,
+  userMessage: string,
+  notes: NoteContext[],
+  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+): Promise<AIResponse> {
+  // Build notes context - limit to avoid token limits
+  const notesContext = notes
+    .slice(0, 50) // Limit to 50 notes
+    .map(note => {
+      // Strip HTML tags and limit content length
+      const plainContent = note.content
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 500);
+      return `[Note: "${note.title}"]\n${plainContent}`;
+    })
+    .join('\n\n');
+
+  const systemPrompt = `You are a helpful AI assistant for a note-taking application. You have access to the user's notes and can help them find information, answer questions about their notes, summarize content, and provide insights.
+
+Here are the user's notes for context:
+
+${notesContext}
+
+When answering questions:
+- Reference specific notes when relevant
+- Be concise but thorough
+- If asked about something not in the notes, let the user know
+- You can help with general questions too, not just note-related ones`;
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...conversationHistory.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    })),
+    { role: 'user', content: userMessage },
+  ];
+
+  return callAI(settings, messages);
+}
