@@ -91,7 +91,8 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
             editor.commands.focus();
           }
         } else {
-          editor.commands.focus('end');
+          // For existing notes, focus at the start without scrolling
+          editor.commands.focus('start');
         }
       }, 0);
     }
