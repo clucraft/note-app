@@ -185,13 +185,13 @@ export async function chat(
   const notesContext = notes
     .slice(0, 50) // Limit to 50 notes
     .map(note => {
-      // Strip HTML tags and limit content length
-      const plainContent = note.content
+      // Strip HTML tags and limit content length (handle null/undefined content)
+      const plainContent = (note.content || '')
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 500);
-      return `[Note: "${note.title}"]\n${plainContent}`;
+      return `[Note: "${note.title || 'Untitled'}"]\n${plainContent}`;
     })
     .join('\n\n');
 
