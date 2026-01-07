@@ -181,7 +181,7 @@ function ImageNodeView({ node, updateAttributes, selected }: any) {
   );
 }
 
-// Plugin to handle drop of images
+// Plugin to handle drop and paste of images
 const imageUploadPluginKey = new PluginKey('imageUpload');
 
 function createImageUploadPlugin(uploadFn: (file: File) => Promise<string>) {
@@ -213,6 +213,31 @@ function createImageUploadPlugin(uploadFn: (file: File) => Promise<string>) {
             console.error('Failed to upload dropped image:', err);
           });
           return true;
+        }
+        return false;
+      },
+      handlePaste(view: EditorView, event: ClipboardEvent) {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              event.preventDefault();
+
+              uploadFn(file).then(url => {
+                const { schema } = view.state;
+                const node = schema.nodes.resizableImage.create({ src: url });
+                const transaction = view.state.tr.replaceSelectionWith(node);
+                view.dispatch(transaction);
+              }).catch(err => {
+                console.error('Failed to upload pasted image:', err);
+              });
+              return true;
+            }
+          }
         }
         return false;
       },
