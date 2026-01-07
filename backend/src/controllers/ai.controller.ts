@@ -240,8 +240,8 @@ export async function aiChat(req: Request, res: Response) {
     }
 
     res.json({ response: result.content });
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI chat error:', error);
-    res.status(500).json({ error: 'Failed to process chat message' });
+    res.status(500).json({ error: `Failed to process chat message: ${error.message || error}` });
   }
 }
