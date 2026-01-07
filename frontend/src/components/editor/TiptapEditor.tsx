@@ -11,9 +11,10 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { SlashCommands } from './SlashCommandsExtension';
 import { ResizableImage } from './ImageExtension';
+import { expandText } from '../../api/ai.api';
 import styles from './TiptapEditor.module.css';
 
 const lowlight = createLowlight(common);
@@ -85,6 +86,8 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
     }
   }, [content, editor]);
 
+  const [isExpanding, setIsExpanding] = useState(false);
+
   const setLink = useCallback(() => {
     if (!editor) return;
     const previousUrl = editor.getAttributes('link').href;
@@ -99,6 +102,35 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
 
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
+
+  const handleExpand = useCallback(async () => {
+    if (!editor || isExpanding) return;
+
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, ' ');
+
+    if (!selectedText.trim()) return;
+
+    setIsExpanding(true);
+
+    try {
+      // Get some surrounding context
+      const fullText = editor.state.doc.textContent;
+      const contextStart = Math.max(0, from - 200);
+      const contextEnd = Math.min(fullText.length, to + 200);
+      const context = fullText.slice(contextStart, contextEnd);
+
+      const expanded = await expandText(selectedText, context);
+
+      // Replace the selected text with the expanded version
+      editor.chain().focus().deleteSelection().insertContent(expanded).run();
+    } catch (error: any) {
+      console.error('Expand error:', error);
+      alert(error.response?.data?.error || 'Failed to expand text. Please configure AI in Settings.');
+    } finally {
+      setIsExpanding(false);
+    }
+  }, [editor, isExpanding]);
 
   if (!editor) {
     return <div className={styles.loading}>Loading editor...</div>;
@@ -164,6 +196,15 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
               title="Link"
             >
               🔗
+            </button>
+            <span className={styles.bubbleDivider} />
+            <button
+              onClick={handleExpand}
+              className={isExpanding ? styles.expanding : ''}
+              disabled={isExpanding}
+              title="Expand with AI"
+            >
+              {isExpanding ? '...' : '✨'}
             </button>
           </div>
         </BubbleMenu>

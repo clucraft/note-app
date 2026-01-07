@@ -4,6 +4,7 @@ import notesRoutes from './notes.routes.js';
 import usersRoutes from './users.routes.js';
 import shareRoutes from './share.routes.js';
 import uploadRoutes from './upload.routes.js';
+import aiRoutes from './ai.routes.js';
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use('/notes', notesRoutes);
 router.use('/users', usersRoutes);
 router.use('/share', shareRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;

@@ -4,9 +4,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { GeneralSettings } from './GeneralSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { MembersSettings } from './MembersSettings';
+import { AISettings } from './AISettings';
 import styles from './Settings.module.css';
 
-type SettingsSection = 'general' | 'security' | 'members';
+type SettingsSection = 'general' | 'ai' | 'security' | 'members';
 
 export function Settings() {
   const { user } = useAuth();
@@ -17,6 +18,8 @@ export function Settings() {
     switch (activeSection) {
       case 'general':
         return <GeneralSettings />;
+      case 'ai':
+        return <AISettings />;
       case 'security':
         return <SecuritySettings />;
       case 'members':
@@ -44,6 +47,13 @@ export function Settings() {
             >
               <span className={styles.navIcon}>⚙️</span>
               General
+            </button>
+            <button
+              className={`${styles.navItem} ${activeSection === 'ai' ? styles.active : ''}`}
+              onClick={() => setActiveSection('ai')}
+            >
+              <span className={styles.navIcon}>✨</span>
+              AI
             </button>
             <button
               className={`${styles.navItem} ${activeSection === 'security' ? styles.active : ''}`}

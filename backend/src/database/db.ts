@@ -149,6 +149,16 @@ export function initializeDatabase() {
     }
   }
 
+  // Migration: Add ai_settings column to users table for AI configuration
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN ai_settings TEXT DEFAULT NULL`);
+    console.log('Added ai_settings column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 

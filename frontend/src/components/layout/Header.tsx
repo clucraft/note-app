@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useNotes } from '../../hooks/useNotes';
 import { ThemeSwitcher } from '../themes/ThemeSwitcher';
 import { searchNotes, SearchResult } from '../../api/notes.api';
+import { summarizeSearchResults } from '../../api/ai.api';
 import styles from './Header.module.css';
 
 export function Header() {
@@ -15,6 +16,8 @@ export function Header() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<number | null>(null);
@@ -37,10 +40,12 @@ export function Header() {
     if (query.trim().length < 2) {
       setSearchResults([]);
       setShowResults(false);
+      setSummary(null);
       return;
     }
 
     setIsSearching(true);
+    setSummary(null);
     try {
       const results = await searchNotes(query);
       setSearchResults(results);
@@ -51,6 +56,23 @@ export function Header() {
       setIsSearching(false);
     }
   }, []);
+
+  const handleSummarize = useCallback(async () => {
+    if (searchResults.length === 0) return;
+
+    setIsSummarizing(true);
+    try {
+      const summaryText = await summarizeSearchResults(
+        searchResults.map(r => ({ title: r.title, preview: r.preview }))
+      );
+      setSummary(summaryText);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to summarize';
+      setSummary(`Error: ${errorMsg}`);
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [searchResults]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -96,6 +118,22 @@ export function Header() {
 
         {showResults && searchResults.length > 0 && (
           <div className={styles.searchResults}>
+            <div className={styles.searchHeader}>
+              <span className={styles.resultCount}>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
+              <button
+                className={styles.summarizeButton}
+                onClick={handleSummarize}
+                disabled={isSummarizing}
+                title="Summarize with AI"
+              >
+                {isSummarizing ? '...' : '✨'}
+              </button>
+            </div>
+            {summary && (
+              <div className={`${styles.summary} ${summary.startsWith('Error:') ? styles.summaryError : ''}`}>
+                {summary}
+              </div>
+            )}
             {searchResults.map(result => (
               <button
                 key={result.id}

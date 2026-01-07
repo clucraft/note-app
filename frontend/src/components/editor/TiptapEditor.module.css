@@ -233,6 +233,22 @@
   color: var(--color-primary);
 }
 
+.bubbleMenu button.expanding {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.bubbleMenu button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bubbleDivider {
+  width: 1px;
+  background-color: var(--border-color);
+  margin: 0.25rem 0;
+}
+
 /* Code block syntax highlighting */
 .editor .hljs-comment,
 .editor .hljs-quote {
