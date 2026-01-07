@@ -365,9 +365,9 @@ export function NoteEditor() {
 
       <div className={`${styles.content} ${styles[editorWidth]}`}>
         <TiptapEditor
+          key={selectedNote.id}
           content={content}
           onChange={handleContentChange}
-          noteId={selectedNote.id}
         />
       </div>
 
