@@ -122,8 +122,18 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
 
       const expanded = await expandText(selectedText, context);
 
-      // Replace the selected text with the expanded version
-      editor.chain().focus().deleteSelection().insertContent(expanded).run();
+      // Move to end of selection, add blank line, then insert code block with AI response
+      const codeContent = `AI Generated:\n${expanded}`;
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(to)
+        .insertContent([
+          { type: 'paragraph' },
+          { type: 'paragraph' },
+          { type: 'codeBlock', content: [{ type: 'text', text: codeContent }] },
+        ])
+        .run();
     } catch (error: any) {
       console.error('Expand error:', error);
       alert(error.response?.data?.error || 'Failed to expand text. Please configure AI in Settings.');
