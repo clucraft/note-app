@@ -8,12 +8,12 @@ import type { Note, EditorWidth } from '../../types/note.types';
 import styles from './NoteEditor.module.css';
 
 export function NoteEditor() {
-  const { selectedNote, updateNote, notes } = useNotes();
+  const { selectedNote, updateNote, deleteNote, notes } = useNotes();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
   // Get editor width from note, default to 'centered'
   const editorWidth: EditorWidth = selectedNote?.editorWidth || 'centered';
@@ -72,11 +72,11 @@ export function NoteEditor() {
     }
   }, [selectedNote, updateNote]);
 
-  // Close export menu when clicking outside
+  // Close actions menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
-        setShowExportMenu(false);
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -166,7 +166,7 @@ export function NoteEditor() {
     a.download = `${selectedNote.title.replace(/[^a-z0-9]/gi, '_')}.html`;
     a.click();
     URL.revokeObjectURL(url);
-    setShowExportMenu(false);
+    setShowActionsMenu(false);
   }, [selectedNote, content]);
 
   const handleExportPDF = useCallback(() => {
@@ -200,8 +200,35 @@ export function NoteEditor() {
         printWindow.print();
       };
     }
-    setShowExportMenu(false);
+    setShowActionsMenu(false);
   }, [selectedNote, content]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!selectedNote) return;
+    const url = `${window.location.origin}/?note=${selectedNote.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+    setShowActionsMenu(false);
+  }, [selectedNote]);
+
+  const handleMoveToTrash = useCallback(async () => {
+    if (!selectedNote) return;
+    if (confirm('Move this note to trash?')) {
+      await deleteNote(selectedNote.id);
+    }
+    setShowActionsMenu(false);
+  }, [selectedNote, deleteNote]);
 
   if (!selectedNote) {
     return (
@@ -244,49 +271,51 @@ export function NoteEditor() {
           placeholder="Untitled"
         />
 
-        <div className={styles.exportContainer} ref={exportMenuRef}>
+        <div className={styles.actionsContainer} ref={actionsMenuRef}>
           <button
-            className={styles.exportButton}
-            onClick={() => setShowExportMenu(!showExportMenu)}
-            title="Export note"
+            className={styles.actionsButton}
+            onClick={() => setShowActionsMenu(!showActionsMenu)}
+            title="Actions"
           >
-            Export ▾
+            <span className={styles.actionsIcon}>⋯</span>
           </button>
-          {showExportMenu && (
-            <div className={styles.exportMenu}>
-              <button className={styles.exportMenuItem} onClick={handleExportHTML}>
+          {showActionsMenu && (
+            <div className={styles.actionsMenu}>
+              <button className={styles.actionItem} onClick={handleExportHTML}>
+                <span className={styles.actionIcon}>📄</span>
                 Export as HTML
               </button>
-              <button className={styles.exportMenuItem} onClick={handleExportPDF}>
+              <button className={styles.actionItem} onClick={handleExportPDF}>
+                <span className={styles.actionIcon}>📑</span>
                 Export as PDF
+              </button>
+              <div className={styles.actionDivider} />
+              <button className={styles.actionItem} onClick={() => { setShowShareModal(true); setShowActionsMenu(false); }}>
+                <span className={styles.actionIcon}>🔗</span>
+                Share
+              </button>
+              <button className={styles.actionItem} onClick={handleCopyLink}>
+                <span className={styles.actionIcon}>📋</span>
+                Copy Link
+              </button>
+              <div className={styles.actionDivider} />
+              <button
+                className={styles.actionItem}
+                onClick={() => { handleWidthChange(editorWidth === 'full' ? 'centered' : 'full'); setShowActionsMenu(false); }}
+              >
+                <span className={styles.actionIcon}>{editorWidth === 'full' ? '▐░░▌' : '▐██▌'}</span>
+                Full Width
+                <span className={styles.actionToggle}>
+                  <span className={`${styles.toggle} ${editorWidth === 'full' ? styles.toggleOn : ''}`} />
+                </span>
+              </button>
+              <div className={styles.actionDivider} />
+              <button className={`${styles.actionItem} ${styles.actionDanger}`} onClick={handleMoveToTrash}>
+                <span className={styles.actionIcon}>🗑️</span>
+                Move to Trash
               </button>
             </div>
           )}
-        </div>
-
-        <button
-          className={styles.shareButton}
-          onClick={() => setShowShareModal(true)}
-          title="Share note"
-        >
-          Share
-        </button>
-
-        <div className={styles.widthToggle}>
-          <button
-            className={`${styles.widthBtn} ${editorWidth === 'centered' ? styles.active : ''}`}
-            onClick={() => handleWidthChange('centered')}
-            title="Centered width"
-          >
-            ▐░░▌
-          </button>
-          <button
-            className={`${styles.widthBtn} ${editorWidth === 'full' ? styles.active : ''}`}
-            onClick={() => handleWidthChange('full')}
-            title="Full width"
-          >
-            ▐██▌
-          </button>
         </div>
       </div>
 

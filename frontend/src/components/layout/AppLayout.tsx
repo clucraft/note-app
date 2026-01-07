@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { NoteEditor } from '../notes/NoteEditor';
@@ -11,17 +12,35 @@ const MAX_SIDEBAR_WIDTH = 500;
 const DEFAULT_SIDEBAR_WIDTH = 280;
 
 function AppLayoutContent() {
-  const { loadNotes } = useNotes();
+  const { loadNotes, selectNote, notes } = useNotes();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth');
     return saved ? parseInt(saved, 10) : DEFAULT_SIDEBAR_WIDTH;
   });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const initialNoteHandled = useRef(false);
 
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
+
+  // Handle ?note= URL parameter
+  useEffect(() => {
+    if (notes.length > 0 && !initialNoteHandled.current) {
+      const noteId = searchParams.get('note');
+      if (noteId) {
+        const id = parseInt(noteId, 10);
+        if (!isNaN(id)) {
+          selectNote(id);
+          // Clear the URL parameter after selecting
+          setSearchParams({}, { replace: true });
+        }
+      }
+      initialNoteHandled.current = true;
+    }
+  }, [notes, searchParams, selectNote, setSearchParams]);
 
   // Save sidebar width to localStorage
   useEffect(() => {

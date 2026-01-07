@@ -55,10 +55,22 @@ export function NoteTreeItem({ note, depth }: NoteTreeItemProps) {
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     setShowMenu(false);
     const url = `${window.location.origin}/?note=${note.id}`;
-    navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch (err) {
+      // Fallback for older browsers or non-secure contexts
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
   };
 
   const handleDuplicate = async () => {
