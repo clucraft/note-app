@@ -44,7 +44,7 @@ async function callOpenAI(
       body: JSON.stringify({
         model: settings.model,
         messages,
-        max_tokens: 1024,
+        max_tokens: 4096,
         temperature: 0.7,
       }),
     });
@@ -79,7 +79,7 @@ async function callAnthropic(
       },
       body: JSON.stringify({
         model: settings.model,
-        max_tokens: 1024,
+        max_tokens: 4096,
         system: systemMessage?.content,
         messages: userMessages.map(m => ({
           role: m.role,
@@ -183,14 +183,14 @@ export async function chat(
 ): Promise<AIResponse> {
   // Build notes context - limit to avoid token limits
   const notesContext = notes
-    .slice(0, 50) // Limit to 50 notes
+    .slice(0, 100) // Limit to 100 notes
     .map(note => {
       // Strip HTML tags and limit content length (handle null/undefined content)
       const plainContent = (note.content || '')
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 500);
+        .slice(0, 100000);
       return `[Note: "${note.title || 'Untitled'}"]\n${plainContent}`;
     })
     .join('\n\n');
