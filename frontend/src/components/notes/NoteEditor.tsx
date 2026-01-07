@@ -301,9 +301,9 @@ export function NoteEditor() {
               <div className={styles.actionDivider} />
               <button
                 className={styles.actionItem}
-                onClick={() => { handleWidthChange(editorWidth === 'full' ? 'centered' : 'full'); setShowActionsMenu(false); }}
+                onClick={() => handleWidthChange(editorWidth === 'full' ? 'centered' : 'full')}
               >
-                <span className={styles.actionIcon}>{editorWidth === 'full' ? '▐░░▌' : '▐██▌'}</span>
+                <span className={styles.actionIcon}>↔</span>
                 Full Width
                 <span className={styles.actionToggle}>
                   <span className={`${styles.toggle} ${editorWidth === 'full' ? styles.toggleOn : ''}`} />
