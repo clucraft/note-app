@@ -207,23 +207,42 @@
   color: var(--border-color);
 }
 
-.breadcrumb {
+.toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
 }
 
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+}
+
 .breadcrumbItem {
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.breadcrumbCurrent {
+  color: var(--text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .breadcrumbSeparator {
   margin: 0 0.5rem;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .widthToggle {

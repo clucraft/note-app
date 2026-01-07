@@ -2,14 +2,22 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNotes } from '../../hooks/useNotes';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
-import { EmojiButton } from '../common/EmojiPicker';
 import { ShareModal } from './ShareModal';
 import type { Note, EditorWidth } from '../../types/note.types';
 import styles from './NoteEditor.module.css';
 
+// Extract title from HTML content (first H1 text)
+function extractTitleFromContent(html: string): string {
+  const match = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
+  if (match) {
+    // Strip any HTML tags from inside the H1
+    return match[1].replace(/<[^>]*>/g, '').trim() || 'Untitled';
+  }
+  return 'Untitled';
+}
+
 export function NoteEditor() {
   const { selectedNote, updateNote, deleteNote, notes } = useNotes();
-  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -27,49 +35,42 @@ export function NoteEditor() {
   // Sync local state with selected note
   useEffect(() => {
     if (selectedNote) {
-      setTitle(selectedNote.title);
-      setContent(selectedNote.content);
+      // If note has no content or just empty, initialize with H1 Untitled
+      if (!selectedNote.content || selectedNote.content === '<p></p>' || selectedNote.content === '') {
+        setContent('<h1>Untitled</h1><p></p>');
+      } else {
+        setContent(selectedNote.content);
+      }
     } else {
-      setTitle('');
       setContent('');
     }
   }, [selectedNote]);
 
+  // Get display title from content
+  const displayTitle = useMemo(() => {
+    return extractTitleFromContent(content);
+  }, [content]);
+
   // Update browser tab title
   useEffect(() => {
-    if (title) {
-      document.title = `${title} - Cache`;
+    if (displayTitle) {
+      document.title = `${displayTitle} - Cache`;
     } else {
       document.title = 'Cache';
     }
     return () => {
       document.title = 'Cache';
     };
-  }, [title]);
+  }, [displayTitle]);
 
-  // Debounced save for content
+  // Debounced save for content (also extracts and saves title)
   const debouncedSaveContent = useDebouncedCallback(
     async (id: number, newContent: string) => {
-      await updateNote(id, { content: newContent });
+      const newTitle = extractTitleFromContent(newContent);
+      await updateNote(id, { content: newContent, title: newTitle });
     },
     1000
   );
-
-  // Debounced save for title
-  const debouncedSaveTitle = useDebouncedCallback(
-    async (id: number, newTitle: string) => {
-      await updateNote(id, { title: newTitle });
-    },
-    500
-  );
-
-  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTitle = e.target.value;
-    setTitle(newTitle);
-    if (selectedNote) {
-      debouncedSaveTitle(selectedNote.id, newTitle);
-    }
-  }, [selectedNote, debouncedSaveTitle]);
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
@@ -77,12 +78,6 @@ export function NoteEditor() {
       debouncedSaveContent(selectedNote.id, newContent);
     }
   }, [selectedNote, debouncedSaveContent]);
-
-  const handleEmojiChange = useCallback(async (emoji: string | null) => {
-    if (selectedNote) {
-      await updateNote(selectedNote.id, { titleEmoji: emoji });
-    }
-  }, [selectedNote, updateNote]);
 
   // Close actions menu when clicking outside
   useEffect(() => {
@@ -256,32 +251,18 @@ export function NoteEditor() {
 
   return (
     <div className={styles.editor}>
-      {breadcrumbPath.length > 1 && (
+      <div className={styles.toolbar}>
         <div className={styles.breadcrumb}>
-          {breadcrumbPath.slice(0, -1).map((note, index) => (
+          {breadcrumbPath.map((note, index) => (
             <span key={note.id}>
               {index > 0 && <span className={styles.breadcrumbSeparator}>/</span>}
-              <span className={styles.breadcrumbItem}>
+              <span className={index === breadcrumbPath.length - 1 ? styles.breadcrumbCurrent : styles.breadcrumbItem}>
                 {note.titleEmoji && <span>{note.titleEmoji} </span>}
-                {note.title}
+                {index === breadcrumbPath.length - 1 ? displayTitle : note.title}
               </span>
             </span>
           ))}
-          <span className={styles.breadcrumbSeparator}>/</span>
         </div>
-      )}
-      <div className={styles.header}>
-        <EmojiButton
-          emoji={selectedNote.titleEmoji}
-          onSelect={handleEmojiChange}
-        />
-        <input
-          type="text"
-          value={title}
-          onChange={handleTitleChange}
-          className={styles.titleInput}
-          placeholder="Untitled"
-        />
 
         <div className={styles.actionsContainer} ref={actionsMenuRef}>
           <button

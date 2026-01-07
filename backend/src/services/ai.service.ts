@@ -202,10 +202,16 @@ Here are the user's notes for context:
 ${notesContext}
 
 When answering questions:
-- Reference specific notes when relevant
+- Reference specific notes when relevant by citing them like this: [Note: "Note Title"]
+- Always cite the notes you pull information from at the end of your response
 - Be concise but thorough
 - If asked about something not in the notes, let the user know
-- You can help with general questions too, not just note-related ones`;
+- You can help with general questions too, not just note-related ones
+
+Format your response with citations like:
+Your answer here...
+
+Sources: [Note: "Title 1"], [Note: "Title 2"]`;
 
   const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },

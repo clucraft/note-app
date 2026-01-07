@@ -28,6 +28,7 @@ export function Sidebar() {
           </Button>
           <Button
             size="sm"
+            variant="secondary"
             onClick={handleNewNote}
             disabled={isLoading}
             title="New note"

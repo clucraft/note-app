@@ -79,9 +79,20 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
-      // Focus editor at the end after a brief delay to ensure content is rendered
+      // Focus editor after content is set
       setTimeout(() => {
-        editor.commands.focus('end');
+        // If content is just the initial H1 + empty paragraph, focus at start of paragraph (line 2)
+        if (content === '<h1>Untitled</h1><p></p>') {
+          // Position cursor at the start of the second node (the paragraph)
+          const doc = editor.state.doc;
+          if (doc.childCount >= 2) {
+            const secondNodePos = doc.child(0).nodeSize;
+            editor.commands.setTextSelection(secondNodePos + 1);
+            editor.commands.focus();
+          }
+        } else {
+          editor.commands.focus('end');
+        }
       }, 0);
     }
   }, [content, editor]);
