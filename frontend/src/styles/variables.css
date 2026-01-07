@@ -12,6 +12,7 @@
   --color-primary: #228be6;
   --color-primary-hover: #1c7ed6;
   --color-primary-light: #e7f5ff;
+  --color-primary-text: #ffffff;
 
   --color-success: #40c057;
   --color-warning: #fab005;
@@ -56,10 +57,11 @@
   --text-secondary: #b0b0b0;
   --text-muted: #6b6b6b;
 
-  --color-primary: #4a9eff;
-  --color-primary-hover: #5eabff;
-  --color-primary-light: #2a3a4a;
-  --color-primary-dark: #3d8be0;
+  --color-primary: #3d3d3d;
+  --color-primary-hover: #4a4a4a;
+  --color-primary-light: #2d2d2d;
+  --color-primary-dark: #333333;
+  --color-primary-text: #e4e4e4;
 
   --border-color: #363636;
   --border-color-hover: #4a4a4a;
@@ -84,9 +86,10 @@
   --text-secondary: #bd93f9;
   --text-muted: #6272a4;
 
-  --color-primary: #ff79c6;
-  --color-primary-hover: #ff92d0;
-  --color-primary-light: #44475a;
+  --color-primary: #44475a;
+  --color-primary-hover: #525668;
+  --color-primary-light: #3d404f;
+  --color-primary-text: #f8f8f2;
 
   --border-color: #44475a;
   --border-color-hover: #6272a4;
@@ -111,9 +114,10 @@
   --text-secondary: #93a1a1;
   --text-muted: #586e75;
 
-  --color-primary: #268bd2;
-  --color-primary-hover: #3498db;
-  --color-primary-light: #094656;
+  --color-primary: #094656;
+  --color-primary-hover: #0a5265;
+  --color-primary-light: #073642;
+  --color-primary-text: #93a1a1;
 
   --border-color: #094656;
   --border-color-hover: #586e75;
@@ -138,9 +142,10 @@
   --text-secondary: #d8dee9;
   --text-muted: #4c566a;
 
-  --color-primary: #88c0d0;
-  --color-primary-hover: #8fbcbb;
-  --color-primary-light: #434c5e;
+  --color-primary: #434c5e;
+  --color-primary-hover: #4c566a;
+  --color-primary-light: #3b4252;
+  --color-primary-text: #eceff4;
 
   --border-color: #434c5e;
   --border-color-hover: #4c566a;

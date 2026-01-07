@@ -20,7 +20,7 @@ export function Sidebar() {
           disabled={isLoading}
           title="New note"
         >
-          + New
+          +
         </Button>
       </div>
       <div className={styles.tree}>

@@ -18,7 +18,7 @@
 /* Variants */
 .primary {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-primary-text, white);
 }
 
 .primary:hover:not(:disabled) {
