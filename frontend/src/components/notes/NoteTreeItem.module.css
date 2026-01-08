@@ -209,7 +209,7 @@
   overflow: hidden;
 }
 
-.childrenWrapper.expanded .childrenInner {
+.childrenWrapper.expanded > .childrenInner {
   overflow: visible;
 }
 
