@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import routes from './routes/index.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
@@ -23,7 +24,22 @@ app.use(express.json({ limit: '50mb' }));
 
 // Serve uploaded images
 const uploadsDir = process.env.UPLOADS_PATH || '/data/uploads';
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+console.log('[Uploads] Serving static files from:', uploadsDir);
 app.use('/uploads', express.static(uploadsDir));
+
+// Debug endpoint to check uploads
+app.get('/uploads-debug', (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadsDir);
+    res.json({ uploadsDir, files, exists: fs.existsSync(uploadsDir) });
+  } catch (err) {
+    res.json({ uploadsDir, error: String(err) });
+  }
+});
 
 // Parse cookies
 app.use(cookieParser());
