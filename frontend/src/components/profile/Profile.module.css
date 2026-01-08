@@ -246,3 +246,158 @@
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-light);
 }
+
+/* 2FA Styles */
+.loadingText {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.twoFABox {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.twoFAStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.statusEnabled {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--color-success-light, #d4edda);
+  color: var(--color-success, #28a745);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.statusText {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.twoFADisable {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.smallText {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.stepText {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.codeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.codeInput {
+  width: 120px;
+  padding: 0.625rem 0.75rem;
+  font-size: 1rem;
+  font-family: monospace;
+  letter-spacing: 0.25em;
+  text-align: center;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.dangerButton {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background-color: var(--color-danger, #dc3545);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.dangerButton:hover:not(:disabled) {
+  background-color: var(--color-danger-hover, #c82333);
+}
+
+.dangerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qrWrapper {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.qrCode {
+  width: 200px;
+  height: 200px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: white;
+}
+
+.manualCode {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.secret {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+}

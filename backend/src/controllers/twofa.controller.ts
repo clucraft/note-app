@@ -178,3 +178,38 @@ export async function disableTwoFA(req: Request, res: Response) {
 export function verifyTOTP(secret: string, code: string): boolean {
   return authenticator.verify({ token: code, secret });
 }
+
+// Admin: Disable 2FA for any user
+export async function adminDisableTwoFA(req: Request, res: Response) {
+  try {
+    const adminRole = req.user!.role;
+    if (adminRole !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const targetUserId = parseInt(req.params.userId, 10);
+    if (isNaN(targetUserId)) {
+      res.status(400).json({ error: 'Invalid user ID' });
+      return;
+    }
+
+    // Check if user exists
+    const user = db.prepare('SELECT id, totp_enabled FROM users WHERE id = ?')
+      .get(targetUserId) as { id: number; totp_enabled: number } | undefined;
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Disable 2FA and clear secret
+    db.prepare('UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?')
+      .run(targetUserId);
+
+    res.json({ success: true, message: '2FA has been disabled for this user.' });
+  } catch (error) {
+    console.error('Admin disable 2FA error:', error);
+    res.status(500).json({ error: 'Failed to disable 2FA' });
+  }
+}

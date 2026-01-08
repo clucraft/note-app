@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { updateProfile, updatePreferences } from '../../api/auth.api';
+import { getTwoFAStatus, setupTwoFA, enableTwoFA, disableTwoFA, type TwoFASetup } from '../../api/twofa.api';
 import styles from './Profile.module.css';
 
 const LANGUAGES = [
@@ -45,6 +46,14 @@ export function Profile() {
   const [timezone, setTimezone] = useState(user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [timezones, setTimezones] = useState<string[]>([]);
 
+  // 2FA state
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [twoFALoading, setTwoFALoading] = useState(true);
+  const [twoFASetup, setTwoFASetup] = useState<TwoFASetup | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
+  const [isVerifying2FA, setIsVerifying2FA] = useState(false);
+
   useEffect(() => {
     // Initialize timezones list
     const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -52,7 +61,81 @@ export function Profile() {
       ? COMMON_TIMEZONES
       : [userTz, ...COMMON_TIMEZONES];
     setTimezones(zones);
+
+    // Load 2FA status
+    loadTwoFAStatus();
   }, []);
+
+  const loadTwoFAStatus = async () => {
+    try {
+      const status = await getTwoFAStatus();
+      setTwoFAEnabled(status.enabled);
+    } catch (err) {
+      console.error('Failed to load 2FA status:', err);
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleSetupTwoFA = async () => {
+    setIsSettingUp2FA(true);
+    setError('');
+    try {
+      const setup = await setupTwoFA();
+      setTwoFASetup(setup);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to set up 2FA');
+    } finally {
+      setIsSettingUp2FA(false);
+    }
+  };
+
+  const handleEnableTwoFA = async () => {
+    if (verificationCode.length !== 6) {
+      setError('Please enter a 6-digit code');
+      return;
+    }
+    setIsVerifying2FA(true);
+    setError('');
+    try {
+      await enableTwoFA(verificationCode);
+      setTwoFAEnabled(true);
+      setTwoFASetup(null);
+      setVerificationCode('');
+      setSuccess('2FA has been enabled successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to verify code');
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  };
+
+  const handleDisableTwoFA = async () => {
+    if (verificationCode.length !== 6) {
+      setError('Please enter a 6-digit code');
+      return;
+    }
+    setIsVerifying2FA(true);
+    setError('');
+    try {
+      await disableTwoFA(verificationCode);
+      setTwoFAEnabled(false);
+      setVerificationCode('');
+      setSuccess('2FA has been disabled.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to disable 2FA');
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  };
+
+  const handleCancelTwoFASetup = () => {
+    setTwoFASetup(null);
+    setVerificationCode('');
+    setError('');
+  };
 
   useEffect(() => {
     if (user) {
@@ -325,6 +408,89 @@ export function Profile() {
             {isChangingPassword ? 'Changing...' : 'Change Password'}
           </button>
         </form>
+      </div>
+
+      <div className={styles.divider} />
+
+      <div className={styles.section}>
+        <h3 className={styles.label}>Two-Factor Authentication</h3>
+        <p className={styles.description}>
+          Add an extra layer of security to your account using an authenticator app.
+        </p>
+
+        {twoFALoading ? (
+          <p className={styles.loadingText}>Loading 2FA status...</p>
+        ) : twoFAEnabled ? (
+          <div className={styles.twoFABox}>
+            <div className={styles.twoFAStatus}>
+              <span className={styles.statusEnabled}>Enabled</span>
+              <span className={styles.statusText}>Your account is protected with 2FA</span>
+            </div>
+            <div className={styles.twoFADisable}>
+              <p className={styles.smallText}>To disable 2FA, enter a code from your authenticator app:</p>
+              <div className={styles.codeRow}>
+                <input
+                  type="text"
+                  className={styles.codeInput}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
+                />
+                <button
+                  className={styles.dangerButton}
+                  onClick={handleDisableTwoFA}
+                  disabled={isVerifying2FA}
+                >
+                  {isVerifying2FA ? 'Disabling...' : 'Disable 2FA'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : twoFASetup ? (
+          <div className={styles.twoFABox}>
+            <p className={styles.stepText}>1. Scan this QR code with your authenticator app:</p>
+            <div className={styles.qrWrapper}>
+              <img src={twoFASetup.qrCode} alt="2FA QR Code" className={styles.qrCode} />
+            </div>
+            <p className={styles.manualCode}>
+              Or enter manually: <code className={styles.secret}>{twoFASetup.secret}</code>
+            </p>
+            <p className={styles.stepText}>2. Enter the 6-digit code from your app:</p>
+            <div className={styles.codeRow}>
+              <input
+                type="text"
+                className={styles.codeInput}
+                placeholder="000000"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                maxLength={6}
+              />
+              <button
+                className={styles.saveButton}
+                onClick={handleEnableTwoFA}
+                disabled={isVerifying2FA}
+              >
+                {isVerifying2FA ? 'Verifying...' : 'Verify & Enable'}
+              </button>
+              <button
+                className={styles.cancelButton}
+                onClick={handleCancelTwoFASetup}
+                disabled={isVerifying2FA}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className={styles.saveButton}
+            onClick={handleSetupTwoFA}
+            disabled={isSettingUp2FA}
+          >
+            {isSettingUp2FA ? 'Setting up...' : 'Set Up 2FA'}
+          </button>
+        )}
       </div>
 
       <div className={styles.divider} />

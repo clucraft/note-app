@@ -106,6 +106,16 @@
   color: var(--text-secondary);
 }
 
+.badge.twoFAEnabled {
+  background-color: var(--color-success-light, #d4edda);
+  color: var(--color-success, #28a745);
+}
+
+.badge.twoFADisabled {
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
 .actions {
   display: flex;
   gap: 0.5rem;

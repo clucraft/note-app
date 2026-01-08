@@ -27,3 +27,7 @@ export async function enableTwoFA(code: string): Promise<void> {
 export async function disableTwoFA(code: string): Promise<void> {
   await api.post('/2fa/disable', { code });
 }
+
+export async function adminDisableTwoFA(userId: number): Promise<void> {
+  await api.post(`/2fa/admin/disable/${userId}`);
+}

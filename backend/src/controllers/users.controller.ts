@@ -19,7 +19,7 @@ const createUserSchema = z.object({
 export async function listUsers(req: Request, res: Response) {
   try {
     const users = db.prepare(`
-      SELECT id, username, email, display_name, role, theme_preference, created_at
+      SELECT id, username, email, display_name, role, theme_preference, totp_enabled, created_at
       FROM users ORDER BY created_at DESC
     `).all();
 
@@ -30,6 +30,7 @@ export async function listUsers(req: Request, res: Response) {
       displayName: u.display_name,
       role: u.role,
       themePreference: u.theme_preference,
+      totpEnabled: !!u.totp_enabled,
       createdAt: u.created_at
     })));
   } catch (error) {

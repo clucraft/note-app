@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { listUsers, createUser, updateUser, deleteUser, CreateUserInput } from '../../api/users.api';
+import { adminDisableTwoFA } from '../../api/twofa.api';
 import { User } from '../../types/auth.types';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
@@ -68,6 +69,16 @@ export function MembersSettings() {
     }
   };
 
+  const handleDisable2FA = async (userId: number) => {
+    if (!confirm('Are you sure you want to disable 2FA for this user? They will be able to log in without a code.')) return;
+    try {
+      await adminDisableTwoFA(userId);
+      loadUsers();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to disable 2FA');
+    }
+  };
+
   if (user?.role !== 'admin') {
     return (
       <div className={styles.container}>
@@ -104,6 +115,7 @@ export function MembersSettings() {
                 <th>Email</th>
                 <th>Display Name</th>
                 <th>Role</th>
+                <th>2FA</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -119,6 +131,13 @@ export function MembersSettings() {
                     </span>
                   </td>
                   <td>
+                    {u.totpEnabled ? (
+                      <span className={`${styles.badge} ${styles.twoFAEnabled}`}>Enabled</span>
+                    ) : (
+                      <span className={`${styles.badge} ${styles.twoFADisabled}`}>Off</span>
+                    )}
+                  </td>
+                  <td>
                     <div className={styles.actions}>
                       <Button
                         size="sm"
@@ -128,6 +147,15 @@ export function MembersSettings() {
                       >
                         {u.role === 'admin' ? 'Make User' : 'Make Admin'}
                       </Button>
+                      {u.totpEnabled && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleDisable2FA(u.id)}
+                        >
+                          Disable 2FA
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="danger"

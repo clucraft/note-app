@@ -4,7 +4,8 @@ import {
   getTwoFAStatus,
   setupTwoFA,
   enableTwoFA,
-  disableTwoFA
+  disableTwoFA,
+  adminDisableTwoFA
 } from '../controllers/twofa.controller.js';
 
 const router = Router();
@@ -23,5 +24,8 @@ router.post('/enable', enableTwoFA);
 
 // POST /api/2fa/disable - Disable 2FA
 router.post('/disable', disableTwoFA);
+
+// POST /api/2fa/admin/disable/:userId - Admin disable 2FA for any user
+router.post('/admin/disable/:userId', adminDisableTwoFA);
 
 export default router;

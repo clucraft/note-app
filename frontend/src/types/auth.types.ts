@@ -16,6 +16,7 @@ export interface User {
   timezone?: string;
   profilePicture?: string | null;
   customColors?: CustomColors | null;
+  totpEnabled?: boolean;
   createdAt?: string;
 }
 
