@@ -208,6 +208,30 @@
   gap: 0.75rem;
 }
 
+.coffeeButton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.625rem;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.coffeeButton:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-color-hover);
+}
+
+.coffeeEmoji {
+  font-size: 0.875rem;
+}
+
 .userMenu {
   position: relative;
 }

@@ -171,6 +171,15 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
       </div>
 
       <div className={styles.actions}>
+        <a
+          href="https://buymeacoffee.com/clucraft"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.coffeeButton}
+        >
+          <span className={styles.coffeeEmoji}>☕</span>
+          coffee
+        </a>
         <ThemeSwitcher />
 
         <div className={styles.userMenu} ref={menuRef}>
