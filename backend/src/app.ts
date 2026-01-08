@@ -22,7 +22,7 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 
 // Serve uploaded images
-const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, '../uploads');
+const uploadsDir = process.env.UPLOADS_PATH || '/data/uploads';
 app.use('/uploads', express.static(uploadsDir));
 
 // Parse cookies
