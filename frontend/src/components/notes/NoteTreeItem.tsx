@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNotes } from '../../hooks/useNotes';
 import { EmojiPicker } from '../common/EmojiPicker';
+import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
 import type { Note } from '../../types/note.types';
 import styles from './NoteTreeItem.module.css';
 
@@ -16,6 +17,7 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
   const [showMenu, setShowMenu] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showTrashModal, setShowTrashModal] = useState(false);
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | 'inside' | null>(null);
@@ -74,11 +76,13 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
     await createNote({ parentId: note.id, title: 'Untitled', titleEmoji: '📄' });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setShowMenu(false);
-    if (confirm('Delete this note and all its children?')) {
-      await deleteNote(note.id);
-    }
+    setShowTrashModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    await deleteNote(note.id);
   };
 
   const handleCopyLink = async () => {
@@ -303,6 +307,12 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
           position={emojiPickerPosition}
         />
       )}
+
+      <ConfirmTrashModal
+        isOpen={showTrashModal}
+        onClose={() => setShowTrashModal(false)}
+        onConfirm={handleConfirmDelete}
+      />
 
       {showMenu && (
         <div
