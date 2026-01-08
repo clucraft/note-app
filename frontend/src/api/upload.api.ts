@@ -22,3 +22,21 @@ export async function uploadImageFromBlob(blob: Blob, filename?: string): Promis
   const file = new File([blob], filename || 'pasted-image.png', { type: blob.type });
   return uploadImage(file);
 }
+
+export async function uploadVideo(file: File): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append('video', file);
+
+  const response = await api.post<UploadResponse>('/upload/video', formData);
+
+  return response.data;
+}
+
+export async function uploadFile(file: File): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await api.post<UploadResponse>('/upload/file', formData);
+
+  return response.data;
+}

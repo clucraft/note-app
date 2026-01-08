@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 });
 
 // File filter - only allow images
-const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const imageFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
@@ -33,12 +33,45 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
   }
 };
 
-// Configure multer
+// File filter - only allow videos
+const videoFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only MP4, WebM, OGG, and MOV videos are allowed.'));
+  }
+};
+
+// File filter - allow any file type (for generic file uploads)
+const anyFileFilter = (_req: Request, _file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  cb(null, true);
+};
+
+// Configure multer for images
 export const upload = multer({
   storage,
-  fileFilter,
+  fileFilter: imageFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
+  }
+});
+
+// Configure multer for videos
+export const uploadVideo = multer({
+  storage,
+  fileFilter: videoFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB max for videos
+  }
+});
+
+// Configure multer for any file type
+export const uploadFile = multer({
+  storage,
+  fileFilter: anyFileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max for generic files
   }
 });
 
@@ -87,5 +120,51 @@ export async function getImage(req: Request, res: Response) {
   } catch (error) {
     console.error('Get image error:', error);
     res.status(500).json({ error: 'Failed to retrieve image' });
+  }
+}
+
+// Upload video handler
+export async function uploadVideoHandler(req: Request, res: Response) {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    const videoUrl = `/uploads/${req.file.filename}`;
+
+    res.json({
+      url: videoUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimeType: req.file.mimetype
+    });
+  } catch (error) {
+    console.error('Video upload error:', error);
+    res.status(500).json({ error: 'Failed to upload video' });
+  }
+}
+
+// Upload any file handler
+export async function uploadFileHandler(req: Request, res: Response) {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+
+    res.json({
+      url: fileUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimeType: req.file.mimetype
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
   }
 }

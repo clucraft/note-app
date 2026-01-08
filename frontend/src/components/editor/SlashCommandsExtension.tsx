@@ -5,6 +5,7 @@ import tippy, { Instance as TippyInstance } from 'tippy.js';
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
+import { uploadVideo, uploadFile } from '../../api/upload.api';
 import styles from './SlashCommands.module.css';
 
 interface CommandItem {
@@ -13,6 +14,8 @@ interface CommandItem {
   icon: string;
   command: (props: { editor: any; range: any }) => void;
   isEmojiPicker?: boolean;
+  isVideoUpload?: boolean;
+  isFileUpload?: boolean;
 }
 
 const commands: CommandItem[] = [
@@ -118,6 +121,20 @@ const commands: CommandItem[] = [
     },
   },
   {
+    title: 'Video',
+    description: 'Upload a video file',
+    icon: '🎬',
+    isVideoUpload: true,
+    command: () => {}, // Handled specially
+  },
+  {
+    title: 'File',
+    description: 'Attach any file',
+    icon: '📎',
+    isFileUpload: true,
+    command: () => {}, // Handled specially
+  },
+  {
     title: 'Bold',
     description: 'Make text bold',
     icon: 'B',
@@ -190,17 +207,72 @@ interface CommandListRef {
 const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, command, editor, range }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleVideoUpload = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const result = await uploadVideo(file);
+      editor.chain().focus().deleteRange(range).insertContent({
+        type: 'video',
+        attrs: { src: result.url }
+      }).run();
+    } catch (error) {
+      console.error('Video upload failed:', error);
+      alert('Failed to upload video. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [editor, range]);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const result = await uploadFile(file);
+      editor.chain().focus().deleteRange(range).insertContent({
+        type: 'fileAttachment',
+        attrs: {
+          src: result.url,
+          filename: result.originalName,
+          size: result.size,
+          mimeType: result.mimeType
+        }
+      }).run();
+    } catch (error) {
+      console.error('File upload failed:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [editor, range]);
+
+  const triggerFileInput = useCallback((accept: string, handler: (file: File) => void) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        handler(file);
+      }
+    };
+    input.click();
+  }, []);
 
   const selectItem = useCallback((index: number) => {
     const item = items[index];
     if (item) {
       if (item.isEmojiPicker) {
         setShowEmojiPicker(true);
+      } else if (item.isVideoUpload) {
+        triggerFileInput('video/mp4,video/webm,video/ogg,video/quicktime', handleVideoUpload);
+      } else if (item.isFileUpload) {
+        triggerFileInput('*/*', handleFileUpload);
       } else {
         command(item);
       }
     }
-  }, [items, command]);
+  }, [items, command, triggerFileInput, handleVideoUpload, handleFileUpload]);
 
   const handleEmojiSelect = useCallback((emoji: { native: string }) => {
     editor.chain().focus().deleteRange(range).insertContent(emoji.native).run();
@@ -252,6 +324,14 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
           skinTonePosition="none"
           autoFocus={true}
         />
+      </div>
+    );
+  }
+
+  if (isUploading) {
+    return (
+      <div className={styles.commandList}>
+        <div className={styles.uploading}>Uploading...</div>
       </div>
     );
   }

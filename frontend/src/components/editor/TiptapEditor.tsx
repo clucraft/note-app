@@ -14,6 +14,8 @@ import { common, createLowlight } from 'lowlight';
 import { useEffect, useCallback, useState } from 'react';
 import { SlashCommands } from './SlashCommandsExtension';
 import { ResizableImage } from './ImageExtension';
+import { Video } from './VideoExtension';
+import { FileAttachment } from './FileExtension';
 import { expandText } from '../../api/ai.api';
 import styles from './TiptapEditor.module.css';
 
@@ -59,6 +61,8 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
       CodeBlockLowlight.configure({
         lowlight,
       }),
+      Video,
+      FileAttachment,
       SlashCommands,
     ],
     content,
