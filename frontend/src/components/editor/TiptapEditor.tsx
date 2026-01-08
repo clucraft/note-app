@@ -9,17 +9,14 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { common, createLowlight } from 'lowlight';
 import { useEffect, useCallback, useState } from 'react';
 import { SlashCommands } from './SlashCommandsExtension';
 import { ResizableImage } from './ImageExtension';
 import { Video } from './VideoExtension';
 import { FileAttachment } from './FileExtension';
+import { CodeBlock } from './CodeBlockExtension';
 import { expandText } from '../../api/ai.api';
 import styles from './TiptapEditor.module.css';
-
-const lowlight = createLowlight(common);
 
 interface TiptapEditorProps {
   content: string;
@@ -58,9 +55,7 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
       TableRow,
       TableHeader,
       TableCell,
-      CodeBlockLowlight.configure({
-        lowlight,
-      }),
+      CodeBlock,
       Video,
       FileAttachment,
       SlashCommands,
