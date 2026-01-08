@@ -365,6 +365,16 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
         <span className={styles.title}>{note.title}</span>
 
         <button
+          className={styles.addButton}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAddChild();
+          }}
+          title="Add child note"
+        >
+          +
+        </button>
+        <button
           className={styles.menuButton}
           onClick={(e) => {
             e.stopPropagation();
