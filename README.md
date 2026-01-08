@@ -1,11 +1,10 @@
 # Cache Notes
 
-A modern, self-hosted note-taking web application with hierarchical organization, rich text editing, and multiple themes.
+A modern, self-hosted note-taking web application with hierarchical organization, rich text editing, AI integration, and robust security features.
 
 ## Screenshot
 
 <img width="2013" height="1127" alt="image" src="https://github.com/user-attachments/assets/512d30de-1240-4fb8-89d1-0774cd15e865" />
-
 
 ## Features
 
@@ -18,8 +17,10 @@ A modern, self-hosted note-taking web application with hierarchical organization
   - Blocks: `/table`, `/code`, `/quote`, `/link`
   - Media: `/image` (insert by URL)
   - Emoji: `/smile`, `/heart`, `/star`, `/fire`, `/rocket`
+  - AI: `/expand` (expand selected text with AI)
 - **Bubble Menu** - Select text to reveal formatting toolbar
 - **Code Blocks** - Syntax highlighting for common languages
+- **Tables** - Resizable tables with headers
 
 ### Image Support
 - **Paste from Clipboard** - Paste images directly into the editor
@@ -31,13 +32,24 @@ A modern, self-hosted note-taking web application with hierarchical organization
 - **Hierarchical Tree** - Unlimited nesting with drag-and-drop reordering
 - **Emoji Titles** - Add emojis to note titles for visual organization
 - **Expand/Collapse** - Hide or show child notes
-- **Search** - Full-text search across all notes
+- **Search** - Full-text search across all notes with AI summarization
 - **Resizable Sidebar** - Adjust the width of the note tree panel
+- **Duplicate Notes** - Clone existing notes with content
+
+### AI Integration
+- **AI Chat Assistant** - Ask questions about your notes with full context awareness
+- **Search Summarization** - AI-generated summaries of search results
+- **Text Expansion** - Expand selected text using AI via `/expand` command
+- **Multiple Providers**:
+  - OpenAI (GPT-4o, GPT-4-turbo, GPT-3.5-turbo)
+  - Anthropic (Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku)
+  - OpenWebUI/Ollama (custom local models)
+- **Configurable Settings** - API keys, model selection, custom endpoints
 
 ### Sharing
 - **Public Links** - Share notes via unique URLs
 - **Password Protection** - Optionally require a password to view
-- **Expiration** - Set links to expire after 1 hour, 1 day, 7 days, or 30 days
+- **Expiration** - Set links to expire after 1 hour, 1 day, 7 days, 30 days, or never
 - **View Count** - Track how many times shared notes are viewed
 
 ### Trash & Recovery
@@ -46,27 +58,49 @@ A modern, self-hosted note-taking web application with hierarchical organization
 - **Auto-Delete** - Configure automatic permanent deletion after X days (1-365)
 - **Empty Trash** - Permanently delete all trashed notes at once
 
-### Settings
-- **Themes** - 5 built-in themes: Light, Dark, Dracula, Solarized, Nord
-- **Language** - UI language preference (English, Chinese, Hindi, Spanish, Arabic)
-- **Timezone** - Set your preferred timezone
-- **Security** - View and manage all shared notes
-- **Members** - User management for administrators
+### Themes & Customization
+- **5 Built-in Themes** - Light, Dark, Dracula, Solarized, Nord
+- **Custom Colors** - Override theme colors with your own:
+  - Editor background
+  - Text color
+  - Accent color
+  - Surface color
+- **Editor Width** - Toggle between centered and full-width modes
+
+### Activity Tracking
+- **Daily Activity Heatmap** - Visual 24-hour grid showing editing activity
+- **Hourly Statistics** - Character and word counts per hour
+- **Activity History** - Track your writing patterns over time
+
+### Security
+- **Two-Factor Authentication (2FA)**
+  - TOTP-based authentication with QR code setup
+  - Works with Google Authenticator, Authy, and other apps
+  - Admin can disable 2FA for users if needed
+- **JWT Authentication** - Secure access and refresh tokens
+- **httpOnly Cookies** - Secure refresh token storage
+- **Password Hashing** - bcrypt encryption
 
 ### Multi-User
-- **JWT Authentication** - Secure login with access and refresh tokens
 - **Role-Based Access** - Admin and user roles
 - **First User = Admin** - First registered user becomes administrator
+- **User Management** - Admins can create, edit, and delete users
+- **Profile Settings** - Display name, email, profile picture, password
+
+### Localization
+- **Languages** - English, Chinese (Simplified), Hindi, Spanish, Arabic
+- **Timezone** - 30+ common timezones supported
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
 | Frontend | React 18, TypeScript, Vite |
-| Editor | TipTap (ProseMirror-based) |
+| Editor | TipTap 2.11 (ProseMirror-based) |
 | Backend | Node.js, Express, TypeScript |
 | Database | SQLite (better-sqlite3) |
-| Auth | JWT + bcrypt |
+| Auth | JWT + bcrypt + TOTP (otplib) |
+| Drag & Drop | @dnd-kit |
 | Styling | CSS Modules + CSS Variables |
 | Font | Inter |
 | Deployment | Docker, Nginx |
@@ -144,13 +178,15 @@ note-app/
 ├── frontend/                 # React frontend
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── admin/       # User management
 │   │   │   ├── auth/        # Login, Register, ProtectedRoute
-│   │   │   ├── common/      # Button, Modal, EmojiPicker
+│   │   │   ├── common/      # Button, Modal, EmojiPicker, ActivityTracker, AIChatModal
 │   │   │   ├── editor/      # TipTap editor, SlashCommands, ImageExtension
 │   │   │   ├── layout/      # AppLayout, Header, Sidebar
 │   │   │   ├── notes/       # NoteTree, NoteEditor, ShareModal
-│   │   │   ├── settings/    # Settings page (General, Security, Members)
-│   │   │   ├── themes/      # ThemeSwitcher
+│   │   │   ├── profile/     # Profile page (2FA, password, preferences)
+│   │   │   ├── settings/    # General, Security, Members, AI Settings
+│   │   │   ├── themes/      # ThemeSwitcher, ThemeCustomization
 │   │   │   └── trash/       # DeletedNotes page
 │   │   ├── context/         # Auth, Theme, Notes context providers
 │   │   ├── hooks/           # useAuth, useNotes, useTheme
@@ -162,10 +198,11 @@ note-app/
 │
 ├── backend/                  # Express backend
 │   ├── src/
-│   │   ├── controllers/     # Auth, Notes, Users, Share, Upload
+│   │   ├── controllers/     # Auth, Notes, Users, Share, Upload, AI, 2FA, Activity
 │   │   ├── database/        # SQLite setup and migrations
 │   │   ├── middleware/      # Auth middleware
 │   │   ├── routes/          # API route definitions
+│   │   ├── services/        # AI service (OpenAI, Anthropic, OpenWebUI)
 │   │   └── utils/           # JWT and password utilities
 │   ├── uploads/             # Uploaded images storage
 │   └── Dockerfile
@@ -181,12 +218,14 @@ note-app/
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/login` | Login (supports 2FA) |
 | POST | `/api/auth/logout` | Logout |
 | POST | `/api/auth/refresh` | Refresh access token |
 | GET | `/api/auth/me` | Get current user |
+| PUT | `/api/auth/profile` | Update profile |
 | PUT | `/api/auth/theme` | Update theme preference |
 | PUT | `/api/auth/preferences` | Update language/timezone |
+| PUT | `/api/auth/custom-colors` | Update custom theme colors |
 
 ### Notes
 | Method | Endpoint | Description |
@@ -221,6 +260,32 @@ note-app/
 | GET | `/api/share/list/all` | List user's shared notes |
 | GET | `/api/share/public/:token` | Check if password required |
 | POST | `/api/share/public/:token` | Access shared note |
+
+### AI
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/ai/settings` | Get AI settings |
+| PUT | `/api/ai/settings` | Update AI settings |
+| POST | `/api/ai/test` | Test AI connection |
+| POST | `/api/ai/summarize` | Summarize search results |
+| POST | `/api/ai/expand` | Expand text with AI |
+| POST | `/api/ai/chat` | Chat with AI about notes |
+
+### Two-Factor Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/2fa/status` | Get 2FA status |
+| POST | `/api/2fa/setup` | Generate QR code for setup |
+| POST | `/api/2fa/enable` | Verify code and enable 2FA |
+| POST | `/api/2fa/disable` | Disable 2FA |
+| POST | `/api/2fa/admin/disable/:userId` | Admin disable user's 2FA |
+
+### Activity
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/activity` | Record activity |
+| GET | `/api/activity/today` | Get today's hourly activity |
+| GET | `/api/activity/history` | Get activity history |
 
 ### Upload
 | Method | Endpoint | Description |
