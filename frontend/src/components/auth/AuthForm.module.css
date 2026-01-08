@@ -102,3 +102,25 @@
 .footer a:hover {
   text-decoration: underline;
 }
+
+.codeInput {
+  font-family: monospace;
+  font-size: 1.25rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.backLink {
+  width: 100%;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+  color: var(--color-primary);
+}

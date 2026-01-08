@@ -3,11 +3,15 @@ import type { User, LoginCredentials, RegisterCredentials } from '../types/auth.
 import * as authApi from '../api/auth.api';
 import { setAccessToken } from '../api';
 
+interface LoginResult {
+  requiresTwoFactor?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<LoginResult>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -42,9 +46,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth();
   }, []);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials): Promise<LoginResult> => {
     const response = await authApi.login(credentials);
+    if (authApi.isTwoFactorResponse(response)) {
+      return { requiresTwoFactor: true };
+    }
     setUser(response.user);
+    return {};
   }, []);
 
   const register = useCallback(async (credentials: RegisterCredentials) => {

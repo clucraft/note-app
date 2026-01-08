@@ -182,6 +182,25 @@ export function initializeDatabase() {
     // Ignore if already exists
   }
 
+  // Migration: Add 2FA columns to users table
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN totp_secret TEXT DEFAULT NULL`);
+    console.log('Added totp_secret column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN totp_enabled INTEGER DEFAULT 0`);
+    console.log('Added totp_enabled column to users table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 

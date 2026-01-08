@@ -24,9 +24,15 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface TwoFactorResponse {
+  requiresTwoFactor: true;
+  message: string;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
+  totpCode?: string;
 }
 
 export interface RegisterCredentials {

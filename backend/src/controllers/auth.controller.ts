@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../database/db.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { verifyTOTP } from './twofa.controller.js';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -14,7 +15,8 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string()
+  password: z.string(),
+  totpCode: z.string().length(6).optional()
 });
 
 export async function register(req: Request, res: Response) {
@@ -90,11 +92,11 @@ export async function login(req: Request, res: Response) {
       return;
     }
 
-    const { email, password } = result.data;
+    const { email, password, totpCode } = result.data;
 
     // Find user
     const user = db.prepare(`
-      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone, profile_picture, custom_colors
+      SELECT id, username, email, password_hash, display_name, role, theme_preference, language, timezone, profile_picture, custom_colors, totp_enabled, totp_secret
       FROM users WHERE email = ?
     `).get(email) as any;
 
@@ -108,6 +110,26 @@ export async function login(req: Request, res: Response) {
     if (!validPassword) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
+    }
+
+    // Check if 2FA is enabled
+    if (user.totp_enabled && user.totp_secret) {
+      // 2FA is required
+      if (!totpCode) {
+        // Return that 2FA is required (don't issue tokens yet)
+        res.json({
+          requiresTwoFactor: true,
+          message: 'Please enter your 2FA code'
+        });
+        return;
+      }
+
+      // Verify TOTP code
+      const isValidCode = verifyTOTP(user.totp_secret, totpCode);
+      if (!isValidCode) {
+        res.status(401).json({ error: 'Invalid 2FA code' });
+        return;
+      }
     }
 
     // Generate tokens

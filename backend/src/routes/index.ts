@@ -6,6 +6,7 @@ import shareRoutes from './share.routes.js';
 import uploadRoutes from './upload.routes.js';
 import aiRoutes from './ai.routes.js';
 import activityRoutes from './activity.routes.js';
+import twofaRoutes from './twofa.routes.js';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/share', shareRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/ai', aiRoutes);
 router.use('/activity', activityRoutes);
+router.use('/2fa', twofaRoutes);
 
 export default router;

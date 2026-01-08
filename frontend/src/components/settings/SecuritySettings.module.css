@@ -126,3 +126,200 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* 2FA Styles */
+.twoFABox {
+  padding: 1.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.twoFAStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.statusEnabled {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--color-success-light, #d4edda);
+  color: var(--color-success, #28a745);
+  border-radius: var(--radius-sm);
+}
+
+.statusText {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.twoFADisable {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.disableText {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.setupSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stepLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.qrCodeWrapper {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  background-color: white;
+  border-radius: var(--radius-md);
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.qrCode {
+  width: 200px;
+  height: 200px;
+}
+
+.manualEntry {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+}
+
+.secret {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+}
+
+.codeInputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.codeInput {
+  width: 120px;
+  padding: 0.625rem 0.75rem;
+  font-size: 1.125rem;
+  font-family: monospace;
+  letter-spacing: 0.25em;
+  text-align: center;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.setupButton,
+.verifyButton {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.setupButton:hover:not(:disabled),
+.verifyButton:hover:not(:disabled) {
+  background-color: var(--color-primary-dark, #0056b3);
+}
+
+.setupButton:disabled,
+.verifyButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background-color: var(--bg-surface-hover);
+}
+
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.disableButton {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-danger);
+  background-color: transparent;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.disableButton:hover:not(:disabled) {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+.disableButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.twoFAError {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-danger);
+  background-color: var(--color-danger-light, #fee);
+  border-radius: var(--radius-md);
+}
+
+.twoFASuccess {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-success, #28a745);
+  background-color: var(--color-success-light, #d4edda);
+  border-radius: var(--radius-md);
+}

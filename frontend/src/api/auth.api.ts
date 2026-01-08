@@ -1,9 +1,17 @@
 import { api, setAccessToken } from './index';
-import type { User, AuthResponse, LoginCredentials, RegisterCredentials } from '../types/auth.types';
+import type { User, AuthResponse, LoginCredentials, RegisterCredentials, TwoFactorResponse } from '../types/auth.types';
 
-export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/login', credentials);
-  setAccessToken(response.data.accessToken);
+export type LoginResponse = AuthResponse | TwoFactorResponse;
+
+export function isTwoFactorResponse(response: LoginResponse): response is TwoFactorResponse {
+  return 'requiresTwoFactor' in response && response.requiresTwoFactor === true;
+}
+
+export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
+  const response = await api.post<LoginResponse>('/auth/login', credentials);
+  if (!isTwoFactorResponse(response.data)) {
+    setAccessToken(response.data.accessToken);
+  }
   return response.data;
 }
 
