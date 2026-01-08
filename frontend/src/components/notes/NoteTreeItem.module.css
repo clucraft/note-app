@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.375rem 0.5rem;
+  padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--transition-fast),
@@ -52,13 +52,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1rem;
+  height: 1rem;
   padding: 0;
   background: none;
   border: none;
   color: var(--text-primary);
-  font-size: 1.125rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: transform var(--transition-fast);
 }
@@ -80,15 +80,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1rem;
+  height: 1rem;
   color: var(--text-primary);
-  font-size: 0.625rem;
+  font-size: 0.5rem;
   flex-shrink: 0;
 }
 
 .emoji {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   flex-shrink: 0;
   cursor: pointer;
   padding: 0.125rem;
@@ -102,7 +102,7 @@
 
 .title {
   flex: 1;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
