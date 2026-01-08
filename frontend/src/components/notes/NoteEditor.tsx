@@ -31,22 +31,25 @@ export function NoteEditor() {
   // Get editor width from note, default to 'centered'
   const editorWidth: EditorWidth = selectedNote?.editorWidth || 'centered';
 
+  // Compute initial content directly from selectedNote (not via state/effect)
+  // This ensures TiptapEditor gets correct content immediately on remount
+  const initialContent = useMemo(() => {
+    if (!selectedNote) return '';
+    if (!selectedNote.content || selectedNote.content === '<p></p>' || selectedNote.content === '') {
+      return '<h1>Untitled</h1><p></p>';
+    }
+    return selectedNote.content;
+  }, [selectedNote]);
+
   const handleWidthChange = useCallback(async (width: EditorWidth) => {
     if (selectedNote) {
       await updateNote(selectedNote.id, { editorWidth: width });
     }
   }, [selectedNote, updateNote]);
 
-  // Sync local state with selected note
+  // Sync local content state and reset activity tracking when note changes
   useEffect(() => {
     if (selectedNote) {
-      // If note has no content or just empty, initialize with H1 Untitled
-      let initialContent: string;
-      if (!selectedNote.content || selectedNote.content === '<p></p>' || selectedNote.content === '') {
-        initialContent = '<h1>Untitled</h1><p></p>';
-      } else {
-        initialContent = selectedNote.content;
-      }
       setContent(initialContent);
 
       // Reset activity tracking baseline for new note
@@ -59,7 +62,7 @@ export function NoteEditor() {
       setContent('');
       prevStatsRef.current = { charCount: 0, wordCount: 0 };
     }
-  }, [selectedNote]);
+  }, [selectedNote, initialContent]);
 
   // Get display title from content
   const displayTitle = useMemo(() => {
@@ -366,7 +369,7 @@ export function NoteEditor() {
       <div className={`${styles.content} ${styles[editorWidth]}`}>
         <TiptapEditor
           key={selectedNote.id}
-          content={content}
+          content={initialContent}
           onChange={handleContentChange}
         />
       </div>
