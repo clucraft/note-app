@@ -18,6 +18,9 @@ function AppLayoutContent() {
     const saved = localStorage.getItem('sidebarWidth');
     return saved ? parseInt(saved, 10) : DEFAULT_SIDEBAR_WIDTH;
   });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const initialNoteHandled = useRef(false);
@@ -46,6 +49,15 @@ function AppLayoutContent() {
   useEffect(() => {
     localStorage.setItem('sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
+
+  // Save sidebar collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -90,15 +102,19 @@ function AppLayoutContent() {
 
   return (
     <div className={styles.layout}>
-      <Header />
+      <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
       <div className={styles.main}>
-        <div style={{ width: sidebarWidth, flexShrink: 0 }}>
-          <Sidebar />
-        </div>
-        <div
-          className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
-          onMouseDown={handleMouseDown}
-        />
+        {!sidebarCollapsed && (
+          <>
+            <div style={{ width: sidebarWidth, flexShrink: 0 }}>
+              <Sidebar />
+            </div>
+            <div
+              className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
+              onMouseDown={handleMouseDown}
+            />
+          </>
+        )}
         <main className={styles.content}>
           <NoteEditor />
         </main>

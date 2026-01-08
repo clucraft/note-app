@@ -7,7 +7,12 @@ import { searchNotes, SearchResult } from '../../api/notes.api';
 import { summarizeSearchResults } from '../../api/ai.api';
 import styles from './Header.module.css';
 
-export function Header() {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+  sidebarCollapsed?: boolean;
+}
+
+export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
   const { user, logout } = useAuth();
   const { selectNote } = useNotes();
   const navigate = useNavigate();
@@ -101,7 +106,15 @@ export function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.logo}>
-        <span className={styles.logoIcon}>📝</span>
+        {onToggleSidebar && (
+          <button
+            className={styles.sidebarToggle}
+            onClick={onToggleSidebar}
+            title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+          >
+            {sidebarCollapsed ? '☰' : '◀'}
+          </button>
+        )}
         <span className={styles.logoText}>Cache</span>
       </div>
 

@@ -14,8 +14,26 @@
   gap: 0.5rem;
 }
 
-.logoIcon {
-  font-size: 1.5rem;
+.sidebarToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebarToggle:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-color);
+  color: var(--text-primary);
 }
 
 .logoText {
