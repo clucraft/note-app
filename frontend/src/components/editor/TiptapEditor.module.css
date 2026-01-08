@@ -16,13 +16,13 @@
   min-height: 100%;
   padding: 1rem;
   outline: none;
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 0.9375rem;
+  line-height: 1.55;
   color: var(--text-primary);
 }
 
 .editor > * + * {
-  margin-top: 0.75em;
+  margin-top: 0.5em;
 }
 
 /* Headings */
