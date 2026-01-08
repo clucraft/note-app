@@ -411,7 +411,6 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
         <div
           ref={menuRef}
           className={styles.contextMenu}
-          style={{ left: `${depth * 16 + 100}px` }}
         >
           <button className={styles.menuItem} onClick={handleAddChild}>
             <span className={styles.menuIcon}>➕</span>
