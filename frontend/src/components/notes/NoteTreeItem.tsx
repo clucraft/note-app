@@ -356,17 +356,21 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
         </div>
       )}
 
-      {hasChildren && note.isExpanded && (
-        <div className={styles.children} style={{ '--tree-indent': `${indent}px` } as React.CSSProperties}>
-          {note.children.map((child, childIndex) => (
-            <NoteTreeItem
-              key={child.id}
-              note={child}
-              depth={depth + 1}
-              index={childIndex}
-              parentId={note.id}
-            />
-          ))}
+      {hasChildren && (
+        <div className={`${styles.childrenWrapper} ${note.isExpanded ? styles.expanded : ''}`}>
+          <div className={styles.childrenInner}>
+            <div className={styles.children} style={{ '--tree-indent': `${indent}px` } as React.CSSProperties}>
+              {note.children.map((child, childIndex) => (
+                <NoteTreeItem
+                  key={child.id}
+                  note={child}
+                  depth={depth + 1}
+                  index={childIndex}
+                  parentId={note.id}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

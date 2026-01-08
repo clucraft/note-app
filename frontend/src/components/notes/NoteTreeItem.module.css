@@ -52,13 +52,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
   padding: 0;
   background: none;
   border: none;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 1.125rem;
   cursor: pointer;
   transition: transform var(--transition-fast);
 }
@@ -80,15 +80,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
   color: var(--text-primary);
-  font-size: 0.5rem;
+  font-size: 0.625rem;
   flex-shrink: 0;
 }
 
 .emoji {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   flex-shrink: 0;
   cursor: pointer;
   padding: 0.125rem;
@@ -193,6 +193,20 @@
 .subMenu .menuItem {
   padding-left: 1.5rem;
   font-size: 0.75rem;
+}
+
+.childrenWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease-out;
+}
+
+.childrenWrapper.expanded {
+  grid-template-rows: 1fr;
+}
+
+.childrenInner {
+  overflow: hidden;
 }
 
 .children {
