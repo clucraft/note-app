@@ -1,11 +1,15 @@
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { common, createLowlight } from 'lowlight';
+import powershell from 'highlight.js/lib/languages/powershell';
 import { useState, useCallback } from 'react';
 import styles from './CodeBlockExtension.module.css';
 
 // Create lowlight instance with common languages
 export const lowlight = createLowlight(common);
+
+// Register additional languages not in common
+lowlight.register('powershell', powershell);
 
 // Get list of registered languages
 const registeredLanguages = lowlight.listLanguages();
@@ -72,7 +76,9 @@ function CodeBlockNodeView({ node, updateAttributes }: any) {
     updateAttributes({ language: e.target.value });
   }, [updateAttributes]);
 
-  const handleCopy = useCallback(async () => {
+  const handleCopy = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const code = node.textContent;
     try {
       await navigator.clipboard.writeText(code);
@@ -83,14 +89,26 @@ function CodeBlockNodeView({ node, updateAttributes }: any) {
     }
   }, [node]);
 
+  // Prevent editor from handling events on the header controls
+  const stopPropagation = useCallback((e: React.MouseEvent | React.FocusEvent) => {
+    e.stopPropagation();
+  }, []);
+
   return (
     <NodeViewWrapper className={styles.codeBlockWrapper}>
-      <div className={styles.codeBlockHeader}>
+      <div
+        className={styles.codeBlockHeader}
+        contentEditable={false}
+        onMouseDown={stopPropagation}
+        onClick={stopPropagation}
+      >
         <select
           className={styles.languageSelect}
           value={language}
           onChange={handleLanguageChange}
-          contentEditable={false}
+          onMouseDown={stopPropagation}
+          onClick={stopPropagation}
+          onFocus={stopPropagation}
         >
           <option value="">Auto-detect</option>
           {sortedLanguages.map((lang) => (
@@ -102,7 +120,7 @@ function CodeBlockNodeView({ node, updateAttributes }: any) {
         <button
           className={styles.copyButton}
           onClick={handleCopy}
-          contentEditable={false}
+          onMouseDown={stopPropagation}
           title="Copy code"
         >
           {copied ? '✓ Copied' : 'Copy'}
