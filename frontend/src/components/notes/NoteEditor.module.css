@@ -231,6 +231,27 @@
   white-space: nowrap;
 }
 
+.breadcrumbLink {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0.125rem 0.25rem;
+  margin: -0.125rem -0.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: inherit;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.breadcrumbLink:hover {
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
 .breadcrumbCurrent {
   color: var(--text-primary);
   font-weight: 600;

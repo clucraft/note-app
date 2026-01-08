@@ -11,6 +11,21 @@
   overflow: hidden;
 }
 
+.sidebarWrapper {
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.25s ease-in-out;
+}
+
+.sidebarWrapper.collapsed {
+  width: 0 !important;
+}
+
+.sidebarInner {
+  height: 100%;
+  flex-shrink: 0;
+}
+
 .content {
   flex: 1;
   overflow: hidden;

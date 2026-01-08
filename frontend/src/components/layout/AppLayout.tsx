@@ -104,16 +104,19 @@ function AppLayoutContent() {
     <div className={styles.layout}>
       <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
       <div className={styles.main}>
+        <div
+          className={`${styles.sidebarWrapper} ${sidebarCollapsed ? styles.collapsed : ''}`}
+          style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
+        >
+          <div className={styles.sidebarInner} style={{ width: sidebarWidth }}>
+            <Sidebar />
+          </div>
+        </div>
         {!sidebarCollapsed && (
-          <>
-            <div style={{ width: sidebarWidth, flexShrink: 0 }}>
-              <Sidebar />
-            </div>
-            <div
-              className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
-              onMouseDown={handleMouseDown}
-            />
-          </>
+          <div
+            className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
+            onMouseDown={handleMouseDown}
+          />
         )}
         <main className={styles.content}>
           <NoteEditor />

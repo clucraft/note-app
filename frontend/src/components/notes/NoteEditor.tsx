@@ -19,7 +19,7 @@ function extractTitleFromContent(html: string): string {
 }
 
 export function NoteEditor() {
-  const { selectedNote, updateNote, deleteNote, notes } = useNotes();
+  const { selectedNote, updateNote, deleteNote, notes, selectNote } = useNotes();
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -310,10 +310,20 @@ export function NoteEditor() {
           {breadcrumbPath.map((note, index) => (
             <span key={note.id}>
               {index > 0 && <span className={styles.breadcrumbSeparator}>/</span>}
-              <span className={index === breadcrumbPath.length - 1 ? styles.breadcrumbCurrent : styles.breadcrumbItem}>
-                <span className={styles.breadcrumbEmoji}>{note.titleEmoji || '📄'}</span>
-                {index === breadcrumbPath.length - 1 ? displayTitle : note.title}
-              </span>
+              {index === breadcrumbPath.length - 1 ? (
+                <span className={styles.breadcrumbCurrent}>
+                  <span className={styles.breadcrumbEmoji}>{note.titleEmoji || '📄'}</span>
+                  {displayTitle}
+                </span>
+              ) : (
+                <button
+                  className={styles.breadcrumbLink}
+                  onClick={() => selectNote(note.id)}
+                >
+                  <span className={styles.breadcrumbEmoji}>{note.titleEmoji || '📄'}</span>
+                  {note.title}
+                </button>
+              )}
             </span>
           ))}
         </div>
