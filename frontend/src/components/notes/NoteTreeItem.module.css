@@ -209,6 +209,10 @@
   overflow: hidden;
 }
 
+.childrenWrapper.expanded .childrenInner {
+  overflow: visible;
+}
+
 .children {
   display: flex;
   flex-direction: column;
