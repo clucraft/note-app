@@ -426,6 +426,24 @@
   transform: translateX(16px);
 }
 
+.actionArrow {
+  margin-left: auto;
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.subMenu {
+  max-height: 200px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.subMenu .actionItem {
+  padding-left: 1.5rem;
+  font-size: 0.8125rem;
+}
+
 .actionDanger {
   color: var(--color-danger, #dc3545);
 }

@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNotes } from '../../hooks/useNotes';
 import { EmojiPicker } from '../common/EmojiPicker';
 import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
+import { ShareModal } from './ShareModal';
 import type { Note } from '../../types/note.types';
 import styles from './NoteTreeItem.module.css';
 
@@ -18,6 +19,7 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTrashModal, setShowTrashModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | 'inside' | null>(null);
@@ -106,6 +108,79 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
   const handleDuplicate = async () => {
     setShowMenu(false);
     await duplicateNote(note.id);
+  };
+
+  const handleExportHTML = useCallback(() => {
+    setShowMenu(false);
+    const content = note.content || '';
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${note.title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    h1, h2, h3, h4 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    h1 { font-size: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; font-family: monospace; }
+    blockquote { border-left: 4px solid #ddd; margin: 1rem 0; padding-left: 1rem; color: #666; font-style: italic; }
+    img { max-width: 100%; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>${note.titleEmoji || ''} ${note.title}</h1>
+  ${content}
+</body>
+</html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${note.title.replace(/[^a-z0-9]/gi, '_')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [note]);
+
+  const handleExportPDF = useCallback(() => {
+    setShowMenu(false);
+    const content = note.content || '';
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${note.title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    h1, h2, h3, h4 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    h1 { font-size: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; font-family: monospace; }
+    blockquote { border-left: 4px solid #ddd; margin: 1rem 0; padding-left: 1rem; color: #666; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>${note.titleEmoji || ''} ${note.title}</h1>
+  ${content}
+</body>
+</html>`;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+  }, [note]);
+
+  const handleShare = () => {
+    setShowMenu(false);
+    setShowShareModal(true);
   };
 
   const handleMoveToRoot = async () => {
@@ -314,6 +389,14 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
         onConfirm={handleConfirmDelete}
       />
 
+      {showShareModal && (
+        <ShareModal
+          noteId={note.id}
+          noteTitle={note.title}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+
       {showMenu && (
         <div
           ref={menuRef}
@@ -324,14 +407,29 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
             <span className={styles.menuIcon}>➕</span>
             Add child note
           </button>
-          <button className={styles.menuItem} onClick={handleCopyLink}>
-            <span className={styles.menuIcon}>🔗</span>
-            Copy link
-          </button>
           <button className={styles.menuItem} onClick={handleDuplicate}>
             <span className={styles.menuIcon}>📋</span>
             Duplicate
           </button>
+          <div className={styles.menuDivider} />
+          <button className={styles.menuItem} onClick={handleExportHTML}>
+            <span className={styles.menuIcon}>📄</span>
+            Export as HTML
+          </button>
+          <button className={styles.menuItem} onClick={handleExportPDF}>
+            <span className={styles.menuIcon}>📑</span>
+            Export as PDF
+          </button>
+          <div className={styles.menuDivider} />
+          <button className={styles.menuItem} onClick={handleShare}>
+            <span className={styles.menuIcon}>🔗</span>
+            Share
+          </button>
+          <button className={styles.menuItem} onClick={handleCopyLink}>
+            <span className={styles.menuIcon}>📎</span>
+            Copy Link
+          </button>
+          <div className={styles.menuDivider} />
           <button
             className={styles.menuItem}
             onClick={() => setShowMoveMenu(!showMoveMenu)}
@@ -361,7 +459,7 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
           <div className={styles.menuDivider} />
           <button className={`${styles.menuItem} ${styles.danger}`} onClick={handleDelete}>
             <span className={styles.menuIcon}>🗑️</span>
-            Delete
+            Move to Trash
           </button>
         </div>
       )}

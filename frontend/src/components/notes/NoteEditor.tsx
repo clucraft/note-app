@@ -3,6 +3,7 @@ import { useNotes } from '../../hooks/useNotes';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { ShareModal } from './ShareModal';
+import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
 import { ActivityTracker } from '../common/ActivityTracker';
 import { recordActivity } from '../../api/activity.api';
 import type { Note, EditorWidth } from '../../types/note.types';
@@ -19,10 +20,12 @@ function extractTitleFromContent(html: string): string {
 }
 
 export function NoteEditor() {
-  const { selectedNote, updateNote, deleteNote, notes, selectNote } = useNotes();
+  const { selectedNote, updateNote, deleteNote, createNote, duplicateNote, moveNote, notes, selectNote } = useNotes();
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showTrashModal, setShowTrashModal] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [activityKey, setActivityKey] = useState(0);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const prevStatsRef = useRef({ charCount: 0, wordCount: 0 });
@@ -283,13 +286,65 @@ export function NoteEditor() {
     setShowActionsMenu(false);
   }, [selectedNote]);
 
-  const handleMoveToTrash = useCallback(async () => {
+  const handleMoveToTrash = useCallback(() => {
     if (!selectedNote) return;
-    if (confirm('Move this note to trash?')) {
-      await deleteNote(selectedNote.id);
-    }
     setShowActionsMenu(false);
+    setShowTrashModal(true);
+  }, [selectedNote]);
+
+  const handleConfirmTrash = useCallback(async () => {
+    if (!selectedNote) return;
+    await deleteNote(selectedNote.id);
   }, [selectedNote, deleteNote]);
+
+  const handleAddChild = useCallback(async () => {
+    if (!selectedNote) return;
+    setShowActionsMenu(false);
+    await createNote({ parentId: selectedNote.id, title: 'Untitled', titleEmoji: '📄' });
+  }, [selectedNote, createNote]);
+
+  const handleDuplicate = useCallback(async () => {
+    if (!selectedNote) return;
+    setShowActionsMenu(false);
+    await duplicateNote(selectedNote.id);
+  }, [selectedNote, duplicateNote]);
+
+  const handleMoveToRoot = useCallback(async () => {
+    if (!selectedNote) return;
+    setShowActionsMenu(false);
+    setShowMoveMenu(false);
+    await moveNote(selectedNote.id, null);
+  }, [selectedNote, moveNote]);
+
+  const handleMoveToNote = useCallback(async (targetId: number) => {
+    if (!selectedNote) return;
+    setShowActionsMenu(false);
+    setShowMoveMenu(false);
+    await moveNote(selectedNote.id, targetId);
+  }, [selectedNote, moveNote]);
+
+  // Get flat list of all notes for move menu (excluding self and descendants)
+  const getMoveTargets = useCallback((nodes: Note[], exclude: number): Note[] => {
+    const result: Note[] = [];
+    const collectNotes = (items: Note[], parentExcluded: boolean) => {
+      for (const item of items) {
+        const isExcluded = parentExcluded || item.id === exclude;
+        if (!isExcluded) {
+          result.push(item);
+        }
+        if (item.children && item.children.length > 0) {
+          collectNotes(item.children, isExcluded);
+        }
+      }
+    };
+    collectNotes(nodes, false);
+    return result;
+  }, []);
+
+  const moveTargets = useMemo(() => {
+    if (!selectedNote) return [];
+    return getMoveTargets(notes, selectedNote.id);
+  }, [notes, selectedNote, getMoveTargets]);
 
   if (!selectedNote) {
     return (
@@ -338,6 +393,15 @@ export function NoteEditor() {
           </button>
           {showActionsMenu && (
             <div className={styles.actionsMenu}>
+              <button className={styles.actionItem} onClick={handleAddChild}>
+                <span className={styles.actionIcon}>➕</span>
+                Add child note
+              </button>
+              <button className={styles.actionItem} onClick={handleDuplicate}>
+                <span className={styles.actionIcon}>📋</span>
+                Duplicate
+              </button>
+              <div className={styles.actionDivider} />
               <button className={styles.actionItem} onClick={handleExportHTML}>
                 <span className={styles.actionIcon}>📄</span>
                 Export as HTML
@@ -352,9 +416,36 @@ export function NoteEditor() {
                 Share
               </button>
               <button className={styles.actionItem} onClick={handleCopyLink}>
-                <span className={styles.actionIcon}>📋</span>
+                <span className={styles.actionIcon}>📎</span>
                 Copy Link
               </button>
+              <div className={styles.actionDivider} />
+              <button
+                className={styles.actionItem}
+                onClick={() => setShowMoveMenu(!showMoveMenu)}
+              >
+                <span className={styles.actionIcon}>📁</span>
+                Move to...
+                <span className={styles.actionArrow}>▶</span>
+              </button>
+              {showMoveMenu && (
+                <div className={styles.subMenu}>
+                  <button className={styles.actionItem} onClick={handleMoveToRoot}>
+                    <span className={styles.actionIcon}>🏠</span>
+                    Root level
+                  </button>
+                  {moveTargets.map(target => (
+                    <button
+                      key={target.id}
+                      className={styles.actionItem}
+                      onClick={() => handleMoveToNote(target.id)}
+                    >
+                      <span className={styles.actionIcon}>{target.titleEmoji || '📄'}</span>
+                      {target.title}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className={styles.actionDivider} />
               <button
                 className={styles.actionItem}
@@ -407,6 +498,12 @@ export function NoteEditor() {
           onClose={() => setShowShareModal(false)}
         />
       )}
+
+      <ConfirmTrashModal
+        isOpen={showTrashModal}
+        onClose={() => setShowTrashModal(false)}
+        onConfirm={handleConfirmTrash}
+      />
     </div>
   );
 }
