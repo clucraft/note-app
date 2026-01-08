@@ -330,3 +330,62 @@
 .dropdownItem:hover {
   background-color: var(--bg-surface-hover);
 }
+
+/* Mobile styles */
+.header.mobile {
+  padding: 0 0.75rem;
+}
+
+.header.mobile .searchContainer {
+  margin: 0 0.5rem;
+  max-width: none;
+  flex: 1;
+}
+
+.header.mobile .searchInput {
+  font-size: 16px; /* Prevent iOS zoom */
+}
+
+.header.mobile .userName {
+  display: none;
+}
+
+.header.mobile .actions {
+  gap: 0.5rem;
+}
+
+@media (max-width: 767px) {
+  .searchContainer {
+    margin: 0 0.5rem;
+    max-width: none;
+  }
+
+  .searchInput {
+    font-size: 16px; /* Prevent iOS zoom */
+    padding: 0.625rem 1rem;
+  }
+
+  .searchResults {
+    position: fixed;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 3.5rem;
+    max-height: 60vh;
+  }
+
+  .userName {
+    display: none;
+  }
+
+  .actions {
+    gap: 0.5rem;
+  }
+
+  .userButton {
+    padding: 0.25rem;
+  }
+
+  .dropdown {
+    right: -0.5rem;
+  }
+}

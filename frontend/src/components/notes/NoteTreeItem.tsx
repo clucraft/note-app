@@ -9,9 +9,10 @@ interface NoteTreeItemProps {
   depth: number;
   index: number;
   parentId: number | null;
+  onNoteSelect?: () => void;
 }
 
-export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps) {
+export function NoteTreeItem({ note, depth, index, parentId, onNoteSelect }: NoteTreeItemProps) {
   const { selectedNote, selectNote, createNote, deleteNote, toggleExpand, duplicateNote, moveNote, reorderNote, updateNote, notes } = useNotes();
   const [showMenu, setShowMenu] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -57,6 +58,7 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
 
   const handleClick = () => {
     selectNote(note);
+    onNoteSelect?.();
   };
 
   const handleToggleExpand = (e: React.MouseEvent) => {
@@ -365,6 +367,7 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
               depth={depth + 1}
               index={childIndex}
               parentId={note.id}
+              onNoteSelect={onNoteSelect}
             />
           ))}
         </div>

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { NoteEditor } from '../notes/NoteEditor';
+import { MobileNav } from './MobileNav';
 import { useNotes } from '../../hooks/useNotes';
 import { NotesProvider } from '../../context/NotesContext';
 import styles from './AppLayout.module.css';
@@ -10,6 +11,7 @@ import styles from './AppLayout.module.css';
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 500;
 const DEFAULT_SIDEBAR_WIDTH = 280;
+const MOBILE_BREAKPOINT = 768;
 
 function AppLayoutContent() {
   const { loadNotes, selectNote, notes } = useNotes();
@@ -22,8 +24,25 @@ function AppLayoutContent() {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
   const [isResizing, setIsResizing] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const initialNoteHandled = useRef(false);
+
+  // Handle window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+      setIsMobile(mobile);
+      // Close drawer when switching to desktop
+      if (!mobile) {
+        setMobileDrawerOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadNotes();
@@ -56,7 +75,15 @@ function AppLayoutContent() {
   }, [sidebarCollapsed]);
 
   const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed(prev => !prev);
+    if (isMobile) {
+      setMobileDrawerOpen(prev => !prev);
+    } else {
+      setSidebarCollapsed(prev => !prev);
+    }
+  }, [isMobile]);
+
+  const closeMobileDrawer = useCallback(() => {
+    setMobileDrawerOpen(false);
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -102,26 +129,57 @@ function AppLayoutContent() {
 
   return (
     <div className={styles.layout}>
-      <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+      <Header
+        onToggleSidebar={toggleSidebar}
+        sidebarCollapsed={isMobile ? !mobileDrawerOpen : sidebarCollapsed}
+        isMobile={isMobile}
+      />
       <div className={styles.main}>
-        <div
-          className={`${styles.sidebarWrapper} ${sidebarCollapsed ? styles.collapsed : ''}`}
-          style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
-        >
-          <div className={styles.sidebarInner} style={{ width: sidebarWidth }}>
-            <Sidebar />
-          </div>
-        </div>
-        {!sidebarCollapsed && (
-          <div
-            className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
-            onMouseDown={handleMouseDown}
-          />
+        {/* Mobile drawer overlay */}
+        {isMobile && (
+          <>
+            <div
+              className={`${styles.drawerBackdrop} ${mobileDrawerOpen ? styles.visible : ''}`}
+              onClick={closeMobileDrawer}
+            />
+            <div className={`${styles.mobileDrawer} ${mobileDrawerOpen ? styles.open : ''}`}>
+              <Sidebar onNoteSelect={closeMobileDrawer} />
+            </div>
+          </>
         )}
+
+        {/* Desktop sidebar */}
+        {!isMobile && (
+          <>
+            <div
+              className={`${styles.sidebarWrapper} ${sidebarCollapsed ? styles.collapsed : ''}`}
+              style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
+            >
+              <div className={styles.sidebarInner} style={{ width: sidebarWidth }}>
+                <Sidebar />
+              </div>
+            </div>
+            {!sidebarCollapsed && (
+              <div
+                className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
+                onMouseDown={handleMouseDown}
+              />
+            )}
+          </>
+        )}
+
         <main className={styles.content}>
           <NoteEditor />
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      {isMobile && (
+        <MobileNav
+          onMenuClick={toggleSidebar}
+          isDrawerOpen={mobileDrawerOpen}
+        />
+      )}
     </div>
   );
 }

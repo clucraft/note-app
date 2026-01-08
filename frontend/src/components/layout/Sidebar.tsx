@@ -5,12 +5,17 @@ import { Button } from '../common/Button';
 import { AIChatModal } from '../common/AIChatModal';
 import styles from './Sidebar.module.css';
 
-export function Sidebar() {
+interface SidebarProps {
+  onNoteSelect?: () => void;
+}
+
+export function Sidebar({ onNoteSelect }: SidebarProps) {
   const { createNote, isLoading } = useNotes();
   const [showAIChat, setShowAIChat] = useState(false);
 
   const handleNewNote = async () => {
     await createNote({ title: 'Untitled', titleEmoji: '📄' });
+    onNoteSelect?.();
   };
 
   return (
@@ -38,7 +43,7 @@ export function Sidebar() {
         </div>
       </div>
       <div className={styles.tree}>
-        <NoteTree />
+        <NoteTree onNoteSelect={onNoteSelect} />
       </div>
 
       <AIChatModal isOpen={showAIChat} onClose={() => setShowAIChat(false)} />

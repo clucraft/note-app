@@ -10,9 +10,10 @@ import styles from './Header.module.css';
 interface HeaderProps {
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
+  isMobile?: boolean;
 }
 
-export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
+export function Header({ onToggleSidebar, sidebarCollapsed, isMobile }: HeaderProps) {
   const { user, logout } = useAuth();
   const { selectNote } = useNotes();
   const navigate = useNavigate();
@@ -104,9 +105,9 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
   };
 
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${isMobile ? styles.mobile : ''}`}>
       <div className={styles.logo}>
-        {onToggleSidebar && (
+        {onToggleSidebar && !isMobile && (
           <button
             className={styles.sidebarToggle}
             onClick={onToggleSidebar}
@@ -171,15 +172,17 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
       </div>
 
       <div className={styles.actions}>
-        <a
-          href="https://buymeacoffee.com/clucraft"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.coffeeButton}
-        >
-          <span className={styles.coffeeEmoji}>☕</span>
-          coffee
-        </a>
+        {!isMobile && (
+          <a
+            href="https://buymeacoffee.com/clucraft"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.coffeeButton}
+          >
+            <span className={styles.coffeeEmoji}>☕</span>
+            coffee
+          </a>
+        )}
         <ThemeSwitcher />
 
         <div className={styles.userMenu} ref={menuRef}>

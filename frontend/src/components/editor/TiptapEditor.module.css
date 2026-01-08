@@ -300,3 +300,51 @@
 .editor .hljs-strong {
   font-weight: 700;
 }
+
+/* Mobile styles */
+@media (max-width: 767px) {
+  .editor {
+    padding: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .editor h1 {
+    font-size: 1.5rem;
+  }
+
+  .editor h2 {
+    font-size: 1.25rem;
+  }
+
+  .editor h3 {
+    font-size: 1.125rem;
+  }
+
+  .editor pre {
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .editor table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .editor th,
+  .editor td {
+    padding: 0.375rem 0.5rem;
+    min-width: 80px;
+    font-size: 0.875rem;
+  }
+
+  .bubbleMenu {
+    transform: scale(0.95);
+  }
+
+  .bubbleMenu button {
+    padding: 0.625rem 0.75rem;
+    min-height: 44px;
+  }
+}

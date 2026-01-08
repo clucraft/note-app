@@ -2,7 +2,11 @@ import { useNotes } from '../../hooks/useNotes';
 import { NoteTreeItem } from './NoteTreeItem';
 import styles from './NoteTree.module.css';
 
-export function NoteTree() {
+interface NoteTreeProps {
+  onNoteSelect?: () => void;
+}
+
+export function NoteTree({ onNoteSelect }: NoteTreeProps) {
   const { notes, isLoading, error } = useNotes();
 
   if (isLoading) {
@@ -31,6 +35,7 @@ export function NoteTree() {
           depth={0}
           index={index}
           parentId={null}
+          onNoteSelect={onNoteSelect}
         />
       ))}
     </div>
