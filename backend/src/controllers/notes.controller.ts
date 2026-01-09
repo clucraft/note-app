@@ -511,7 +511,7 @@ export async function searchNotes(req: Request, res: Response) {
             const similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
             return { ...note, similarity };
           })
-          .filter(note => note.similarity > 0.3) // Only include reasonably similar notes
+          .filter(note => note.similarity > 0.5) // Only include reasonably similar notes
           .sort((a, b) => b.similarity - a.similarity)
           .slice(0, 15);
 
