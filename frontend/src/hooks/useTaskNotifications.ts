@@ -10,13 +10,10 @@ export function useTaskNotifications() {
 
   const checkDueTasks = useCallback(async () => {
     try {
-      console.log('[TaskNotifications] Checking for due tasks...');
       const dueTasks = await getDueTasks();
-      console.log('[TaskNotifications] Due tasks from API:', dueTasks);
 
       // Filter out tasks we've already shown
       const newTasks = dueTasks.filter(task => !processedTaskIds.current.has(task.taskId));
-      console.log('[TaskNotifications] New tasks (not yet shown):', newTasks);
 
       if (newTasks.length > 0) {
         // Add new tasks to pending queue
@@ -24,10 +21,9 @@ export function useTaskNotifications() {
 
         // Mark these tasks as processed
         newTasks.forEach(task => processedTaskIds.current.add(task.taskId));
-        console.log('[TaskNotifications] Added to pending queue');
       }
     } catch (error) {
-      console.error('[TaskNotifications] Failed to check due tasks:', error);
+      console.error('Failed to check due tasks:', error);
     }
   }, []);
 
@@ -35,7 +31,6 @@ export function useTaskNotifications() {
   useEffect(() => {
     if (!currentTask && pendingTasks.length > 0) {
       const [nextTask, ...remaining] = pendingTasks;
-      console.log('[TaskNotifications] Showing task notification:', nextTask);
       setCurrentTask(nextTask);
       setPendingTasks(remaining);
     }
