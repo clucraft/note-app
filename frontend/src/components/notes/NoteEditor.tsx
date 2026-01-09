@@ -472,6 +472,7 @@ export function NoteEditor() {
           key={selectedNote.id}
           content={initialContent}
           onChange={handleContentChange}
+          noteId={selectedNote.id}
         />
       </div>
 

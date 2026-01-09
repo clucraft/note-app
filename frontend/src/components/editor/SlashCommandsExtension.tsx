@@ -16,6 +16,7 @@ interface CommandItem {
   isEmojiPicker?: boolean;
   isVideoUpload?: boolean;
   isFileUpload?: boolean;
+  isTaskCreate?: boolean;
 }
 
 const commands: CommandItem[] = [
@@ -191,6 +192,13 @@ const commands: CommandItem[] = [
       editor.chain().focus().deleteRange(range).insertContent(time).run();
     },
   },
+  {
+    title: 'Task',
+    description: 'Create a scheduled task with reminder',
+    icon: '📋',
+    isTaskCreate: true,
+    command: () => {}, // Handled specially
+  },
 ];
 
 interface CommandListProps {
@@ -198,13 +206,14 @@ interface CommandListProps {
   command: (item: CommandItem) => void;
   editor: any;
   range: any;
+  onTaskCreate?: (editor: any, range: any) => void;
 }
 
 interface CommandListRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, command, editor, range }, ref) => {
+const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, command, editor, range, onTaskCreate }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -268,11 +277,13 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
         triggerFileInput('video/mp4,video/webm,video/ogg,video/quicktime', handleVideoUpload);
       } else if (item.isFileUpload) {
         triggerFileInput('*/*', handleFileUpload);
+      } else if (item.isTaskCreate && onTaskCreate) {
+        onTaskCreate(editor, range);
       } else {
         command(item);
       }
     }
-  }, [items, command, triggerFileInput, handleVideoUpload, handleFileUpload]);
+  }, [items, command, triggerFileInput, handleVideoUpload, handleFileUpload, onTaskCreate, editor, range]);
 
   const handleEmojiSelect = useCallback((emoji: { native: string }) => {
     editor.chain().focus().deleteRange(range).insertContent(emoji.native).run();
@@ -373,6 +384,7 @@ export const SlashCommands = Extension.create({
           props.command({ editor, range });
         },
       },
+      onTaskCreate: undefined as ((editor: any, range: any) => void) | undefined,
     };
   },
 
@@ -389,6 +401,7 @@ export const SlashCommands = Extension.create({
         render: () => {
           let component: ReactRenderer | null = null;
           let popup: TippyInstance[] | null = null;
+          const onTaskCreate = this.options.onTaskCreate;
 
           return {
             onStart: (props: any) => {
@@ -397,6 +410,7 @@ export const SlashCommands = Extension.create({
                   ...props,
                   editor: props.editor,
                   range: props.range,
+                  onTaskCreate,
                 },
                 editor: props.editor,
               });
@@ -421,6 +435,7 @@ export const SlashCommands = Extension.create({
                 ...props,
                 editor: props.editor,
                 range: props.range,
+                onTaskCreate,
               });
 
               if (!props.clientRect) {

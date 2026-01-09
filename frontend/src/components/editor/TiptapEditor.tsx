@@ -15,16 +15,28 @@ import { ResizableImage } from './ImageExtension';
 import { Video } from './VideoExtension';
 import { FileAttachment } from './FileExtension';
 import { CodeBlock } from './CodeBlockExtension';
+import { TaskCal } from './TaskCalExtension';
+import { TaskCreateModal } from '../common/TaskCreateModal';
 import { expandText } from '../../api/ai.api';
+import { createTask } from '../../api/tasks.api';
 import styles from './TiptapEditor.module.css';
 
 interface TiptapEditorProps {
   content: string;
   onChange: (html: string) => void;
   onReady?: () => void;
+  noteId?: number;
 }
 
-export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) {
+export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEditorProps) {
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
+  const handleTaskCreate = useCallback((editorInstance: any, range: any) => {
+    // Delete the slash command text and open the modal
+    editorInstance.chain().focus().deleteRange(range).run();
+    setIsTaskModalOpen(true);
+  }, []);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -58,7 +70,10 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
       CodeBlock,
       Video,
       FileAttachment,
-      SlashCommands,
+      TaskCal,
+      SlashCommands.configure({
+        onTaskCreate: handleTaskCreate,
+      }),
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -153,6 +168,39 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
     }
   }, [editor, isExpanding]);
 
+  const handleTaskConfirm = useCallback(async (data: { description: string; dueDate: string; dueTime: string }) => {
+    if (!editor) return;
+
+    try {
+      // Generate a unique task ID
+      const taskId = crypto.randomUUID();
+
+      // Create task in database
+      const task = await createTask({
+        taskId,
+        noteId,
+        description: data.description,
+        dueDate: data.dueDate,
+        dueTime: data.dueTime,
+      });
+
+      // Insert TaskCal node at cursor position
+      editor.chain().focus().setTaskCal({
+        taskId: task.taskId,
+        description: task.description,
+        dueDate: task.dueDate,
+        dueTime: task.dueTime,
+        completed: false,
+        snoozed: false,
+      }).run();
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      alert('Failed to create task. Please try again.');
+    }
+
+    setIsTaskModalOpen(false);
+  }, [editor, noteId]);
+
   if (!editor) {
     return <div className={styles.loading}>Loading editor...</div>;
   }
@@ -231,6 +279,11 @@ export function TiptapEditor({ content, onChange, onReady }: TiptapEditorProps) 
         </BubbleMenu>
       )}
       <EditorContent editor={editor} />
+      <TaskCreateModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onConfirm={handleTaskConfirm}
+      />
     </div>
   );
 }

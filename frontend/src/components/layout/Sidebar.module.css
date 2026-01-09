@@ -33,4 +33,43 @@
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem;
+  min-height: 0;
+}
+
+/* Calendar Section */
+.calendarSection {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
+  padding: 0.5rem;
+  overflow-y: auto;
+  max-height: 50%;
+}
+
+.calendarToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calendarToggle:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.calendarToggleIcon {
+  font-size: 0.625rem;
+  width: 0.75rem;
+}
+
+.calendarToggleText {
+  font-size: 0.8125rem;
+  font-weight: 500;
 }

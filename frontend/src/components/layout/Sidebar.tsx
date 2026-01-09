@@ -3,14 +3,31 @@ import { useNotes } from '../../hooks/useNotes';
 import { NoteTree } from '../notes/NoteTree';
 import { Button } from '../common/Button';
 import { AIChatModal } from '../common/AIChatModal';
+import { Calendar } from '../common/Calendar';
 import styles from './Sidebar.module.css';
 
 export function Sidebar() {
-  const { createNote, isLoading } = useNotes();
+  const { createNote, isLoading, selectNote } = useNotes();
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(() => {
+    const stored = localStorage.getItem('showCalendar');
+    return stored !== null ? stored === 'true' : true;
+  });
 
   const handleNewNote = async () => {
     await createNote({ title: 'Untitled', titleEmoji: '📄' });
+  };
+
+  const toggleCalendar = () => {
+    const newValue = !showCalendar;
+    setShowCalendar(newValue);
+    localStorage.setItem('showCalendar', String(newValue));
+  };
+
+  const handleTaskClick = (task: { noteId: number | null }) => {
+    if (task.noteId) {
+      selectNote(task.noteId);
+    }
   };
 
   return (
@@ -39,6 +56,17 @@ export function Sidebar() {
       </div>
       <div className={styles.tree}>
         <NoteTree />
+      </div>
+
+      {/* Calendar Section */}
+      <div className={styles.calendarSection}>
+        <button className={styles.calendarToggle} onClick={toggleCalendar}>
+          <span className={styles.calendarToggleIcon}>{showCalendar ? '▼' : '▶'}</span>
+          <span className={styles.calendarToggleText}>Calendar</span>
+        </button>
+        {showCalendar && (
+          <Calendar onTaskClick={handleTaskClick} />
+        )}
       </div>
 
       <AIChatModal isOpen={showAIChat} onClose={() => setShowAIChat(false)} />

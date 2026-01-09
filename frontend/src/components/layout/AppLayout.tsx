@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { NoteEditor } from '../notes/NoteEditor';
+import { TaskNotificationModal } from '../common/TaskNotificationModal';
 import { useNotes } from '../../hooks/useNotes';
+import { useTaskNotifications } from '../../hooks/useTaskNotifications';
 import { NotesProvider } from '../../context/NotesContext';
 import styles from './AppLayout.module.css';
 
@@ -13,6 +15,7 @@ const DEFAULT_SIDEBAR_WIDTH = 280;
 
 function AppLayoutContent() {
   const { loadNotes, selectNote, notes } = useNotes();
+  const { currentTask, dismissCurrentTask, onTaskUpdated } = useTaskNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth');
@@ -122,6 +125,12 @@ function AppLayoutContent() {
           <NoteEditor />
         </main>
       </div>
+
+      <TaskNotificationModal
+        task={currentTask}
+        onClose={dismissCurrentTask}
+        onTaskUpdated={onTaskUpdated}
+      />
     </div>
   );
 }

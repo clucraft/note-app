@@ -201,6 +201,36 @@ export function initializeDatabase() {
     }
   }
 
+  // Create tasks table for calendar tasks
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      note_id INTEGER DEFAULT NULL,
+      task_id TEXT NOT NULL,
+      description TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      due_time TEXT NOT NULL,
+      completed INTEGER DEFAULT 0,
+      completed_at DATETIME DEFAULT NULL,
+      snoozed_until DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Create indexes for task lookups
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(user_id, due_date)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_task_id ON tasks(task_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_note_id ON tasks(note_id)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   console.log('Database initialized successfully');
 }
 

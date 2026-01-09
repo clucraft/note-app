@@ -1,0 +1,202 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.25rem;
+}
+
+.navButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.625rem;
+  transition: all var(--transition-fast);
+}
+
+.navButton:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.monthYear {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0.25rem 0;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dayCell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.day:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.day.today {
+  font-weight: 600;
+  color: var(--color-primary);
+  background-color: var(--color-primary-light, rgba(99, 102, 241, 0.1));
+}
+
+.day.selected {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.day.hasTasks {
+  font-weight: 500;
+}
+
+.taskDot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+}
+
+.day.selected .taskDot {
+  background-color: white;
+}
+
+/* Sections */
+.dayTasksSection,
+.upcomingSection {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.sectionHeader {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.taskItem {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.taskItem:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.taskItem.completed {
+  opacity: 0.6;
+}
+
+.taskItem.completed .taskDescription {
+  text-decoration: line-through;
+}
+
+.taskCheckbox {
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.taskDescription {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskTime,
+.taskDateTime {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.snoozed {
+  font-size: 0.625rem;
+  margin-left: 0.125rem;
+}
+
+.loading,
+.noTasks {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.5rem;
+}
