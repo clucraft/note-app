@@ -33,6 +33,9 @@ const reorderNoteSchema = z.object({
   sortOrder: z.number()
 });
 
+// Track users who have had auto-indexing triggered (to avoid repeated triggers)
+const usersWithIndexingTriggered = new Set<number>();
+
 /**
  * Update embedding for a note (runs asynchronously, doesn't block request)
  */
@@ -442,6 +445,42 @@ export async function searchNotes(req: Request, res: Response) {
       ORDER BY updated_at DESC
       LIMIT 20
     `).all(userId, searchTerm, searchTerm) as any[];
+
+    // Auto-index: Check if there are unindexed notes and trigger background indexing
+    if (!usersWithIndexingTriggered.has(userId)) {
+      const unindexedCount = db.prepare(`
+        SELECT COUNT(*) as count FROM notes
+        WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NULL
+      `).get(userId) as { count: number };
+
+      if (unindexedCount.count > 0) {
+        usersWithIndexingTriggered.add(userId);
+        console.log(`Auto-indexing ${unindexedCount.count} notes for user ${userId}...`);
+
+        // Get all unindexed notes and start background indexing
+        const notesToIndex = db.prepare(`
+          SELECT id, title, content FROM notes
+          WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NULL
+        `).all(userId) as any[];
+
+        // Run indexing in background (don't await)
+        (async () => {
+          let indexed = 0;
+          for (const note of notesToIndex) {
+            try {
+              await updateNoteEmbedding(note.id, note.title, note.content);
+              indexed++;
+            } catch (error) {
+              console.error(`Failed to index note ${note.id}:`, error);
+            }
+          }
+          console.log(`Auto-indexing complete: ${indexed}/${notesToIndex.length} notes for user ${userId}`);
+        })().catch(err => console.error('Auto-indexing error:', err));
+      } else {
+        // All notes already indexed, mark as triggered
+        usersWithIndexingTriggered.add(userId);
+      }
+    }
 
     // 2. Semantic search (find similar notes by meaning)
     let semanticResults: any[] = [];
