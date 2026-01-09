@@ -16,6 +16,8 @@ import { Video } from './VideoExtension';
 import { FileAttachment } from './FileExtension';
 import { CodeBlock } from './CodeBlockExtension';
 import { TaskCal } from './TaskCalExtension';
+import { FindReplaceExtension } from './FindReplaceExtension';
+import { FindReplace } from './FindReplace';
 import { TaskCreateModal } from '../common/TaskCreateModal';
 import { expandText } from '../../api/ai.api';
 import { createTask } from '../../api/tasks.api';
@@ -30,6 +32,7 @@ interface TiptapEditorProps {
 
 export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEditorProps) {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
 
   const handleTaskCreate = useCallback((editorInstance: any, range: any) => {
     // Delete the slash command text and open the modal
@@ -74,6 +77,7 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
       SlashCommands.configure({
         onTaskCreate: handleTaskCreate,
       }),
+      FindReplaceExtension,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -111,6 +115,19 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
     // Only run on mount - component remounts when switching notes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
+
+  // Ctrl+F keyboard shortcut for find/replace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setIsFindReplaceOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const [isExpanding, setIsExpanding] = useState(false);
 
@@ -283,6 +300,11 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         onConfirm={handleTaskConfirm}
+      />
+      <FindReplace
+        editor={editor}
+        isOpen={isFindReplaceOpen}
+        onClose={() => setIsFindReplaceOpen(false)}
       />
     </div>
   );

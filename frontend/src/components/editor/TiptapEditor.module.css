@@ -300,3 +300,15 @@
 .editor .hljs-strong {
   font-weight: 700;
 }
+
+/* Find and replace highlights */
+:global(.find-highlight) {
+  background-color: rgba(255, 213, 0, 0.4);
+  border-radius: 2px;
+}
+
+:global(.find-highlight-current) {
+  background-color: rgba(255, 165, 0, 0.7);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
