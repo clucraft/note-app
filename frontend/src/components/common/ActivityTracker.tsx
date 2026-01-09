@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTodayActivity, type TodayActivity } from '../../api/activity.api';
+import { ActivityPopup } from './ActivityPopup';
 import styles from './ActivityTracker.module.css';
 
 interface ActivityTrackerProps {
@@ -9,6 +10,7 @@ interface ActivityTrackerProps {
 export function ActivityTracker({ onRefreshNeeded }: ActivityTrackerProps) {
   const [activity, setActivity] = useState<TodayActivity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPopup, setShowPopup] = useState(false);
 
   const fetchActivity = useCallback(async () => {
     try {
@@ -63,19 +65,26 @@ export function ActivityTracker({ onRefreshNeeded }: ActivityTrackerProps) {
   };
 
   return (
-    <div className={styles.container} title={`Today: ${activity.totals.wordCount.toLocaleString()} words`}>
-      <span className={styles.label}>Today:</span>
-      <div className={styles.blocks}>
-        {activity.hourly.map((hour, i) => (
-          <div
-            key={i}
-            className={`${styles.block} ${styles[`level${getLevel(hour.charCount)}`]} ${i === currentHour ? styles.current : ''} ${i > currentHour ? styles.future : ''}`}
-            title={`${i}:00 - ${hour.wordCount} words`}
-          />
-        ))}
-      </div>
-      <span className={styles.count}>{activity.totals.wordCount.toLocaleString()}</span>
-    </div>
+    <>
+      <button
+        className={styles.container}
+        onClick={() => setShowPopup(true)}
+        title={`Today: ${activity.totals.wordCount.toLocaleString()} words - Click for details`}
+      >
+        <span className={styles.label}>Today:</span>
+        <div className={styles.blocks}>
+          {activity.hourly.map((hour, i) => (
+            <div
+              key={i}
+              className={`${styles.block} ${styles[`level${getLevel(hour.charCount)}`]} ${i === currentHour ? styles.current : ''} ${i > currentHour ? styles.future : ''}`}
+              title={`${i}:00 - ${hour.wordCount} words`}
+            />
+          ))}
+        </div>
+        <span className={styles.count}>{activity.totals.wordCount.toLocaleString()}</span>
+      </button>
+      {showPopup && <ActivityPopup onClose={() => setShowPopup(false)} />}
+    </>
   );
 }
 

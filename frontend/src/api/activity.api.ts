@@ -44,6 +44,31 @@ export async function getTodayActivity(): Promise<TodayActivity> {
 }
 
 export async function getActivityHistory(days: number = 7): Promise<DailyActivity[]> {
-  const response = await api.get<DailyActivity[]>('/activity/history', { params: { days } });
+  // Send current date from client for proper week calculation
+  const now = new Date();
+  const currentDate = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+
+  const response = await api.get<DailyActivity[]>('/activity/history', {
+    params: { days, currentDate }
+  });
+  return response.data;
+}
+
+export interface StreakInfo {
+  currentStreak: number;
+}
+
+export async function getStreak(): Promise<StreakInfo> {
+  // Send current date from client for accurate streak calculation
+  const now = new Date();
+  const currentDate = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+
+  const response = await api.get<StreakInfo>('/activity/streak', {
+    params: { currentDate }
+  });
   return response.data;
 }
