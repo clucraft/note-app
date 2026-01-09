@@ -11,8 +11,12 @@ interface TaskCreateModalProps {
 export function TaskCreateModal({ isOpen, onClose, onConfirm }: TaskCreateModalProps) {
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(() => {
+    // Use local date components (not toISOString which is UTC)
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
   const [dueTime, setDueTime] = useState(() => {
     const now = new Date();
