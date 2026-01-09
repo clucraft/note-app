@@ -156,6 +156,11 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
                 <span className={styles.resultTitle}>
                   {result.titleEmoji && <span className={styles.resultEmoji}>{result.titleEmoji}</span>}
                   {result.title}
+                  {result.matchType === 'semantic' && (
+                    <span className={styles.semanticBadge} title="Found by meaning, not exact match">
+                      similar
+                    </span>
+                  )}
                 </span>
                 <span className={styles.resultPreview}>{result.preview}</span>
               </button>

@@ -1,6 +1,14 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { db, getNoteTree, buildTreeStructure } from '../database/db.js';
+import {
+  generateEmbedding,
+  embeddingToBuffer,
+  bufferToEmbedding,
+  cosineSimilarity,
+  prepareNoteText,
+  stripHtml
+} from '../services/embeddings.service.js';
 
 // Validation schemas
 const createNoteSchema = z.object({
@@ -24,6 +32,24 @@ const moveNoteSchema = z.object({
 const reorderNoteSchema = z.object({
   sortOrder: z.number()
 });
+
+/**
+ * Update embedding for a note (runs asynchronously, doesn't block request)
+ */
+async function updateNoteEmbedding(noteId: number, title: string, content: string): Promise<void> {
+  try {
+    const text = prepareNoteText(title, content);
+    // Skip very short notes
+    if (text.length < 10) {
+      return;
+    }
+    const embedding = await generateEmbedding(text);
+    const buffer = embeddingToBuffer(embedding);
+    db.prepare('UPDATE notes SET embedding = ? WHERE id = ?').run(buffer, noteId);
+  } catch (error) {
+    console.error(`Failed to generate embedding for note ${noteId}:`, error);
+  }
+}
 
 export async function getNotesTree(req: Request, res: Response) {
   try {
@@ -103,8 +129,13 @@ export async function createNote(req: Request, res: Response) {
     `);
     const insertResult = stmt.run(userId, parentId || null, title, titleEmoji || null, content, sortOrder);
 
+    const noteId = insertResult.lastInsertRowid as number;
+
+    // Generate embedding asynchronously (don't await)
+    updateNoteEmbedding(noteId, title, content);
+
     res.status(201).json({
-      id: insertResult.lastInsertRowid,
+      id: noteId,
       parentId: parentId || null,
       title,
       titleEmoji: titleEmoji || null,
@@ -169,6 +200,11 @@ export async function updateNote(req: Request, res: Response) {
       SELECT id, parent_id, title, title_emoji, content, sort_order, is_expanded, editor_width, updated_at
       FROM notes WHERE id = ?
     `).get(noteId) as any;
+
+    // Regenerate embedding if title or content changed (async, don't await)
+    if (title !== undefined || content !== undefined) {
+      updateNoteEmbedding(noteId, updated.title, updated.content);
+    }
 
     res.json({
       id: updated.id,
@@ -398,29 +434,81 @@ export async function searchNotes(req: Request, res: Response) {
     const userId = req.user!.userId;
     const searchTerm = `%${query.trim()}%`;
 
-    const results = db.prepare(`
-      SELECT id, title, title_emoji, content, updated_at
+    // 1. Keyword search (fast, exact matches)
+    const keywordResults = db.prepare(`
+      SELECT id, title, title_emoji, content, updated_at, embedding
       FROM notes
       WHERE user_id = ? AND deleted_at IS NULL AND (title LIKE ? OR content LIKE ?)
       ORDER BY updated_at DESC
       LIMIT 20
     `).all(userId, searchTerm, searchTerm) as any[];
 
-    // Generate preview snippets with matched text
-    const formattedResults = results.map(note => {
+    // 2. Semantic search (find similar notes by meaning)
+    let semanticResults: any[] = [];
+    try {
+      // Generate embedding for the query
+      const queryEmbedding = await generateEmbedding(query);
+
+      // Get all notes with embeddings for this user
+      const allNotes = db.prepare(`
+        SELECT id, title, title_emoji, content, updated_at, embedding
+        FROM notes
+        WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NOT NULL
+      `).all(userId) as any[];
+
+      // Calculate similarity scores
+      const scored = allNotes
+        .map(note => {
+          const noteEmbedding = bufferToEmbedding(note.embedding);
+          const similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
+          return { ...note, similarity };
+        })
+        .filter(note => note.similarity > 0.3) // Only include reasonably similar notes
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 15);
+
+      semanticResults = scored;
+    } catch (error) {
+      console.error('Semantic search error:', error);
+      // Continue with just keyword results if semantic search fails
+    }
+
+    // 3. Merge results - keyword matches first, then semantic (avoiding duplicates)
+    const seenIds = new Set<number>();
+    const mergedResults: any[] = [];
+
+    // Add keyword results first (they're exact matches)
+    for (const note of keywordResults) {
+      if (!seenIds.has(note.id)) {
+        seenIds.add(note.id);
+        mergedResults.push({ ...note, matchType: 'keyword' });
+      }
+    }
+
+    // Add semantic results that aren't already included
+    for (const note of semanticResults) {
+      if (!seenIds.has(note.id)) {
+        seenIds.add(note.id);
+        mergedResults.push({ ...note, matchType: 'semantic' });
+      }
+    }
+
+    // 4. Format results with preview snippets
+    const formattedResults = mergedResults.slice(0, 20).map(note => {
       let preview = '';
+      const plainContent = stripHtml(note.content);
       const lowerQuery = query.toLowerCase();
-      const lowerContent = note.content.toLowerCase();
+      const lowerContent = plainContent.toLowerCase();
       const matchIndex = lowerContent.indexOf(lowerQuery);
 
       if (matchIndex !== -1) {
         const start = Math.max(0, matchIndex - 40);
-        const end = Math.min(note.content.length, matchIndex + query.length + 40);
+        const end = Math.min(plainContent.length, matchIndex + query.length + 40);
         preview = (start > 0 ? '...' : '') +
-                  note.content.slice(start, end) +
-                  (end < note.content.length ? '...' : '');
+                  plainContent.slice(start, end) +
+                  (end < plainContent.length ? '...' : '');
       } else {
-        preview = note.content.slice(0, 80) + (note.content.length > 80 ? '...' : '');
+        preview = plainContent.slice(0, 80) + (plainContent.length > 80 ? '...' : '');
       }
 
       return {
@@ -428,7 +516,8 @@ export async function searchNotes(req: Request, res: Response) {
         title: note.title,
         titleEmoji: note.title_emoji,
         preview,
-        updatedAt: note.updated_at
+        updatedAt: note.updated_at,
+        matchType: note.matchType
       };
     });
 
@@ -609,5 +698,73 @@ export async function emptyTrash(req: Request, res: Response) {
   } catch (error) {
     console.error('Empty trash error:', error);
     res.status(500).json({ error: 'Failed to empty trash' });
+  }
+}
+
+/**
+ * Reindex all notes for a user - generates embeddings for notes that don't have them
+ */
+export async function reindexNotes(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    // Get all notes without embeddings
+    const notesToIndex = db.prepare(`
+      SELECT id, title, content
+      FROM notes
+      WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NULL
+    `).all(userId) as any[];
+
+    // Start indexing in background
+    const indexPromise = (async () => {
+      let indexed = 0;
+      for (const note of notesToIndex) {
+        try {
+          await updateNoteEmbedding(note.id, note.title, note.content);
+          indexed++;
+        } catch (error) {
+          console.error(`Failed to index note ${note.id}:`, error);
+        }
+      }
+      console.log(`Indexed ${indexed}/${notesToIndex.length} notes for user ${userId}`);
+    })();
+
+    // Don't await - let it run in background
+    indexPromise.catch(err => console.error('Reindex error:', err));
+
+    res.json({
+      message: 'Reindexing started',
+      notesToIndex: notesToIndex.length
+    });
+  } catch (error) {
+    console.error('Reindex notes error:', error);
+    res.status(500).json({ error: 'Failed to start reindexing' });
+  }
+}
+
+/**
+ * Get indexing status - how many notes have embeddings
+ */
+export async function getIndexStatus(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    const stats = db.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END) as indexed
+      FROM notes
+      WHERE user_id = ? AND deleted_at IS NULL
+    `).get(userId) as { total: number; indexed: number };
+
+    res.json({
+      total: stats.total,
+      indexed: stats.indexed,
+      pending: stats.total - stats.indexed,
+      percentage: stats.total > 0 ? Math.round((stats.indexed / stats.total) * 100) : 100
+    });
+  } catch (error) {
+    console.error('Get index status error:', error);
+    res.status(500).json({ error: 'Failed to get index status' });
   }
 }

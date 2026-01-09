@@ -231,6 +231,16 @@ export function initializeDatabase() {
     // Ignore if already exists
   }
 
+  // Migration: Add embedding column to notes table for semantic search
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN embedding BLOB DEFAULT NULL`);
+    console.log('Added embedding column to notes table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 

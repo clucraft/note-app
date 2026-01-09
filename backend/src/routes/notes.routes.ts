@@ -15,7 +15,9 @@ import {
   permanentlyDeleteNotes,
   getAutoDeleteDays,
   updateAutoDeleteDays,
-  emptyTrash
+  emptyTrash,
+  reindexNotes,
+  getIndexStatus
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -26,6 +28,8 @@ router.use(authenticate);
 
 router.get('/', getNotesTree);
 router.get('/search', searchNotes);
+router.get('/index-status', getIndexStatus);
+router.post('/reindex', reindexNotes);
 router.get('/trash', getDeletedNotes);
 router.post('/trash/restore', restoreNotes);
 router.post('/trash/permanent-delete', permanentlyDeleteNotes);

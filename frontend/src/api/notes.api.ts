@@ -44,6 +44,7 @@ export interface SearchResult {
   titleEmoji: string | null;
   preview: string;
   updatedAt: string;
+  matchType?: 'keyword' | 'semantic';
 }
 
 export async function searchNotes(query: string): Promise<SearchResult[]> {
