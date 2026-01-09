@@ -1,0 +1,89 @@
+.editorWithHandle {
+  position: relative;
+}
+
+.dragHandle {
+  position: fixed;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+  z-index: 100;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.dragHandle:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+}
+
+.dragHandle.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dragHandle.dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dragHandle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dropIndicator {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--color-primary);
+  border-radius: 2px;
+  z-index: 99;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--color-primary-light);
+}
+
+/* Animation for drop indicator */
+.dropIndicator::before,
+.dropIndicator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+}
+
+.dropIndicator::before {
+  left: -4px;
+}
+
+.dropIndicator::after {
+  right: -4px;
+}
+
+/* Dragging state for the editor */
+:global(.ProseMirror.dragging) {
+  cursor: grabbing !important;
+}
+
+/* Highlight the block being dragged */
+:global(.ProseMirror .block-dragging) {
+  opacity: 0.5;
+  background-color: var(--color-primary-light);
+}

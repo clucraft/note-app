@@ -21,6 +21,7 @@ import { FindReplace } from './FindReplace';
 import { Youtube } from './YoutubeExtension';
 import { Mermaid } from './MermaidExtension';
 import { MathBlock, MathInline } from './MathExtension';
+import { DragHandle } from './DragHandle';
 import { TaskCreateModal } from '../common/TaskCreateModal';
 import { expandText } from '../../api/ai.api';
 import { createTask } from '../../api/tasks.api';
@@ -303,6 +304,7 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
         </BubbleMenu>
       )}
       <EditorContent editor={editor} />
+      <DragHandle editor={editor} />
       <TaskCreateModal
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
