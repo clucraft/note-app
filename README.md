@@ -4,7 +4,7 @@ A modern, self-hosted note-taking web application with hierarchical organization
 
 ## Screenshot
 
-<img width="2015" height="1134" alt="image" src="https://github.com/user-attachments/assets/d57c0981-c57e-410d-8bde-1c225948437e" />
+<img width="2018" height="1126" alt="image" src="https://github.com/user-attachments/assets/36e722a4-5764-4091-a855-bfd20248617b" />
 
 
 ## Features
