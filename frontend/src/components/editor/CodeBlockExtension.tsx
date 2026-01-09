@@ -1,8 +1,9 @@
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { common, createLowlight } from 'lowlight';
+import { toHtml } from 'hast-util-to-html';
 import powershell from 'highlight.js/lib/languages/powershell';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import styles from './CodeBlockExtension.module.css';
 
 // Create lowlight instance with common languages
@@ -71,6 +72,20 @@ const sortedLanguages = [...registeredLanguages].sort((a, b) => {
 function CodeBlockNodeView({ node, updateAttributes }: any) {
   const [copied, setCopied] = useState(false);
   const language = node.attrs.language || '';
+  const code = node.textContent || '';
+
+  // Generate highlighted HTML
+  const highlightedCode = useMemo(() => {
+    if (!code) return '';
+    try {
+      const result = language && registeredLanguages.includes(language)
+        ? lowlight.highlight(language, code)
+        : lowlight.highlightAuto(code);
+      return toHtml(result);
+    } catch {
+      return code;
+    }
+  }, [code, language]);
 
   const handleLanguageChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     updateAttributes({ language: e.target.value });
@@ -79,7 +94,6 @@ function CodeBlockNodeView({ node, updateAttributes }: any) {
   const handleCopy = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const code = node.textContent;
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
@@ -87,7 +101,7 @@ function CodeBlockNodeView({ node, updateAttributes }: any) {
     } catch (err) {
       console.error('Failed to copy code:', err);
     }
-  }, [node]);
+  }, [code]);
 
   // Prevent editor from handling events on the header controls
   const stopPropagation = useCallback((e: React.MouseEvent | React.FocusEvent) => {
@@ -127,7 +141,11 @@ function CodeBlockNodeView({ node, updateAttributes }: any) {
         </button>
       </div>
       <pre className={styles.codeBlockPre}>
-        <NodeViewContent as="code" className={language ? `language-${language}` : ''} />
+        <NodeViewContent as="code" />
+      </pre>
+      {/* Hidden highlighted overlay for syntax colors */}
+      <pre className={styles.codeBlockHighlight} aria-hidden="true">
+        <code dangerouslySetInnerHTML={{ __html: highlightedCode }} />
       </pre>
     </NodeViewWrapper>
   );

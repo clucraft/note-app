@@ -7,6 +7,14 @@
   overflow: hidden;
 }
 
+/* Container for the two overlapping pre elements */
+.codeBlockWrapper pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background: transparent;
+}
+
 .codeBlockHeader {
   display: flex;
   align-items: center;
@@ -60,19 +68,43 @@
 }
 
 .codeBlockPre {
-  margin: 0;
-  padding: 1rem;
-  overflow-x: auto;
-  background: transparent;
+  position: relative;
+  z-index: 1;
 }
 
 .codeBlockPre code {
   font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.5;
+  color: transparent;
+  caret-color: var(--text-primary);
+  background: none;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Highlighted code overlay - displays syntax colors */
+.codeBlockHighlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin-top: 41px; /* Height of header */
+  pointer-events: none;
+  z-index: 0;
+}
+
+.codeBlockHighlight code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
   color: var(--text-primary);
   background: none;
   padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Syntax highlighting - same as TiptapEditor but scoped to our wrapper */
