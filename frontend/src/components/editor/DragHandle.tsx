@@ -23,6 +23,7 @@ export function DragHandle({ editor }: DragHandleProps) {
   const currentBlockRef = useRef<BlockInfo | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
   const editorContainerRef = useRef<HTMLElement | null>(null);
+  const isHoveringHandleRef = useRef(false);
 
   // Get the editor's DOM element
   const getEditorElement = useCallback(() => {
@@ -114,15 +115,40 @@ export function DragHandle({ editor }: DragHandleProps) {
         setIsVisible(true);
       }
     } else {
+      // Don't hide if hovering over the handle itself
+      if (isHoveringHandleRef.current) return;
+
       // Delay hiding to prevent flickering
       if (!hideTimeoutRef.current) {
         hideTimeoutRef.current = window.setTimeout(() => {
-          setIsVisible(false);
+          if (!isHoveringHandleRef.current) {
+            setIsVisible(false);
+          }
           hideTimeoutRef.current = null;
         }, 150);
       }
     }
   }, [isDragging, getEditorElement, findBlockAtPosition]);
+
+  // Handle mouse entering the drag handle
+  const handleMouseEnterHandle = useCallback(() => {
+    isHoveringHandleRef.current = true;
+    // Clear any pending hide timeout
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Handle mouse leaving the drag handle
+  const handleMouseLeaveHandle = useCallback(() => {
+    isHoveringHandleRef.current = false;
+    // Start hide timeout
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setIsVisible(false);
+      hideTimeoutRef.current = null;
+    }, 150);
+  }, []);
 
   // Handle drag start
   const handleDragStart = useCallback((e: React.DragEvent) => {
@@ -263,6 +289,8 @@ export function DragHandle({ editor }: DragHandleProps) {
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onMouseEnter={handleMouseEnterHandle}
+        onMouseLeave={handleMouseLeaveHandle}
         title="Drag to reorder"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">

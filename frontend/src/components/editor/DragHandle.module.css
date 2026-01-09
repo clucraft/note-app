@@ -9,22 +9,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background-color: transparent;
+  border: none;
   border-radius: var(--radius-sm);
   cursor: grab;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease, color 0.15s ease;
   z-index: 100;
   color: var(--text-muted);
   user-select: none;
 }
 
 .dragHandle:hover {
-  background-color: var(--bg-hover);
   color: var(--text-primary);
-  border-color: var(--color-primary);
 }
 
 .dragHandle.visible {
@@ -35,8 +33,7 @@
 .dragHandle.dragging {
   cursor: grabbing;
   opacity: 0.8;
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: scale(1.1);
 }
 
 .dragHandle svg {
