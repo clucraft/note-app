@@ -1,18 +1,29 @@
-import { pipeline, type FeatureExtractionPipeline } from '@xenova/transformers';
-
 // Model to use for embeddings
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 
-// Singleton pipeline instance
-let embeddingPipeline: FeatureExtractionPipeline | null = null;
+// Singleton pipeline instance (using any type since we dynamically import)
+let embeddingPipeline: any = null;
 let isLoading = false;
-let loadingPromise: Promise<FeatureExtractionPipeline> | null = null;
+let loadingPromise: Promise<any> | null = null;
+let embeddingsDisabled = false;
+
+/**
+ * Check if embeddings are available
+ */
+export function isEmbeddingsAvailable(): boolean {
+  return !embeddingsDisabled;
+}
 
 /**
  * Get or initialize the embedding pipeline
  * Uses lazy loading - model is only downloaded on first use
+ * Dynamic import to avoid ESM/CommonJS issues
  */
-async function getEmbeddingPipeline(): Promise<FeatureExtractionPipeline> {
+async function getEmbeddingPipeline(): Promise<any> {
+  if (embeddingsDisabled) {
+    throw new Error('Embeddings are disabled');
+  }
+
   if (embeddingPipeline) {
     return embeddingPipeline;
   }
@@ -24,18 +35,28 @@ async function getEmbeddingPipeline(): Promise<FeatureExtractionPipeline> {
   isLoading = true;
   console.log(`Loading embedding model: ${MODEL_NAME}...`);
 
-  loadingPromise = pipeline('feature-extraction', MODEL_NAME, {
-    // Use quantized model for faster inference and smaller size
-    quantized: true,
-  }) as Promise<FeatureExtractionPipeline>;
-
   try {
+    // Dynamic import to handle ESM module
+    const { pipeline } = await import('@xenova/transformers');
+
+    loadingPromise = pipeline('feature-extraction', MODEL_NAME, {
+      // Use quantized model for faster inference and smaller size
+      quantized: true,
+    });
+
     embeddingPipeline = await loadingPromise;
     console.log('Embedding model loaded successfully');
     return embeddingPipeline;
-  } catch (error) {
+  } catch (error: any) {
     isLoading = false;
     loadingPromise = null;
+
+    // Check if this is a native module loading error (Docker/Alpine issue)
+    if (error.code === 'ERR_DLOPEN_FAILED' || error.message?.includes('ld-linux') || error.message?.includes('GLIBC')) {
+      console.warn('Embeddings disabled: Native ONNX runtime not available in this environment');
+      console.warn('Semantic search will not work. Keyword search still available.');
+      embeddingsDisabled = true;
+    }
     throw error;
   }
 }

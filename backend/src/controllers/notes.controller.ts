@@ -7,7 +7,8 @@ import {
   bufferToEmbedding,
   cosineSimilarity,
   prepareNoteText,
-  stripHtml
+  stripHtml,
+  isEmbeddingsAvailable
 } from '../services/embeddings.service.js';
 
 // Validation schemas
@@ -447,7 +448,8 @@ export async function searchNotes(req: Request, res: Response) {
     `).all(userId, searchTerm, searchTerm) as any[];
 
     // Auto-index: Check if there are unindexed notes and trigger background indexing
-    if (!usersWithIndexingTriggered.has(userId)) {
+    // Only if embeddings are available (not disabled due to ONNX issues)
+    if (!usersWithIndexingTriggered.has(userId) && isEmbeddingsAvailable()) {
       const unindexedCount = db.prepare(`
         SELECT COUNT(*) as count FROM notes
         WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NULL
@@ -470,7 +472,12 @@ export async function searchNotes(req: Request, res: Response) {
             try {
               await updateNoteEmbedding(note.id, note.title, note.content);
               indexed++;
-            } catch (error) {
+            } catch (error: any) {
+              // If embeddings got disabled during indexing, stop
+              if (!isEmbeddingsAvailable()) {
+                console.log('Auto-indexing stopped: embeddings became unavailable');
+                break;
+              }
               console.error(`Failed to index note ${note.id}:`, error);
             }
           }
@@ -483,33 +490,36 @@ export async function searchNotes(req: Request, res: Response) {
     }
 
     // 2. Semantic search (find similar notes by meaning)
+    // Only if embeddings are available
     let semanticResults: any[] = [];
-    try {
-      // Generate embedding for the query
-      const queryEmbedding = await generateEmbedding(query);
+    if (isEmbeddingsAvailable()) {
+      try {
+        // Generate embedding for the query
+        const queryEmbedding = await generateEmbedding(query);
 
-      // Get all notes with embeddings for this user
-      const allNotes = db.prepare(`
-        SELECT id, title, title_emoji, content, updated_at, embedding
-        FROM notes
-        WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NOT NULL
-      `).all(userId) as any[];
+        // Get all notes with embeddings for this user
+        const allNotes = db.prepare(`
+          SELECT id, title, title_emoji, content, updated_at, embedding
+          FROM notes
+          WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NOT NULL
+        `).all(userId) as any[];
 
-      // Calculate similarity scores
-      const scored = allNotes
-        .map(note => {
-          const noteEmbedding = bufferToEmbedding(note.embedding);
-          const similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
-          return { ...note, similarity };
-        })
-        .filter(note => note.similarity > 0.3) // Only include reasonably similar notes
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 15);
+        // Calculate similarity scores
+        const scored = allNotes
+          .map(note => {
+            const noteEmbedding = bufferToEmbedding(note.embedding);
+            const similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
+            return { ...note, similarity };
+          })
+          .filter(note => note.similarity > 0.3) // Only include reasonably similar notes
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, 15);
 
-      semanticResults = scored;
-    } catch (error) {
-      console.error('Semantic search error:', error);
-      // Continue with just keyword results if semantic search fails
+        semanticResults = scored;
+      } catch (error) {
+        console.error('Semantic search error:', error);
+        // Continue with just keyword results if semantic search fails
+      }
     }
 
     // 3. Merge results - keyword matches first, then semantic (avoiding duplicates)
