@@ -57,6 +57,8 @@ export async function getDueTasks(): Promise<Task[]> {
   const localDate = `${year}-${month}-${day}`;
   const localTime = now.toTimeString().slice(0, 5); // HH:MM
 
+  console.log(`[getDueTasks API] Checking with localDate=${localDate}, localTime=${localTime}`);
+
   const response = await api.get<Task[]>('/tasks/due', {
     params: { localDate, localTime }
   });

@@ -82,6 +82,8 @@ export async function getDueTasks(req: Request, res: Response) {
     const nowDateTime = `${localDate}T${localTime}:00`;
     const nowForSnooze = new Date().toISOString(); // Snooze uses ISO for cross-timezone consistency
 
+    console.log(`[getDueTasks] User ${userId}, checking for tasks due at or before: ${nowDateTime}`);
+
     const stmt = db.prepare(`
       SELECT * FROM tasks
       WHERE user_id = ?
@@ -91,6 +93,8 @@ export async function getDueTasks(req: Request, res: Response) {
       ORDER BY due_date, due_time
     `);
     const tasks = stmt.all(userId, nowDateTime, nowForSnooze);
+
+    console.log(`[getDueTasks] Found ${tasks.length} due tasks:`, tasks.map((t: any) => ({ id: t.task_id, due: `${t.due_date}T${t.due_time}` })));
 
     res.json(tasks.map(transformTask));
   } catch (error) {
