@@ -17,6 +17,7 @@ interface CommandItem {
   isVideoUpload?: boolean;
   isFileUpload?: boolean;
   isTaskCreate?: boolean;
+  isYoutubeEmbed?: boolean;
 }
 
 const commands: CommandItem[] = [
@@ -199,6 +200,37 @@ const commands: CommandItem[] = [
     isTaskCreate: true,
     command: () => {}, // Handled specially
   },
+  {
+    title: 'YouTube',
+    description: 'Embed a YouTube video',
+    icon: '▶️',
+    isYoutubeEmbed: true,
+    command: () => {}, // Handled specially
+  },
+  {
+    title: 'Mermaid',
+    description: 'Insert a diagram (flowchart, sequence, etc.)',
+    icon: '📊',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setMermaid().run();
+    },
+  },
+  {
+    title: 'Math Block',
+    description: 'Insert a block equation (LaTeX)',
+    icon: '∑',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setMathBlock().run();
+    },
+  },
+  {
+    title: 'Math Inline',
+    description: 'Insert inline math (LaTeX)',
+    icon: 'π',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setMathInline().run();
+    },
+  },
 ];
 
 interface CommandListProps {
@@ -268,6 +300,33 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
     input.click();
   }, []);
 
+  const handleYoutubeEmbed = useCallback(() => {
+    const url = window.prompt('Enter YouTube URL:');
+    if (!url) return;
+
+    // Extract video ID
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /^([a-zA-Z0-9_-]{11})$/,
+    ];
+
+    let videoId: string | null = null;
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        videoId = match[1];
+        break;
+      }
+    }
+
+    if (!videoId) {
+      alert('Invalid YouTube URL. Please enter a valid YouTube video URL.');
+      return;
+    }
+
+    editor.chain().focus().deleteRange(range).setYoutubeVideo({ url }).run();
+  }, [editor, range]);
+
   const selectItem = useCallback((index: number) => {
     const item = items[index];
     if (item) {
@@ -279,11 +338,13 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
         triggerFileInput('*/*', handleFileUpload);
       } else if (item.isTaskCreate && onTaskCreate) {
         onTaskCreate(editor, range);
+      } else if (item.isYoutubeEmbed) {
+        handleYoutubeEmbed();
       } else {
         command(item);
       }
     }
-  }, [items, command, triggerFileInput, handleVideoUpload, handleFileUpload, onTaskCreate, editor, range]);
+  }, [items, command, triggerFileInput, handleVideoUpload, handleFileUpload, onTaskCreate, handleYoutubeEmbed, editor, range]);
 
   const handleEmojiSelect = useCallback((emoji: { native: string }) => {
     editor.chain().focus().deleteRange(range).insertContent(emoji.native).run();

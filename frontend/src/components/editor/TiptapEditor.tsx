@@ -18,6 +18,9 @@ import { CodeBlock } from './CodeBlockExtension';
 import { TaskCal } from './TaskCalExtension';
 import { FindReplaceExtension } from './FindReplaceExtension';
 import { FindReplace } from './FindReplace';
+import { Youtube } from './YoutubeExtension';
+import { Mermaid } from './MermaidExtension';
+import { MathBlock, MathInline } from './MathExtension';
 import { TaskCreateModal } from '../common/TaskCreateModal';
 import { expandText } from '../../api/ai.api';
 import { createTask } from '../../api/tasks.api';
@@ -74,6 +77,10 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
       Video,
       FileAttachment,
       TaskCal,
+      Youtube,
+      Mermaid,
+      MathBlock,
+      MathInline,
       SlashCommands.configure({
         onTaskCreate: handleTaskCreate,
       }),
