@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { useCallback } from 'react';
-import { completeTask } from '../../api/tasks.api';
+import { useCallback, useState } from 'react';
+import { completeTask, deleteTask } from '../../api/tasks.api';
 import styles from './TaskCalExtension.module.css';
 
 interface TaskCalAttrs {
@@ -14,8 +14,9 @@ interface TaskCalAttrs {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TaskCalNodeView({ node, updateAttributes }: any) {
+function TaskCalNodeView({ node, updateAttributes, deleteNode }: any) {
   const attrs = node.attrs as TaskCalAttrs;
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleToggleComplete = useCallback(async () => {
     const newCompleted = !attrs.completed;
@@ -31,6 +32,21 @@ function TaskCalNodeView({ node, updateAttributes }: any) {
       updateAttributes({ completed: !newCompleted });
     }
   }, [attrs.taskId, attrs.completed, updateAttributes]);
+
+  const handleDelete = useCallback(async () => {
+    if (isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from database first
+      await deleteTask(attrs.taskId);
+      // Then remove the node from the editor
+      deleteNode();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      setIsDeleting(false);
+    }
+  }, [attrs.taskId, deleteNode, isDeleting]);
 
   const formatDateTime = (date: string, time: string) => {
     const d = new Date(`${date}T${time}`);
@@ -57,6 +73,15 @@ function TaskCalNodeView({ node, updateAttributes }: any) {
           {attrs.snoozed && <span className={styles.snoozeIcon} title="Snoozed">💤</span>}
           {formatDateTime(attrs.dueDate, attrs.dueTime)}
         </span>
+        <button
+          className={styles.deleteButton}
+          onClick={handleDelete}
+          contentEditable={false}
+          title="Delete task"
+          disabled={isDeleting}
+        >
+          ×
+        </button>
       </div>
     </NodeViewWrapper>
   );
