@@ -69,7 +69,18 @@ export async function getUpcomingTasks(req: Request, res: Response) {
 export async function getDueTasks(req: Request, res: Response) {
   try {
     const userId = req.user!.userId;
-    const now = new Date().toISOString();
+
+    // Get local date/time from query params (sent by frontend)
+    // This ensures we compare against the user's local time, not server UTC
+    const { localDate, localTime } = req.query;
+
+    if (!localDate || !localTime) {
+      res.status(400).json({ error: 'localDate and localTime query params required' });
+      return;
+    }
+
+    const nowDateTime = `${localDate}T${localTime}:00`;
+    const nowForSnooze = new Date().toISOString(); // Snooze uses ISO for cross-timezone consistency
 
     const stmt = db.prepare(`
       SELECT * FROM tasks
@@ -79,7 +90,7 @@ export async function getDueTasks(req: Request, res: Response) {
         AND (snoozed_until IS NULL OR datetime(snoozed_until) <= datetime(?))
       ORDER BY due_date, due_time
     `);
-    const tasks = stmt.all(userId, now, now);
+    const tasks = stmt.all(userId, nowDateTime, nowForSnooze);
 
     res.json(tasks.map(transformTask));
   } catch (error) {

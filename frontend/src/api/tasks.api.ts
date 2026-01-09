@@ -48,7 +48,18 @@ export async function getUpcomingTasks(): Promise<Task[]> {
 
 // Get due tasks (for notifications)
 export async function getDueTasks(): Promise<Task[]> {
-  const response = await api.get<Task[]>('/tasks/due');
+  // Send local date/time so backend can compare correctly
+  const now = new Date();
+  // Use local date components to build YYYY-MM-DD format
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const localDate = `${year}-${month}-${day}`;
+  const localTime = now.toTimeString().slice(0, 5); // HH:MM
+
+  const response = await api.get<Task[]>('/tasks/due', {
+    params: { localDate, localTime }
+  });
   return response.data;
 }
 
