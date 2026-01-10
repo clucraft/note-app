@@ -15,6 +15,7 @@
 .editor {
   min-height: 100%;
   padding: 1rem;
+  padding-left: 3rem; /* Extra left padding for drag handle */
   outline: none;
   font-size: 0.9375rem;
   line-height: 1.3;
