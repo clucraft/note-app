@@ -81,16 +81,14 @@ export function DragHandle({ editor }: DragHandleProps) {
     if (!editorElement) return;
 
     const editorRect = editorElement.getBoundingClientRect();
-    const container = editorElement.closest(`.${styles.editorWithHandle}`) || editorElement.parentElement;
-    if (!container) return;
 
-    const containerRect = container.getBoundingClientRect();
+    // Define gutter as a fixed-width zone (50px) to the left of editor content
+    // This works regardless of which direction the cursor approaches from
+    const gutterWidth = 50;
+    const gutterEnd = editorRect.left + 15; // Small overlap into content
+    const gutterStart = gutterEnd - gutterWidth;
 
-    // Calculate the gutter zone (left side of content)
-    const gutterStart = containerRect.left;
-    const gutterEnd = editorRect.left + 10; // Small overlap into content
-
-    // Check if mouse is in the gutter zone
+    // Check if mouse is in the gutter zone (vertically within editor bounds)
     const isInGutter = e.clientX >= gutterStart && e.clientX <= gutterEnd &&
                        e.clientY >= editorRect.top && e.clientY <= editorRect.bottom;
 
