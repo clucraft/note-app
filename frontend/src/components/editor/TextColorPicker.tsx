@@ -64,10 +64,22 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
     setIsOpen(false);
   };
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
+  const handleColorClick = (e: React.MouseEvent, handler: () => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handler();
+  };
+
   return (
     <div ref={containerRef} className={styles.container}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onMouseDown={handleTriggerClick}
         className={styles.triggerButton}
         title="Text color"
       >
@@ -75,7 +87,7 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
       </button>
 
       {isOpen && (
-        <div className={styles.dropdown}>
+        <div className={styles.dropdown} onMouseDown={(e) => e.stopPropagation()}>
           {/* Text Color Section */}
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Text color</div>
@@ -87,7 +99,7 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
                   style={{
                     color: color.textColor || 'var(--text-primary)',
                   }}
-                  onClick={() => handleTextColor(color.textColor)}
+                  onMouseDown={(e) => handleColorClick(e, () => handleTextColor(color.textColor))}
                   title={color.name}
                 >
                   A
@@ -108,7 +120,7 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
                     backgroundColor: color.highlightColor || 'transparent',
                     color: color.highlightColor ? 'var(--text-primary)' : 'var(--text-primary)',
                   }}
-                  onClick={() => handleHighlightColor(color.highlightColor)}
+                  onMouseDown={(e) => handleColorClick(e, () => handleHighlightColor(color.highlightColor))}
                   title={color.name}
                 >
                   A
@@ -119,7 +131,10 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
 
           {/* Remove Colors */}
           <div className={styles.divider} />
-          <button className={styles.removeButton} onClick={handleRemoveColors}>
+          <button
+            className={styles.removeButton}
+            onMouseDown={(e) => handleColorClick(e, handleRemoveColors)}
+          >
             <span className={styles.removeIcon}>✕</span>
             Remove colors
           </button>
