@@ -2,6 +2,9 @@ import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -22,6 +25,7 @@ import { Youtube } from './YoutubeExtension';
 import { Mermaid } from './MermaidExtension';
 import { MathBlock, MathInline } from './MathExtension';
 import { DragHandle } from './DragHandle';
+import { TextColorPicker } from './TextColorPicker';
 import { TaskCreateModal } from '../common/TaskCreateModal';
 import { expandText } from '../../api/ai.api';
 import { createTask } from '../../api/tasks.api';
@@ -50,6 +54,11 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
         codeBlock: false,
       }),
       Underline,
+      TextStyle,
+      Color,
+      Highlight.configure({
+        multicolor: true,
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -291,6 +300,7 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
             >
               🔗
             </button>
+            <TextColorPicker editor={editor} />
             <span className={styles.bubbleDivider} />
             <button
               onClick={handleExpand}
