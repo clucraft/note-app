@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Editor } from '@tiptap/react';
 import styles from './TextColorPicker.module.css';
 
@@ -136,78 +137,90 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
         A
       </button>
 
-      {isOpen && createPortal(
-        <div
-          ref={dropdownRef}
-          className={styles.dropdown}
-          style={{
-            position: 'fixed',
-            top: dropdownPos.top,
-            left: dropdownPos.left,
-            transform: 'translateX(-50%)',
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          {/* Text Color Section */}
-          <div className={styles.section}>
-            <div className={styles.sectionLabel}>Text color</div>
-            <div className={styles.colorGrid}>
-              {colors.map((color) => (
-                <button
-                  type="button"
-                  key={`text-${color.name}`}
-                  className={styles.colorButton}
-                  style={{
-                    color: color.textColor || 'var(--text-primary)',
-                  }}
-                  onMouseDown={(e) => onColorSelect(e, 'text', color.textColor)}
-                  title={color.name}
-                >
-                  A
-                </button>
-              ))}
-            </div>
-          </div>
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              ref={dropdownRef}
+              className={styles.dropdown}
+              initial={{ opacity: 0, scale: 0.9, y: -8, x: '-50%' }}
+              animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, scale: 0.9, y: -8, x: '-50%' }}
+              transition={{
+                type: 'spring',
+                stiffness: 500,
+                damping: 18,
+              }}
+              style={{
+                position: 'fixed',
+                top: dropdownPos.top,
+                left: dropdownPos.left,
+                transformOrigin: 'top center',
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              {/* Text Color Section */}
+              <div className={styles.section}>
+                <div className={styles.sectionLabel}>Text color</div>
+                <div className={styles.colorGrid}>
+                  {colors.map((color) => (
+                    <button
+                      type="button"
+                      key={`text-${color.name}`}
+                      className={styles.colorButton}
+                      style={{
+                        color: color.textColor || 'var(--text-primary)',
+                      }}
+                      onMouseDown={(e) => onColorSelect(e, 'text', color.textColor)}
+                      title={color.name}
+                    >
+                      A
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* Highlight Color Section */}
-          <div className={styles.section}>
-            <div className={styles.sectionLabel}>Highlight</div>
-            <div className={styles.colorGrid}>
-              {colors.map((color) => (
-                <button
-                  type="button"
-                  key={`highlight-${color.name}`}
-                  className={styles.colorButton}
-                  style={{
-                    backgroundColor: color.highlightColor || 'transparent',
-                  }}
-                  onMouseDown={(e) => onColorSelect(e, 'highlight', color.highlightColor)}
-                  title={color.name}
-                >
-                  A
-                </button>
-              ))}
-            </div>
-          </div>
+              {/* Highlight Color Section */}
+              <div className={styles.section}>
+                <div className={styles.sectionLabel}>Highlight</div>
+                <div className={styles.colorGrid}>
+                  {colors.map((color) => (
+                    <button
+                      type="button"
+                      key={`highlight-${color.name}`}
+                      className={styles.colorButton}
+                      style={{
+                        backgroundColor: color.highlightColor || 'transparent',
+                      }}
+                      onMouseDown={(e) => onColorSelect(e, 'highlight', color.highlightColor)}
+                      title={color.name}
+                    >
+                      A
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* Remove Colors */}
-          <div className={styles.divider} />
-          <button
-            type="button"
-            className={styles.removeButton}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleRemoveColors();
-            }}
-          >
-            <span className={styles.removeIcon}>✕</span>
-            Remove colors
-          </button>
-        </div>,
+              {/* Remove Colors */}
+              <div className={styles.divider} />
+              <button
+                type="button"
+                className={styles.removeButton}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleRemoveColors();
+                }}
+              >
+                <span className={styles.removeIcon}>✕</span>
+                Remove colors
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
     </div>

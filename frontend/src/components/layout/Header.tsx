@@ -130,50 +130,76 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
         />
         {isSearching && <span className={styles.searchSpinner} />}
 
-        {showResults && searchResults.length > 0 && (
-          <div className={styles.searchResults}>
-            <div className={styles.searchHeader}>
-              <span className={styles.resultCount}>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
-              <button
-                className={styles.summarizeButton}
-                onClick={handleSummarize}
-                disabled={isSummarizing}
-                title="Summarize with AI"
-              >
-                {isSummarizing ? '...' : '✨'}
-              </button>
-            </div>
-            {summary && (
-              <div className={`${styles.summary} ${summary.startsWith('Error:') ? styles.summaryError : ''}`}>
-                {summary}
+        <AnimatePresence>
+          {showResults && searchResults.length > 0 && (
+            <motion.div
+              className={styles.searchResults}
+              initial={{ opacity: 0, scale: 0.95, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -8 }}
+              transition={{
+                type: 'spring',
+                stiffness: 500,
+                damping: 18,
+              }}
+              style={{ transformOrigin: 'top center' }}
+            >
+              <div className={styles.searchHeader}>
+                <span className={styles.resultCount}>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
+                <button
+                  className={styles.summarizeButton}
+                  onClick={handleSummarize}
+                  disabled={isSummarizing}
+                  title="Summarize with AI"
+                >
+                  {isSummarizing ? '...' : '✨'}
+                </button>
               </div>
-            )}
-            {searchResults.map(result => (
-              <button
-                key={result.id}
-                className={styles.searchResult}
-                onClick={() => handleResultClick(result.id)}
-              >
-                <span className={styles.resultTitle}>
-                  {result.titleEmoji && <span className={styles.resultEmoji}>{result.titleEmoji}</span>}
-                  {result.title}
-                  {result.matchType === 'semantic' && (
-                    <span className={styles.semanticBadge} title="Found by meaning, not exact match">
-                      similar
-                    </span>
-                  )}
-                </span>
-                <span className={styles.resultPreview}>{result.preview}</span>
-              </button>
-            ))}
-          </div>
-        )}
+              {summary && (
+                <div className={`${styles.summary} ${summary.startsWith('Error:') ? styles.summaryError : ''}`}>
+                  {summary}
+                </div>
+              )}
+              {searchResults.map(result => (
+                <button
+                  key={result.id}
+                  className={styles.searchResult}
+                  onClick={() => handleResultClick(result.id)}
+                >
+                  <span className={styles.resultTitle}>
+                    {result.titleEmoji && <span className={styles.resultEmoji}>{result.titleEmoji}</span>}
+                    {result.title}
+                    {result.matchType === 'semantic' && (
+                      <span className={styles.semanticBadge} title="Found by meaning, not exact match">
+                        similar
+                      </span>
+                    )}
+                  </span>
+                  <span className={styles.resultPreview}>{result.preview}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {showResults && searchResults.length === 0 && searchQuery.length >= 2 && !isSearching && (
-          <div className={styles.searchResults}>
-            <div className={styles.noResults}>No notes found</div>
-          </div>
-        )}
+        <AnimatePresence>
+          {showResults && searchResults.length === 0 && searchQuery.length >= 2 && !isSearching && (
+            <motion.div
+              className={styles.searchResults}
+              initial={{ opacity: 0, scale: 0.95, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -8 }}
+              transition={{
+                type: 'spring',
+                stiffness: 500,
+                damping: 18,
+              }}
+              style={{ transformOrigin: 'top center' }}
+            >
+              <div className={styles.noResults}>No notes found</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className={styles.actions}>
@@ -207,14 +233,13 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
             {showMenu && (
               <motion.div
                 className={styles.dropdown}
-                initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                initial={{ opacity: 0, scale: 0.9, y: -10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                exit={{ opacity: 0, scale: 0.9, y: -10 }}
                 transition={{
                   type: 'spring',
-                  stiffness: 400,
-                  damping: 25,
-                  mass: 0.8,
+                  stiffness: 500,
+                  damping: 18,
                 }}
                 style={{ transformOrigin: 'top right' }}
               >

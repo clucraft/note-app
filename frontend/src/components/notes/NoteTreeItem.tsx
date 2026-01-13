@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNotes } from '../../hooks/useNotes';
 import { EmojiPicker } from '../common/EmojiPicker';
 import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
@@ -407,71 +408,94 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
         />
       )}
 
-      {showMenu && (
-        <div
-          ref={menuRef}
-          className={styles.contextMenu}
-        >
-          <button className={styles.menuItem} onClick={handleAddChild}>
-            <span className={styles.menuIcon}>➕</span>
-            Add child note
-          </button>
-          <button className={styles.menuItem} onClick={handleDuplicate}>
-            <span className={styles.menuIcon}>📋</span>
-            Duplicate
-          </button>
-          <div className={styles.menuDivider} />
-          <button className={styles.menuItem} onClick={handleExportHTML}>
-            <span className={styles.menuIcon}>📄</span>
-            Export as HTML
-          </button>
-          <button className={styles.menuItem} onClick={handleExportPDF}>
-            <span className={styles.menuIcon}>📑</span>
-            Export as PDF
-          </button>
-          <div className={styles.menuDivider} />
-          <button className={styles.menuItem} onClick={handleShare}>
-            <span className={styles.menuIcon}>🔗</span>
-            Share
-          </button>
-          <button className={styles.menuItem} onClick={handleCopyLink}>
-            <span className={styles.menuIcon}>📎</span>
-            Copy Link
-          </button>
-          <div className={styles.menuDivider} />
-          <button
-            className={styles.menuItem}
-            onClick={() => setShowMoveMenu(!showMoveMenu)}
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div
+            ref={menuRef}
+            className={styles.contextMenu}
+            initial={{ opacity: 0, scale: 0.9, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -8 }}
+            transition={{
+              type: 'spring',
+              stiffness: 500,
+              damping: 18,
+            }}
+            style={{ transformOrigin: 'top left' }}
           >
-            <span className={styles.menuIcon}>📁</span>
-            Move to...
-            <span className={styles.menuArrow}>▶</span>
-          </button>
-          {showMoveMenu && (
-            <div className={styles.subMenu}>
-              <button className={styles.menuItem} onClick={handleMoveToRoot}>
-                <span className={styles.menuIcon}>🏠</span>
-                Root level
-              </button>
-              {moveTargets.map(target => (
-                <button
-                  key={target.id}
-                  className={styles.menuItem}
-                  onClick={() => handleMoveToNote(target.id)}
+            <button className={styles.menuItem} onClick={handleAddChild}>
+              <span className={styles.menuIcon}>➕</span>
+              Add child note
+            </button>
+            <button className={styles.menuItem} onClick={handleDuplicate}>
+              <span className={styles.menuIcon}>📋</span>
+              Duplicate
+            </button>
+            <div className={styles.menuDivider} />
+            <button className={styles.menuItem} onClick={handleExportHTML}>
+              <span className={styles.menuIcon}>📄</span>
+              Export as HTML
+            </button>
+            <button className={styles.menuItem} onClick={handleExportPDF}>
+              <span className={styles.menuIcon}>📑</span>
+              Export as PDF
+            </button>
+            <div className={styles.menuDivider} />
+            <button className={styles.menuItem} onClick={handleShare}>
+              <span className={styles.menuIcon}>🔗</span>
+              Share
+            </button>
+            <button className={styles.menuItem} onClick={handleCopyLink}>
+              <span className={styles.menuIcon}>📎</span>
+              Copy Link
+            </button>
+            <div className={styles.menuDivider} />
+            <button
+              className={styles.menuItem}
+              onClick={() => setShowMoveMenu(!showMoveMenu)}
+            >
+              <span className={styles.menuIcon}>📁</span>
+              Move to...
+              <span className={styles.menuArrow}>▶</span>
+            </button>
+            <AnimatePresence>
+              {showMoveMenu && (
+                <motion.div
+                  className={styles.subMenu}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 500,
+                    damping: 20,
+                  }}
                 >
-                  <span className={styles.menuIcon}>{target.titleEmoji || '📄'}</span>
-                  {target.title}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className={styles.menuDivider} />
-          <button className={`${styles.menuItem} ${styles.danger}`} onClick={handleDelete}>
-            <span className={styles.menuIcon}>🗑️</span>
-            Move to Trash
-          </button>
-        </div>
-      )}
+                  <button className={styles.menuItem} onClick={handleMoveToRoot}>
+                    <span className={styles.menuIcon}>🏠</span>
+                    Root level
+                  </button>
+                  {moveTargets.map(target => (
+                    <button
+                      key={target.id}
+                      className={styles.menuItem}
+                      onClick={() => handleMoveToNote(target.id)}
+                    >
+                      <span className={styles.menuIcon}>{target.titleEmoji || '📄'}</span>
+                      {target.title}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div className={styles.menuDivider} />
+            <button className={`${styles.menuItem} ${styles.danger}`} onClick={handleDelete}>
+              <span className={styles.menuIcon}>🗑️</span>
+              Move to Trash
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {hasChildren && (
         <div className={`${styles.childrenWrapper} ${note.isExpanded ? styles.expanded : ''}`}>
