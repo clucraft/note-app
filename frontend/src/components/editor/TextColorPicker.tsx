@@ -80,6 +80,9 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
         editor.chain().focus().setHighlight({ color }).run();
       }
     }
+
+    // Close dropdown after selecting a color
+    setIsOpen(false);
   }, [editor]);
 
   const handleRemoveColors = useCallback(() => {
