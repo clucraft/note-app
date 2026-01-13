@@ -256,7 +256,7 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
   return (
     <div className={styles.container} onClick={handleContainerClick}>
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 100, interactive: true, hideOnClick: false }}>
           <div className={styles.bubbleMenu}>
             <button
               onClick={() => editor.chain().focus().toggleBold().run()}
