@@ -19,17 +19,13 @@
 }
 
 .dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 50%;
-  transform: translateX(-50%);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: 0.5rem;
   min-width: 220px;
-  z-index: 1000;
+  z-index: 10000;
 }
 
 .section {

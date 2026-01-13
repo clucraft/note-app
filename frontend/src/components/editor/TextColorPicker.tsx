@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Editor } from '@tiptap/react';
 import styles from './TextColorPicker.module.css';
 
@@ -27,79 +28,139 @@ const colors: ColorOption[] = [
 
 export function TextColorPicker({ editor }: TextColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Store selection before opening dropdown
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    // Use mousedown to catch clicks before they bubble
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isOpen]);
 
-  const handleTextColor = (color: string) => {
-    if (color === '') {
-      editor.chain().focus().unsetColor().run();
-    } else {
-      editor.chain().focus().setColor(color).run();
+  // Restore selection and apply color
+  const applyColor = useCallback((type: 'text' | 'highlight', color: string) => {
+    // Restore the selection first
+    if (savedSelectionRef.current) {
+      const { from, to } = savedSelectionRef.current;
+      editor.chain().setTextSelection({ from, to }).run();
     }
-  };
 
-  const handleHighlightColor = (color: string) => {
-    if (color === '') {
-      editor.chain().focus().unsetHighlight().run();
+    if (type === 'text') {
+      if (color === '') {
+        editor.chain().focus().unsetColor().run();
+      } else {
+        editor.chain().focus().setColor(color).run();
+      }
     } else {
-      editor.chain().focus().setHighlight({ color }).run();
+      if (color === '') {
+        editor.chain().focus().unsetHighlight().run();
+      } else {
+        editor.chain().focus().setHighlight({ color }).run();
+      }
     }
-  };
+  }, [editor]);
 
-  const handleRemoveColors = () => {
+  const handleRemoveColors = useCallback(() => {
+    if (savedSelectionRef.current) {
+      const { from, to } = savedSelectionRef.current;
+      editor.chain().setTextSelection({ from, to }).run();
+    }
     editor.chain().focus().unsetColor().unsetHighlight().run();
     setIsOpen(false);
-  };
+  }, [editor]);
 
-  const handleTriggerClick = (e: React.MouseEvent) => {
+  // Toggle dropdown
+  const toggleDropdown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
 
-  const handleColorClick = (e: React.MouseEvent, handler: () => void) => {
+    if (!isOpen) {
+      // Save current selection before doing anything
+      const { from, to } = editor.state.selection;
+      savedSelectionRef.current = { from, to };
+
+      // Calculate dropdown position based on button
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setDropdownPos({
+          top: rect.bottom + 8,
+          left: rect.left + rect.width / 2,
+        });
+      }
+    }
+
+    setIsOpen(prev => !prev);
+  }, [editor, isOpen]);
+
+  // Handle color button click
+  const onColorSelect = useCallback((e: React.MouseEvent, type: 'text' | 'highlight', color: string) => {
     e.preventDefault();
     e.stopPropagation();
-    handler();
-  };
+    applyColor(type, color);
+  }, [applyColor]);
 
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div className={styles.container}>
       <button
-        onMouseDown={handleTriggerClick}
+        ref={buttonRef}
+        type="button"
+        onMouseDown={toggleDropdown}
         className={styles.triggerButton}
         title="Text color"
       >
         A
       </button>
 
-      {isOpen && (
-        <div className={styles.dropdown} onMouseDown={(e) => e.stopPropagation()}>
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          className={styles.dropdown}
+          style={{
+            position: 'fixed',
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            transform: 'translateX(-50%)',
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           {/* Text Color Section */}
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Text color</div>
             <div className={styles.colorGrid}>
               {colors.map((color) => (
                 <button
+                  type="button"
                   key={`text-${color.name}`}
                   className={styles.colorButton}
                   style={{
                     color: color.textColor || 'var(--text-primary)',
                   }}
-                  onMouseDown={(e) => handleColorClick(e, () => handleTextColor(color.textColor))}
+                  onMouseDown={(e) => onColorSelect(e, 'text', color.textColor)}
                   title={color.name}
                 >
                   A
@@ -114,13 +175,13 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
             <div className={styles.colorGrid}>
               {colors.map((color) => (
                 <button
+                  type="button"
                   key={`highlight-${color.name}`}
                   className={styles.colorButton}
                   style={{
                     backgroundColor: color.highlightColor || 'transparent',
-                    color: color.highlightColor ? 'var(--text-primary)' : 'var(--text-primary)',
                   }}
-                  onMouseDown={(e) => handleColorClick(e, () => handleHighlightColor(color.highlightColor))}
+                  onMouseDown={(e) => onColorSelect(e, 'highlight', color.highlightColor)}
                   title={color.name}
                 >
                   A
@@ -132,13 +193,19 @@ export function TextColorPicker({ editor }: TextColorPickerProps) {
           {/* Remove Colors */}
           <div className={styles.divider} />
           <button
+            type="button"
             className={styles.removeButton}
-            onMouseDown={(e) => handleColorClick(e, handleRemoveColors)}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRemoveColors();
+            }}
           >
             <span className={styles.removeIcon}>✕</span>
             Remove colors
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
