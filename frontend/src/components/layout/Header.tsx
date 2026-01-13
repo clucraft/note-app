@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotes } from '../../hooks/useNotes';
 import { ThemeSwitcher } from '../themes/ThemeSwitcher';
@@ -202,45 +203,59 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
             <span className={styles.userName}>{user?.displayName}</span>
           </button>
 
-          {showMenu && (
-            <div className={styles.dropdown}>
-              <div className={styles.dropdownHeader}>
-                <span className={styles.dropdownName}>{user?.displayName}</span>
-                <span className={styles.dropdownEmail}>{user?.email}</span>
-              </div>
-              <div className={styles.dropdownDivider} />
-              <button
-                className={styles.dropdownItem}
-                onClick={() => {
-                  navigate('/profile');
-                  setShowMenu(false);
+          <AnimatePresence>
+            {showMenu && (
+              <motion.div
+                className={styles.dropdown}
+                initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 25,
+                  mass: 0.8,
                 }}
+                style={{ transformOrigin: 'top right' }}
               >
-                Profile
-              </button>
-              <button
-                className={styles.dropdownItem}
-                onClick={() => {
-                  navigate('/deleted');
-                  setShowMenu(false);
-                }}
-              >
-                Deleted Notes
-              </button>
-              <button
-                className={styles.dropdownItem}
-                onClick={() => {
-                  navigate('/settings');
-                  setShowMenu(false);
-                }}
-              >
-                Settings
-              </button>
-              <button className={styles.dropdownItem} onClick={handleLogout}>
-                Sign Out
-              </button>
-            </div>
-          )}
+                <div className={styles.dropdownHeader}>
+                  <span className={styles.dropdownName}>{user?.displayName}</span>
+                  <span className={styles.dropdownEmail}>{user?.email}</span>
+                </div>
+                <div className={styles.dropdownDivider} />
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    navigate('/profile');
+                    setShowMenu(false);
+                  }}
+                >
+                  Profile
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    navigate('/deleted');
+                    setShowMenu(false);
+                  }}
+                >
+                  Deleted Notes
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    navigate('/settings');
+                    setShowMenu(false);
+                  }}
+                >
+                  Settings
+                </button>
+                <button className={styles.dropdownItem} onClick={handleLogout}>
+                  Sign Out
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

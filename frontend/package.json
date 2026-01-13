@@ -33,6 +33,7 @@
     "@tiptap/suggestion": "^2.11.2",
     "axios": "^1.7.9",
     "emoji-mart": "^5.6.0",
+    "framer-motion": "^12.26.1",
     "hast-util-to-html": "^9.0.5",
     "katex": "^0.16.27",
     "lowlight": "^3.2.0",
