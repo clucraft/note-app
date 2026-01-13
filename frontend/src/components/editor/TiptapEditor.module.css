@@ -1,7 +1,6 @@
 .container {
   height: 100%;
   overflow-y: auto;
-  cursor: text;
 }
 
 .loading {
@@ -20,6 +19,7 @@
   font-size: 0.9375rem;
   line-height: 1.3;
   color: var(--text-primary);
+  cursor: text;
 }
 
 .editor > * + * {
@@ -302,9 +302,9 @@
   font-weight: 700;
 }
 
-/* Text highlight - ensure text color is preserved */
-.editor mark {
-  color: var(--text-primary);
+/* Text highlight - ensure text color is preserved unless explicitly set */
+.editor mark:not([style*="color"]) {
+  color: var(--text-primary) !important;
 }
 
 /* Find and replace highlights */
