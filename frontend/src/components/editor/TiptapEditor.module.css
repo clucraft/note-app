@@ -304,7 +304,7 @@
 
 /* Text highlight - ensure text color is preserved */
 .editor mark {
-  color: inherit;
+  color: var(--text-primary);
 }
 
 /* Find and replace highlights */
