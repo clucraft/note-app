@@ -302,6 +302,11 @@
   font-weight: 700;
 }
 
+/* Text highlight - ensure text color is preserved */
+.editor mark {
+  color: inherit;
+}
+
 /* Find and replace highlights */
 :global(.find-highlight) {
   background-color: rgba(255, 213, 0, 0.4);
