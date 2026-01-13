@@ -302,9 +302,9 @@
   font-weight: 700;
 }
 
-/* Text highlight - ensure text color is preserved unless explicitly set */
+/* Text highlight - use dark text for readability on light highlight backgrounds */
 .editor mark:not([style*="color"]) {
-  color: var(--text-primary) !important;
+  color: #1f2937 !important;
 }
 
 /* Find and replace highlights */
