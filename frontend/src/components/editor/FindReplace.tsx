@@ -70,15 +70,21 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
     [editor, onClose]
   );
 
-  const handleReplace = () => {
+  const handleReplace = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     editor.commands.setReplaceTerm(replaceTerm);
     editor.commands.replaceCurrent();
-  };
+    // Refocus the search input after replace
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, [editor, replaceTerm]);
 
-  const handleReplaceAll = () => {
+  const handleReplaceAll = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     editor.commands.setReplaceTerm(replaceTerm);
     editor.commands.replaceAll();
-  };
+    // Refocus the search input after replace all
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, [editor, replaceTerm]);
 
   if (!isOpen) return null;
 
@@ -142,7 +148,7 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
           />
           <button
             className={styles.button}
-            onClick={handleReplace}
+            onMouseDown={handleReplace}
             disabled={results.length === 0}
             title="Replace current"
           >
@@ -150,7 +156,7 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
           </button>
           <button
             className={styles.button}
-            onClick={handleReplaceAll}
+            onMouseDown={handleReplaceAll}
             disabled={results.length === 0}
             title="Replace all"
           >

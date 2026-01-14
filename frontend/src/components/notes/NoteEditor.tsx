@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNotes } from '../../hooks/useNotes';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
@@ -391,79 +392,104 @@ export function NoteEditor() {
           >
             <span className={styles.actionsIcon}>⋯</span>
           </button>
-          {showActionsMenu && (
-            <div className={styles.actionsMenu}>
-              <button className={styles.actionItem} onClick={handleAddChild}>
-                <span className={styles.actionIcon}>➕</span>
-                Add child note
-              </button>
-              <button className={styles.actionItem} onClick={handleDuplicate}>
-                <span className={styles.actionIcon}>📋</span>
-                Duplicate
-              </button>
-              <div className={styles.actionDivider} />
-              <button className={styles.actionItem} onClick={handleExportHTML}>
-                <span className={styles.actionIcon}>📄</span>
-                Export as HTML
-              </button>
-              <button className={styles.actionItem} onClick={handleExportPDF}>
-                <span className={styles.actionIcon}>📑</span>
-                Export as PDF
-              </button>
-              <div className={styles.actionDivider} />
-              <button className={styles.actionItem} onClick={() => { setShowShareModal(true); setShowActionsMenu(false); }}>
-                <span className={styles.actionIcon}>🔗</span>
-                Share
-              </button>
-              <button className={styles.actionItem} onClick={handleCopyLink}>
-                <span className={styles.actionIcon}>📎</span>
-                Copy Link
-              </button>
-              <div className={styles.actionDivider} />
-              <button
-                className={styles.actionItem}
-                onClick={() => setShowMoveMenu(!showMoveMenu)}
+          <AnimatePresence>
+            {showActionsMenu && (
+              <motion.div
+                className={styles.actionsMenu}
+                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 500,
+                  damping: 18,
+                }}
+                style={{ transformOrigin: 'top right' }}
               >
-                <span className={styles.actionIcon}>📁</span>
-                Move to...
-                <span className={styles.actionArrow}>▶</span>
-              </button>
-              {showMoveMenu && (
-                <div className={styles.subMenu}>
-                  <button className={styles.actionItem} onClick={handleMoveToRoot}>
-                    <span className={styles.actionIcon}>🏠</span>
-                    Root level
-                  </button>
-                  {moveTargets.map(target => (
-                    <button
-                      key={target.id}
-                      className={styles.actionItem}
-                      onClick={() => handleMoveToNote(target.id)}
+                <button className={styles.actionItem} onClick={handleAddChild}>
+                  <span className={styles.actionIcon}>➕</span>
+                  Add child note
+                </button>
+                <button className={styles.actionItem} onClick={handleDuplicate}>
+                  <span className={styles.actionIcon}>📋</span>
+                  Duplicate
+                </button>
+                <div className={styles.actionDivider} />
+                <button className={styles.actionItem} onClick={handleExportHTML}>
+                  <span className={styles.actionIcon}>📄</span>
+                  Export as HTML
+                </button>
+                <button className={styles.actionItem} onClick={handleExportPDF}>
+                  <span className={styles.actionIcon}>📑</span>
+                  Export as PDF
+                </button>
+                <div className={styles.actionDivider} />
+                <button className={styles.actionItem} onClick={() => { setShowShareModal(true); setShowActionsMenu(false); }}>
+                  <span className={styles.actionIcon}>🔗</span>
+                  Share
+                </button>
+                <button className={styles.actionItem} onClick={handleCopyLink}>
+                  <span className={styles.actionIcon}>📎</span>
+                  Copy Link
+                </button>
+                <div className={styles.actionDivider} />
+                <button
+                  className={styles.actionItem}
+                  onClick={() => setShowMoveMenu(!showMoveMenu)}
+                >
+                  <span className={styles.actionIcon}>📁</span>
+                  Move to...
+                  <span className={styles.actionArrow}>▶</span>
+                </button>
+                <AnimatePresence>
+                  {showMoveMenu && (
+                    <motion.div
+                      className={styles.subMenu}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 500,
+                        damping: 20,
+                      }}
                     >
-                      <span className={styles.actionIcon}>{target.titleEmoji || '📄'}</span>
-                      {target.title}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className={styles.actionDivider} />
-              <button
-                className={styles.actionItem}
-                onClick={() => handleWidthChange(editorWidth === 'full' ? 'centered' : 'full')}
-              >
-                <span className={styles.actionIcon}>↔</span>
-                Full Width
-                <span className={styles.actionToggle}>
-                  <span className={`${styles.toggle} ${editorWidth === 'full' ? styles.toggleOn : ''}`} />
-                </span>
-              </button>
-              <div className={styles.actionDivider} />
-              <button className={`${styles.actionItem} ${styles.actionDanger}`} onClick={handleMoveToTrash}>
-                <span className={styles.actionIcon}>🗑️</span>
-                Move to Trash
-              </button>
-            </div>
-          )}
+                      <button className={styles.actionItem} onClick={handleMoveToRoot}>
+                        <span className={styles.actionIcon}>🏠</span>
+                        Root level
+                      </button>
+                      {moveTargets.map(target => (
+                        <button
+                          key={target.id}
+                          className={styles.actionItem}
+                          onClick={() => handleMoveToNote(target.id)}
+                        >
+                          <span className={styles.actionIcon}>{target.titleEmoji || '📄'}</span>
+                          {target.title}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div className={styles.actionDivider} />
+                <button
+                  className={styles.actionItem}
+                  onClick={() => handleWidthChange(editorWidth === 'full' ? 'centered' : 'full')}
+                >
+                  <span className={styles.actionIcon}>↔</span>
+                  Full Width
+                  <span className={styles.actionToggle}>
+                    <span className={`${styles.toggle} ${editorWidth === 'full' ? styles.toggleOn : ''}`} />
+                  </span>
+                </button>
+                <div className={styles.actionDivider} />
+                <button className={`${styles.actionItem} ${styles.actionDanger}`} onClick={handleMoveToTrash}>
+                  <span className={styles.actionIcon}>🗑️</span>
+                  Move to Trash
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

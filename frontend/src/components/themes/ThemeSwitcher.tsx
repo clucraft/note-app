@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../hooks/useTheme';
 import { THEMES, ThemeName } from '../../types/theme.types';
 import styles from './ThemeSwitcher.module.css';
@@ -36,21 +37,34 @@ export function ThemeSwitcher() {
         <span className={styles.icon}>{currentTheme.icon}</span>
       </button>
 
-      {isOpen && (
-        <div className={styles.menu}>
-          {THEMES.map((t) => (
-            <button
-              key={t.name}
-              className={`${styles.menuItem} ${t.name === theme ? styles.active : ''}`}
-              onClick={() => handleSelect(t.name)}
-            >
-              <span className={styles.menuIcon}>{t.icon}</span>
-              <span className={styles.menuLabel}>{t.displayName}</span>
-              {t.name === theme && <span className={styles.check}>&#10003;</span>}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            className={styles.menu}
+            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            transition={{
+              type: 'spring',
+              stiffness: 500,
+              damping: 18,
+            }}
+            style={{ transformOrigin: 'top right' }}
+          >
+            {THEMES.map((t) => (
+              <button
+                key={t.name}
+                className={`${styles.menuItem} ${t.name === theme ? styles.active : ''}`}
+                onClick={() => handleSelect(t.name)}
+              >
+                <span className={styles.menuIcon}>{t.icon}</span>
+                <span className={styles.menuLabel}>{t.displayName}</span>
+                {t.name === theme && <span className={styles.check}>&#10003;</span>}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
