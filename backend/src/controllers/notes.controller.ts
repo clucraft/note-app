@@ -129,7 +129,7 @@ export async function getNote(req: Request, res: Response) {
     const noteId = parseInt(req.params.id);
 
     const note = db.prepare(`
-      SELECT id, user_id, parent_id, title, title_emoji, content, sort_order, is_expanded, editor_width, created_at, updated_at
+      SELECT id, user_id, parent_id, title, title_emoji, content, sort_order, is_expanded, is_favorite, editor_width, created_at, updated_at
       FROM notes WHERE id = ? AND user_id = ?
     `).get(noteId, req.user!.userId) as any;
 
@@ -146,6 +146,7 @@ export async function getNote(req: Request, res: Response) {
       content: note.content,
       sortOrder: note.sort_order,
       isExpanded: !!note.is_expanded,
+      isFavorite: !!note.is_favorite,
       editorWidth: note.editor_width || 'centered',
       createdAt: note.created_at,
       updatedAt: note.updated_at
@@ -204,6 +205,7 @@ export async function createNote(req: Request, res: Response) {
       content,
       sortOrder,
       isExpanded: true,
+      isFavorite: false,
       children: []
     });
   } catch (error) {
@@ -482,6 +484,7 @@ export async function duplicateNote(req: Request, res: Response) {
       content: note.content,
       sortOrder,
       isExpanded: true,
+      isFavorite: false,
       children: []
     });
   } catch (error) {
@@ -1004,5 +1007,32 @@ export async function restoreNoteVersion(req: Request, res: Response) {
   } catch (error) {
     console.error('Restore note version error:', error);
     res.status(500).json({ error: 'Failed to restore note version' });
+  }
+}
+
+/**
+ * Toggle favorite status for a note
+ */
+export async function toggleFavorite(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const userId = req.user!.userId;
+
+    // Verify note belongs to user and get current favorite status
+    const note = db.prepare('SELECT id, is_favorite FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId) as { id: number; is_favorite: number } | undefined;
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    const newFavorite = !note.is_favorite;
+    db.prepare('UPDATE notes SET is_favorite = ? WHERE id = ?').run(newFavorite ? 1 : 0, noteId);
+
+    res.json({ isFavorite: newFavorite });
+  } catch (error) {
+    console.error('Toggle favorite error:', error);
+    res.status(500).json({ error: 'Failed to toggle favorite' });
   }
 }

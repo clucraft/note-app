@@ -112,3 +112,10 @@ export async function getNoteVersion(noteId: number, versionId: number): Promise
 export async function restoreNoteVersion(noteId: number, versionId: number): Promise<void> {
   await api.post(`/notes/${noteId}/versions/${versionId}/restore`);
 }
+
+// Favorites API
+
+export async function toggleFavorite(noteId: number): Promise<{ isFavorite: boolean }> {
+  const response = await api.put<{ isFavorite: boolean }>(`/notes/${noteId}/favorite`);
+  return response.data;
+}

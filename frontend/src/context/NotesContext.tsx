@@ -18,6 +18,7 @@ interface NotesContextType {
   reorderNote: (id: number, parentId: number | null, newIndex: number) => Promise<void>;
   toggleExpand: (id: number) => Promise<void>;
   duplicateNote: (id: number) => Promise<Note>;
+  toggleFavorite: (id: number) => Promise<void>;
 }
 
 export const NotesContext = createContext<NotesContextType | undefined>(undefined);
@@ -182,6 +183,28 @@ export function NotesProvider({ children }: NotesProviderProps) {
     return newNote;
   }, [loadNotes]);
 
+  const toggleFavorite = useCallback(async (id: number) => {
+    const result = await notesApi.toggleFavorite(id);
+
+    const updateInTree = (nodes: Note[]): Note[] => {
+      return nodes.map(node => {
+        if (node.id === id) {
+          return { ...node, isFavorite: result.isFavorite };
+        }
+        if (node.children.length > 0) {
+          return { ...node, children: updateInTree(node.children) };
+        }
+        return node;
+      });
+    };
+
+    setNotes(prev => updateInTree(prev));
+
+    if (selectedNote?.id === id) {
+      setSelectedNote(prev => prev ? { ...prev, isFavorite: result.isFavorite } : null);
+    }
+  }, [selectedNote]);
+
   return (
     <NotesContext.Provider
       value={{
@@ -197,7 +220,8 @@ export function NotesProvider({ children }: NotesProviderProps) {
         moveNote,
         reorderNote,
         toggleExpand,
-        duplicateNote
+        duplicateNote,
+        toggleFavorite
       }}
     >
       {children}

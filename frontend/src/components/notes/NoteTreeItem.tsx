@@ -15,7 +15,7 @@ interface NoteTreeItemProps {
 }
 
 export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps) {
-  const { selectedNote, selectNote, createNote, deleteNote, toggleExpand, duplicateNote, moveNote, reorderNote, updateNote, notes } = useNotes();
+  const { selectedNote, selectNote, createNote, deleteNote, toggleExpand, duplicateNote, moveNote, reorderNote, updateNote, toggleFavorite, notes } = useNotes();
   const [showMenu, setShowMenu] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -182,6 +182,11 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
   const handleShare = () => {
     setShowMenu(false);
     setShowShareModal(true);
+  };
+
+  const handleToggleFavorite = async () => {
+    setShowMenu(false);
+    await toggleFavorite(note.id);
   };
 
   const handleMoveToRoot = async () => {
@@ -448,6 +453,10 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
             <button className={styles.menuItem} onClick={handleCopyLink}>
               <span className={styles.menuIcon}>📎</span>
               Copy Link
+            </button>
+            <button className={styles.menuItem} onClick={handleToggleFavorite}>
+              <span className={styles.menuIcon}>{note.isFavorite ? '★' : '☆'}</span>
+              {note.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
             </button>
             <div className={styles.menuDivider} />
             <button

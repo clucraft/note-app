@@ -20,7 +20,8 @@ import {
   getIndexStatus,
   getNoteVersions,
   getNoteVersion,
-  restoreNoteVersion
+  restoreNoteVersion,
+  toggleFavorite
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -52,5 +53,8 @@ router.post('/:id/duplicate', duplicateNote);
 router.get('/:id/versions', getNoteVersions);
 router.get('/:id/versions/:versionId', getNoteVersion);
 router.post('/:id/versions/:versionId/restore', restoreNoteVersion);
+
+// Favorites
+router.put('/:id/favorite', toggleFavorite);
 
 export default router;

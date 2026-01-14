@@ -20,3 +20,32 @@
   margin-top: 0.5rem;
   font-size: 0.75rem;
 }
+
+/* Favorites section */
+.favoritesSection {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.favoritesHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.favoritesIcon {
+  color: #f5a623;
+  font-size: 0.75rem;
+}
+
+.favoritesList {
+  display: flex;
+  flex-direction: column;
+}

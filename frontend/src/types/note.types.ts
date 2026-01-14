@@ -8,6 +8,7 @@ export interface Note {
   content: string;
   sortOrder: number;
   isExpanded: boolean;
+  isFavorite: boolean;
   editorWidth: EditorWidth;
   createdAt?: string;
   updatedAt?: string;

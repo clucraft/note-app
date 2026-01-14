@@ -22,7 +22,7 @@ function extractTitleFromContent(html: string): string {
 }
 
 export function NoteEditor() {
-  const { selectedNote, updateNote, deleteNote, createNote, duplicateNote, moveNote, notes, selectNote, loadNotes } = useNotes();
+  const { selectedNote, updateNote, deleteNote, createNote, duplicateNote, moveNote, toggleFavorite, notes, selectNote, loadNotes } = useNotes();
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -289,6 +289,12 @@ export function NoteEditor() {
     setShowActionsMenu(false);
   }, [selectedNote]);
 
+  const handleToggleFavorite = useCallback(async () => {
+    if (!selectedNote) return;
+    setShowActionsMenu(false);
+    await toggleFavorite(selectedNote.id);
+  }, [selectedNote, toggleFavorite]);
+
   const handleMoveToTrash = useCallback(() => {
     if (!selectedNote) return;
     setShowActionsMenu(false);
@@ -433,6 +439,10 @@ export function NoteEditor() {
                 <button className={styles.actionItem} onClick={handleCopyLink}>
                   <span className={styles.actionIcon}>📎</span>
                   Copy Link
+                </button>
+                <button className={styles.actionItem} onClick={handleToggleFavorite}>
+                  <span className={styles.actionIcon}>{selectedNote.isFavorite ? '★' : '☆'}</span>
+                  {selectedNote.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                 </button>
                 <div className={styles.actionDivider} />
                 <button

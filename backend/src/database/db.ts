@@ -265,6 +265,16 @@ export function initializeDatabase() {
     // Ignore if already exists
   }
 
+  // Migration: Add is_favorite column to notes table
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN is_favorite INTEGER DEFAULT 0`);
+    console.log('Added is_favorite column to notes table');
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column')) {
+      throw e;
+    }
+  }
+
   console.log('Database initialized successfully');
 }
 
@@ -281,6 +291,7 @@ export function getNoteTree(userId: number) {
         content,
         sort_order,
         is_expanded,
+        is_favorite,
         editor_width,
         created_at,
         updated_at,
@@ -299,6 +310,7 @@ export function getNoteTree(userId: number) {
         n.content,
         n.sort_order,
         n.is_expanded,
+        n.is_favorite,
         n.editor_width,
         n.created_at,
         n.updated_at,
@@ -323,6 +335,7 @@ function transformNote(note: any) {
     content: note.content,
     sortOrder: note.sort_order,
     isExpanded: !!note.is_expanded,
+    isFavorite: !!note.is_favorite,
     editorWidth: note.editor_width || 'centered',
     createdAt: note.created_at,
     updatedAt: note.updated_at
