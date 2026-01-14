@@ -92,10 +92,18 @@ export function VersionHistoryModal({
   }, [noteId, selectedVersionId, isRestoring, onRestore, onClose]);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // SQLite stores dates in UTC without timezone indicator
+    // Append 'Z' if no timezone info to ensure correct parsing as UTC
+    const isoDateStr = dateString.includes('T') ? dateString : dateString.replace(' ', 'T') + 'Z';
+    const date = new Date(isoDateStr);
     const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const isToday = dateOnly.getTime() === today.getTime();
+    const isYesterday = dateOnly.getTime() === yesterday.getTime();
 
     const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
