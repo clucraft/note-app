@@ -17,7 +17,10 @@ import {
   updateAutoDeleteDays,
   emptyTrash,
   reindexNotes,
-  getIndexStatus
+  getIndexStatus,
+  getNoteVersions,
+  getNoteVersion,
+  restoreNoteVersion
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -44,5 +47,10 @@ router.put('/:id/move', moveNote);
 router.put('/:id/reorder', reorderNote);
 router.put('/:id/toggle-expand', toggleExpand);
 router.post('/:id/duplicate', duplicateNote);
+
+// Version history routes
+router.get('/:id/versions', getNoteVersions);
+router.get('/:id/versions/:versionId', getNoteVersion);
+router.post('/:id/versions/:versionId/restore', restoreNoteVersion);
 
 export default router;

@@ -5,6 +5,7 @@ import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { ShareModal } from './ShareModal';
 import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
+import { VersionHistoryModal } from './VersionHistoryModal';
 import { ActivityTracker } from '../common/ActivityTracker';
 import { recordActivity } from '../../api/activity.api';
 import type { Note, EditorWidth } from '../../types/note.types';
@@ -21,12 +22,13 @@ function extractTitleFromContent(html: string): string {
 }
 
 export function NoteEditor() {
-  const { selectedNote, updateNote, deleteNote, createNote, duplicateNote, moveNote, notes, selectNote } = useNotes();
+  const { selectedNote, updateNote, deleteNote, createNote, duplicateNote, moveNote, notes, selectNote, loadNotes } = useNotes();
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showTrashModal, setShowTrashModal] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [activityKey, setActivityKey] = useState(0);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const prevStatsRef = useRef({ charCount: 0, wordCount: 0 });
@@ -474,6 +476,13 @@ export function NoteEditor() {
                 <div className={styles.actionDivider} />
                 <button
                   className={styles.actionItem}
+                  onClick={() => { setShowVersionHistoryModal(true); setShowActionsMenu(false); }}
+                >
+                  <span className={styles.actionIcon}>📜</span>
+                  Version History
+                </button>
+                <button
+                  className={styles.actionItem}
                   onClick={() => handleWidthChange(editorWidth === 'full' ? 'centered' : 'full')}
                 >
                   <span className={styles.actionIcon}>↔</span>
@@ -530,6 +539,19 @@ export function NoteEditor() {
         isOpen={showTrashModal}
         onClose={() => setShowTrashModal(false)}
         onConfirm={handleConfirmTrash}
+      />
+
+      <VersionHistoryModal
+        isOpen={showVersionHistoryModal}
+        onClose={() => setShowVersionHistoryModal(false)}
+        noteId={selectedNote.id}
+        currentTitle={selectedNote.title}
+        currentContent={content}
+        onRestore={async () => {
+          // Re-select the note to refresh its content after restore
+          await loadNotes();
+          selectNote(selectedNote.id);
+        }}
       />
     </div>
   );

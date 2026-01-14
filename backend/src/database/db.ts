@@ -241,6 +241,30 @@ export function initializeDatabase() {
     }
   }
 
+  // Create note_versions table for version history
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS note_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      note_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      version_number INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create indexes for version history lookups
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_note_versions_note_id ON note_versions(note_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_note_versions_lookup ON note_versions(note_id, version_number DESC)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   console.log('Database initialized successfully');
 }
 

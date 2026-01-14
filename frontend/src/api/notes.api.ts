@@ -1,5 +1,5 @@
 import { api } from './index';
-import type { Note, CreateNoteInput, UpdateNoteInput } from '../types/note.types';
+import type { Note, CreateNoteInput, UpdateNoteInput, NoteVersionSummary, NoteVersion } from '../types/note.types';
 
 export async function getNotesTree(): Promise<Note[]> {
   const response = await api.get<Note[]>('/notes');
@@ -95,4 +95,20 @@ export async function getAutoDeleteDays(): Promise<{ autoDeleteDays: number }> {
 export async function updateAutoDeleteDays(days: number): Promise<{ autoDeleteDays: number }> {
   const response = await api.put<{ autoDeleteDays: number }>('/notes/trash/settings', { days });
   return response.data;
+}
+
+// Version History API functions
+
+export async function getNoteVersions(noteId: number): Promise<NoteVersionSummary[]> {
+  const response = await api.get<NoteVersionSummary[]>(`/notes/${noteId}/versions`);
+  return response.data;
+}
+
+export async function getNoteVersion(noteId: number, versionId: number): Promise<NoteVersion> {
+  const response = await api.get<NoteVersion>(`/notes/${noteId}/versions/${versionId}`);
+  return response.data;
+}
+
+export async function restoreNoteVersion(noteId: number, versionId: number): Promise<void> {
+  await api.post(`/notes/${noteId}/versions/${versionId}/restore`);
 }

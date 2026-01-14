@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { db, getNoteTree, buildTreeStructure } from '../database/db.js';
 import {
   generateEmbedding,
@@ -53,6 +54,53 @@ async function updateNoteEmbedding(noteId: number, title: string, content: strin
   } catch (error) {
     console.error(`Failed to generate embedding for note ${noteId}:`, error);
   }
+}
+
+/**
+ * Generate MD5 hash of content for version comparison
+ */
+function hashContent(content: string): string {
+  return crypto.createHash('md5').update(content).digest('hex');
+}
+
+/**
+ * Save a version of the note if content has changed
+ * Returns true if a new version was created
+ */
+function saveNoteVersion(noteId: number, userId: number, title: string, content: string): boolean {
+  const contentHash = hashContent(content);
+
+  // Check if we already have this exact content as the latest version
+  const lastVersion = db.prepare(`
+    SELECT content_hash, version_number FROM note_versions
+    WHERE note_id = ? ORDER BY version_number DESC LIMIT 1
+  `).get(noteId) as { content_hash: string; version_number: number } | undefined;
+
+  // Skip if content hasn't changed
+  if (lastVersion && lastVersion.content_hash === contentHash) {
+    return false;
+  }
+
+  const nextVersionNumber = (lastVersion?.version_number ?? 0) + 1;
+
+  // Insert new version
+  db.prepare(`
+    INSERT INTO note_versions (note_id, user_id, title, content, content_hash, version_number)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(noteId, userId, title, content, contentHash, nextVersionNumber);
+
+  // Enforce 50 version limit - delete oldest versions if exceeded
+  db.prepare(`
+    DELETE FROM note_versions
+    WHERE note_id = ? AND id NOT IN (
+      SELECT id FROM note_versions
+      WHERE note_id = ?
+      ORDER BY version_number DESC
+      LIMIT 50
+    )
+  `).run(noteId, noteId);
+
+  return true;
 }
 
 export async function getNotesTree(req: Request, res: Response) {
@@ -166,12 +214,17 @@ export async function updateNote(req: Request, res: Response) {
     const { title, titleEmoji, content, editorWidth } = result.data;
     const userId = req.user!.userId;
 
-    // Verify note belongs to user
-    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
-      .get(noteId, userId);
+    // Verify note belongs to user and get current content for versioning
+    const note = db.prepare('SELECT id, title, content FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId) as { id: number; title: string; content: string } | undefined;
     if (!note) {
       res.status(404).json({ error: 'Note not found' });
       return;
+    }
+
+    // Save a version before updating (if content is changing)
+    if (content !== undefined && content !== note.content) {
+      saveNoteVersion(noteId, userId, note.title, note.content);
     }
 
     // Build update query dynamically
@@ -815,5 +868,131 @@ export async function getIndexStatus(req: Request, res: Response) {
   } catch (error) {
     console.error('Get index status error:', error);
     res.status(500).json({ error: 'Failed to get index status' });
+  }
+}
+
+// Version History functions
+
+/**
+ * Get list of versions for a note (summary only, not full content)
+ */
+export async function getNoteVersions(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const userId = req.user!.userId;
+
+    // Verify note belongs to user
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId);
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    const versions = db.prepare(`
+      SELECT id, version_number, created_at
+      FROM note_versions
+      WHERE note_id = ?
+      ORDER BY version_number DESC
+    `).all(noteId) as any[];
+
+    res.json(versions.map(v => ({
+      id: v.id,
+      versionNumber: v.version_number,
+      createdAt: v.created_at
+    })));
+  } catch (error) {
+    console.error('Get note versions error:', error);
+    res.status(500).json({ error: 'Failed to get note versions' });
+  }
+}
+
+/**
+ * Get a specific version with full content
+ */
+export async function getNoteVersion(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const versionId = parseInt(req.params.versionId);
+    const userId = req.user!.userId;
+
+    // Verify note belongs to user
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId);
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    const version = db.prepare(`
+      SELECT id, version_number, title, content, created_at
+      FROM note_versions
+      WHERE id = ? AND note_id = ?
+    `).get(versionId, noteId) as any;
+
+    if (!version) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+
+    res.json({
+      id: version.id,
+      versionNumber: version.version_number,
+      title: version.title,
+      content: version.content,
+      createdAt: version.created_at
+    });
+  } catch (error) {
+    console.error('Get note version error:', error);
+    res.status(500).json({ error: 'Failed to get note version' });
+  }
+}
+
+/**
+ * Restore a note to a previous version
+ * This saves the current state as a new version, then replaces content with the old version
+ */
+export async function restoreNoteVersion(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const versionId = parseInt(req.params.versionId);
+    const userId = req.user!.userId;
+
+    // Get current note
+    const note = db.prepare('SELECT id, title, content FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId) as { id: number; title: string; content: string } | undefined;
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    // Get the version to restore
+    const version = db.prepare(`
+      SELECT title, content
+      FROM note_versions
+      WHERE id = ? AND note_id = ?
+    `).get(versionId, noteId) as { title: string; content: string } | undefined;
+
+    if (!version) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+
+    // Save current state as a new version before restoring
+    saveNoteVersion(noteId, userId, note.title, note.content);
+
+    // Update the note with the restored content
+    db.prepare(`
+      UPDATE notes SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(version.title, version.content, noteId);
+
+    // Regenerate embedding for the restored content
+    updateNoteEmbedding(noteId, version.title, version.content);
+
+    res.json({ message: 'Note restored successfully' });
+  } catch (error) {
+    console.error('Restore note version error:', error);
+    res.status(500).json({ error: 'Failed to restore note version' });
   }
 }

@@ -27,3 +27,14 @@ export interface UpdateNoteInput {
   content?: string;
   editorWidth?: EditorWidth;
 }
+
+export interface NoteVersionSummary {
+  id: number;
+  versionNumber: number;
+  createdAt: string;
+}
+
+export interface NoteVersion extends NoteVersionSummary {
+  title: string;
+  content: string;
+}
