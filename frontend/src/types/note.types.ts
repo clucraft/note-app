@@ -1,5 +1,7 @@
 export type EditorWidth = 'centered' | 'full';
 
+export type SharePermission = 'view' | 'edit';
+
 export interface Note {
   id: number;
   parentId: number | null;
@@ -13,6 +15,7 @@ export interface Note {
   createdAt?: string;
   updatedAt?: string;
   children: Note[];
+  sharePermission?: SharePermission | null; // null if owned, 'view' or 'edit' if shared
 }
 
 export interface CreateNoteInput {

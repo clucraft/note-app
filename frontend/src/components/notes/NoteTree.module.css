@@ -67,13 +67,48 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.025em;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.sharedHeader:hover {
+  background-color: var(--bg-hover);
+}
+
+.expandButton {
+  font-size: 0.625rem;
+  color: var(--text-primary);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.expandButton.expanded {
+  transform: rotate(90deg);
 }
 
 .sharedIcon {
   font-size: 0.75rem;
 }
 
+.count {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 .sharedList {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.sharedList.expanded {
+  grid-template-rows: 1fr;
+}
+
+.listInner {
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }

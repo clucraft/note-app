@@ -26,9 +26,15 @@ function collectFavorites(notes: Note[]): Note[] {
   return favorites;
 }
 
+const SHARED_EXPANDED_KEY = 'note-app-shared-expanded';
+
 export function NoteTree() {
   const { notes, isLoading, error } = useNotes();
   const [sharedNotes, setSharedNotes] = useState<SharedNote[]>([]);
+  const [sharedExpanded, setSharedExpanded] = useState(() => {
+    const stored = localStorage.getItem(SHARED_EXPANDED_KEY);
+    return stored !== 'false'; // Default to expanded
+  });
 
   const favorites = useMemo(() => collectFavorites(notes), [notes]);
 
@@ -38,6 +44,12 @@ export function NoteTree() {
       .then(setSharedNotes)
       .catch((err) => console.error('Failed to load shared notes:', err));
   }, []);
+
+  const toggleSharedExpanded = () => {
+    const newValue = !sharedExpanded;
+    setSharedExpanded(newValue);
+    localStorage.setItem(SHARED_EXPANDED_KEY, String(newValue));
+  };
 
   if (isLoading) {
     return <div className={styles.loading}>Loading notes...</div>;
@@ -62,14 +74,20 @@ export function NoteTree() {
       {/* Shared with me section - show first so users see shared content even with no own notes */}
       {sharedNotes.length > 0 && (
         <div className={styles.sharedSection}>
-          <div className={styles.sharedHeader}>
+          <div className={styles.sharedHeader} onClick={toggleSharedExpanded}>
+            <span className={`${styles.expandButton} ${sharedExpanded ? styles.expanded : ''}`}>
+              ▶
+            </span>
             <span className={styles.sharedIcon}>👥</span>
             <span>Shared with me</span>
+            <span className={styles.count}>({sharedNotes.length})</span>
           </div>
-          <div className={styles.sharedList}>
-            {sharedNotes.map((note) => (
-              <SharedNoteItem key={note.id} note={note} />
-            ))}
+          <div className={`${styles.sharedList} ${sharedExpanded ? styles.expanded : ''}`}>
+            <div className={styles.listInner}>
+              {sharedNotes.map((note) => (
+                <SharedNoteItem key={note.id} note={note} />
+              ))}
+            </div>
           </div>
         </div>
       )}

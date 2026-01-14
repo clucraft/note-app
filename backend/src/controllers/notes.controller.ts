@@ -127,11 +127,31 @@ export async function getNotesTree(req: Request, res: Response) {
 export async function getNote(req: Request, res: Response) {
   try {
     const noteId = parseInt(req.params.id);
+    const userId = req.user!.userId;
 
-    const note = db.prepare(`
+    // First try to get the note if user owns it
+    let note = db.prepare(`
       SELECT id, user_id, parent_id, title, title_emoji, content, sort_order, is_expanded, is_favorite, editor_width, created_at, updated_at
       FROM notes WHERE id = ? AND user_id = ?
-    `).get(noteId, req.user!.userId) as any;
+    `).get(noteId, userId) as any;
+
+    let sharePermission: string | null = null;
+
+    // If not owned, check if it's shared with the user
+    if (!note) {
+      const sharedNote = db.prepare(`
+        SELECT n.id, n.user_id, n.parent_id, n.title, n.title_emoji, n.content, n.sort_order, n.is_expanded, n.is_favorite, n.editor_width, n.created_at, n.updated_at,
+               nus.permission
+        FROM notes n
+        JOIN note_user_shares nus ON nus.note_id = n.id
+        WHERE n.id = ? AND nus.shared_with_id = ? AND n.deleted_at IS NULL
+      `).get(noteId, userId) as any;
+
+      if (sharedNote) {
+        note = sharedNote;
+        sharePermission = sharedNote.permission;
+      }
+    }
 
     if (!note) {
       res.status(404).json({ error: 'Note not found' });
@@ -149,7 +169,8 @@ export async function getNote(req: Request, res: Response) {
       isFavorite: !!note.is_favorite,
       editorWidth: note.editor_width || 'centered',
       createdAt: note.created_at,
-      updatedAt: note.updated_at
+      updatedAt: note.updated_at,
+      sharePermission // null if owned, 'view' or 'edit' if shared
     });
   } catch (error) {
     console.error('Get note error:', error);
@@ -226,17 +247,39 @@ export async function updateNote(req: Request, res: Response) {
     const { title, titleEmoji, content, editorWidth } = result.data;
     const userId = req.user!.userId;
 
-    // Verify note belongs to user and get current content for versioning
-    const note = db.prepare('SELECT id, title, content FROM notes WHERE id = ? AND user_id = ?')
-      .get(noteId, userId) as { id: number; title: string; content: string } | undefined;
+    // First check if user owns the note
+    let note = db.prepare('SELECT id, user_id, title, content FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId) as { id: number; user_id: number; title: string; content: string } | undefined;
+
+    let isSharedEdit = false;
+
+    // If not owned, check if user has edit permission on shared note
+    if (!note) {
+      const sharedNote = db.prepare(`
+        SELECT n.id, n.user_id, n.title, n.content, nus.permission
+        FROM notes n
+        JOIN note_user_shares nus ON nus.note_id = n.id
+        WHERE n.id = ? AND nus.shared_with_id = ? AND n.deleted_at IS NULL
+      `).get(noteId, userId) as { id: number; user_id: number; title: string; content: string; permission: string } | undefined;
+
+      if (sharedNote) {
+        if (sharedNote.permission !== 'edit') {
+          res.status(403).json({ error: 'You do not have edit permission for this note' });
+          return;
+        }
+        note = sharedNote;
+        isSharedEdit = true;
+      }
+    }
+
     if (!note) {
       res.status(404).json({ error: 'Note not found' });
       return;
     }
 
-    // Save a version before updating (if content is changing)
+    // Save a version before updating (if content is changing) - use note owner's ID
     if (content !== undefined && content !== note.content) {
-      saveNoteVersion(noteId, userId, note.title, note.content);
+      saveNoteVersion(noteId, note.user_id, note.title, note.content);
     }
 
     // Build update query dynamically
