@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { listUsers, createUser, updateUser, deleteUser, CreateUserInput } from '../../api/users.api';
 import { adminDisableTwoFA } from '../../api/twofa.api';
+import { getSystemSettings, updateSystemSetting } from '../../api/settings.api';
 import { User } from '../../types/auth.types';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
@@ -13,6 +14,7 @@ export function MembersSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [formData, setFormData] = useState<CreateUserInput>({
     username: '',
     email: '',
@@ -23,6 +25,7 @@ export function MembersSettings() {
   useEffect(() => {
     if (user?.role === 'admin') {
       loadUsers();
+      loadSettings();
     }
   }, [user]);
 
@@ -34,6 +37,25 @@ export function MembersSettings() {
       setError('Failed to load users');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const settings = await getSystemSettings();
+      setRegistrationEnabled(settings.registration_enabled === 'true');
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const handleToggleRegistration = async () => {
+    const newValue = !registrationEnabled;
+    try {
+      await updateSystemSetting('registration_enabled', String(newValue));
+      setRegistrationEnabled(newValue);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update setting');
     }
   };
 
@@ -89,6 +111,26 @@ export function MembersSettings() {
 
   return (
     <div className={styles.container}>
+      {/* Registration Toggle */}
+      <div className={styles.settingRow}>
+        <div className={styles.settingInfo}>
+          <h3 className={styles.settingLabel}>Allow Sign-ups</h3>
+          <p className={styles.settingDescription}>
+            When disabled, new users can only be created by admins.
+          </p>
+        </div>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={registrationEnabled}
+            onChange={handleToggleRegistration}
+          />
+          <span className={styles.toggleSlider} />
+        </label>
+      </div>
+
+      <div className={styles.divider} />
+
       <div className={styles.header}>
         <div>
           <h2 className={styles.sectionTitle}>Members</h2>

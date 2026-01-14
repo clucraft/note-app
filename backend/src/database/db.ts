@@ -299,6 +299,21 @@ export function initializeDatabase() {
     // Ignore if already exists
   }
 
+  // Create system_settings table for app-wide configuration
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Initialize default settings if not present
+  const insertSetting = db.prepare(`
+    INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)
+  `);
+  insertSetting.run('registration_enabled', 'true');
+
   console.log('Database initialized successfully');
 }
 

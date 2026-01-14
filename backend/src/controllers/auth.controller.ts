@@ -4,6 +4,7 @@ import { db } from '../database/db.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { verifyTOTP } from './twofa.controller.js';
+import { isRegistrationEnabled } from './settings.controller.js';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -21,6 +22,13 @@ const loginSchema = z.object({
 
 export async function register(req: Request, res: Response) {
   try {
+    // Check if registration is enabled (always allow if no users exist - first user setup)
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    if (userCount.count > 0 && !isRegistrationEnabled()) {
+      res.status(403).json({ error: 'Registration is currently disabled' });
+      return;
+    }
+
     const result = registerSchema.safeParse(req.body);
     if (!result.success) {
       res.status(400).json({ error: 'Invalid input', details: result.error.errors });
@@ -39,8 +47,7 @@ export async function register(req: Request, res: Response) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Check if this is the first user (make admin)
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    // First user becomes admin (userCount already checked above)
     const role = userCount.count === 0 ? 'admin' : 'user';
 
     // Insert user

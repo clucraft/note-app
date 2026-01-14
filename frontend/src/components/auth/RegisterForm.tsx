@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getRegistrationStatus } from '../../api/settings.api';
 import { Button } from '../common/Button';
 import styles from './AuthForm.module.css';
 
@@ -11,9 +12,33 @@ export function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingRegistration, setCheckingRegistration] = useState(true);
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    getRegistrationStatus()
+      .then((data) => {
+        if (!data.registrationEnabled) {
+          navigate('/login');
+        }
+        setCheckingRegistration(false);
+      })
+      .catch(() => {
+        navigate('/login');
+      });
+  }, [navigate]);
+
+  if (checkingRegistration) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.formCard}>
+          <p className={styles.subtitle}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

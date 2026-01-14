@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getRegistrationStatus } from '../../api/settings.api';
 import { Button } from '../common/Button';
 import styles from './AuthForm.module.css';
 
@@ -11,9 +12,16 @@ export function LoginForm() {
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    getRegistrationStatus()
+      .then((data) => setRegistrationEnabled(data.registrationEnabled))
+      .catch(() => setRegistrationEnabled(false));
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -123,7 +131,7 @@ export function LoginForm() {
           )}
         </form>
 
-        {!requiresTwoFactor && (
+        {!requiresTwoFactor && registrationEnabled && (
           <p className={styles.footer}>
             Don't have an account? <Link to="/register">Sign up</Link>
           </p>
