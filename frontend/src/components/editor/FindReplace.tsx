@@ -89,7 +89,7 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
   if (!isOpen) return null;
 
   return (
-    <div className={styles.container} onKeyDown={handleKeyDown}>
+    <div className={styles.container} onKeyDown={handleKeyDown} data-find-replace>
       <div className={styles.searchRow}>
         <input
           ref={searchInputRef}

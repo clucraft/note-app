@@ -243,6 +243,12 @@ export function TiptapEditor({ content, onChange, onReady, noteId }: TiptapEdito
     // Focus editor when clicking in empty space
     const target = e.target as HTMLElement;
     const editorElement = target.closest('.ProseMirror');
+    const findReplaceElement = target.closest('[data-find-replace]');
+
+    // Don't steal focus from FindReplace
+    if (findReplaceElement) {
+      return;
+    }
 
     if (!editorElement) {
       // Clicked outside the ProseMirror editor area, focus at end
