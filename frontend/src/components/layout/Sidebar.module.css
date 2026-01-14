@@ -48,28 +48,55 @@
 .calendarToggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   width: 100%;
   padding: 0.5rem;
   background: none;
   border: none;
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  transition: background-color 0.15s ease;
 }
 
 .calendarToggle:hover {
-  background-color: var(--bg-surface-hover);
-  color: var(--text-primary);
+  background-color: var(--bg-hover);
 }
 
-.calendarToggleIcon {
+.calendarExpandIcon {
   font-size: 0.625rem;
-  width: 0.75rem;
+  color: var(--text-primary);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.calendarExpandIcon.expanded {
+  transform: rotate(90deg);
+}
+
+.calendarIcon {
+  font-size: 0.75rem;
 }
 
 .calendarToggleText {
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.calendarContent {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.calendarContent.expanded {
+  grid-template-rows: 1fr;
+}
+
+.calendarInner {
+  overflow: hidden;
 }

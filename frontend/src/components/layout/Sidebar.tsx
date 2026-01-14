@@ -61,12 +61,17 @@ export function Sidebar() {
       {/* Calendar Section */}
       <div className={styles.calendarSection}>
         <button className={styles.calendarToggle} onClick={toggleCalendar}>
-          <span className={styles.calendarToggleIcon}>{showCalendar ? '▼' : '▶'}</span>
+          <span className={`${styles.calendarExpandIcon} ${showCalendar ? styles.expanded : ''}`}>
+            ▶
+          </span>
+          <span className={styles.calendarIcon}>📅</span>
           <span className={styles.calendarToggleText}>Calendar</span>
         </button>
-        {showCalendar && (
-          <Calendar onTaskClick={handleTaskClick} />
-        )}
+        <div className={`${styles.calendarContent} ${showCalendar ? styles.expanded : ''}`}>
+          <div className={styles.calendarInner}>
+            <Calendar onTaskClick={handleTaskClick} />
+          </div>
+        </div>
       </div>
 
       <AIChatModal isOpen={showAIChat} onClose={() => setShowAIChat(false)} />
