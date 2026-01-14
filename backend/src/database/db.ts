@@ -275,6 +275,30 @@ export function initializeDatabase() {
     }
   }
 
+  // Create note_user_shares table for sharing notes with specific users
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS note_user_shares (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      note_id INTEGER NOT NULL,
+      owner_id INTEGER NOT NULL,
+      shared_with_id INTEGER NOT NULL,
+      permission TEXT DEFAULT 'view' CHECK(permission IN ('view', 'edit')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (shared_with_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(note_id, shared_with_id)
+    )
+  `);
+
+  // Create indexes for note_user_shares lookups
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_note_user_shares_note ON note_user_shares(note_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_note_user_shares_shared_with ON note_user_shares(shared_with_id)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   console.log('Database initialized successfully');
 }
 

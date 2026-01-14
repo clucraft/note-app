@@ -4,6 +4,7 @@ import { useNotes } from '../../hooks/useNotes';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { TiptapEditor } from '../editor/TiptapEditor';
 import { ShareModal } from './ShareModal';
+import { UserSharingModal } from './UserSharingModal';
 import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { ActivityTracker } from '../common/ActivityTracker';
@@ -25,6 +26,7 @@ export function NoteEditor() {
   const { selectedNote, updateNote, deleteNote, createNote, duplicateNote, moveNote, toggleFavorite, notes, selectNote, loadNotes } = useNotes();
   const [content, setContent] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showUserSharingModal, setShowUserSharingModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showTrashModal, setShowTrashModal] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -434,7 +436,11 @@ export function NoteEditor() {
                 <div className={styles.actionDivider} />
                 <button className={styles.actionItem} onClick={() => { setShowShareModal(true); setShowActionsMenu(false); }}>
                   <span className={styles.actionIcon}>🔗</span>
-                  Share
+                  Share via Link
+                </button>
+                <button className={styles.actionItem} onClick={() => { setShowUserSharingModal(true); setShowActionsMenu(false); }}>
+                  <span className={styles.actionIcon}>👥</span>
+                  Share with Users
                 </button>
                 <button className={styles.actionItem} onClick={handleCopyLink}>
                   <span className={styles.actionIcon}>📎</span>
@@ -544,6 +550,13 @@ export function NoteEditor() {
           onClose={() => setShowShareModal(false)}
         />
       )}
+
+      <UserSharingModal
+        isOpen={showUserSharingModal}
+        noteId={selectedNote.id}
+        noteTitle={selectedNote.title}
+        onClose={() => setShowUserSharingModal(false)}
+      />
 
       <ConfirmTrashModal
         isOpen={showTrashModal}

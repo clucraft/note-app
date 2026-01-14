@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNotes } from '../../hooks/useNotes';
 import { NoteTreeItem } from './NoteTreeItem';
 import { FavoriteItem } from './FavoriteItem';
+import { SharedNoteItem } from './SharedNoteItem';
+import { getSharedWithMeNotes, type SharedNote } from '../../api/notes.api';
 import type { Note } from '../../types/note.types';
 import styles from './NoteTree.module.css';
 
@@ -26,8 +28,16 @@ function collectFavorites(notes: Note[]): Note[] {
 
 export function NoteTree() {
   const { notes, isLoading, error } = useNotes();
+  const [sharedNotes, setSharedNotes] = useState<SharedNote[]>([]);
 
   const favorites = useMemo(() => collectFavorites(notes), [notes]);
+
+  // Load shared notes
+  useEffect(() => {
+    getSharedWithMeNotes()
+      .then(setSharedNotes)
+      .catch((err) => console.error('Failed to load shared notes:', err));
+  }, []);
 
   if (isLoading) {
     return <div className={styles.loading}>Loading notes...</div>;
@@ -58,6 +68,21 @@ export function NoteTree() {
           <div className={styles.favoritesList}>
             {favorites.map((note) => (
               <FavoriteItem key={note.id} note={note} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Shared with me section */}
+      {sharedNotes.length > 0 && (
+        <div className={styles.sharedSection}>
+          <div className={styles.sharedHeader}>
+            <span className={styles.sharedIcon}>👥</span>
+            <span>Shared with me</span>
+          </div>
+          <div className={styles.sharedList}>
+            {sharedNotes.map((note) => (
+              <SharedNoteItem key={note.id} note={note} />
             ))}
           </div>
         </div>

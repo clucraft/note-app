@@ -4,6 +4,7 @@ import { useNotes } from '../../hooks/useNotes';
 import { EmojiPicker } from '../common/EmojiPicker';
 import { ConfirmTrashModal } from '../common/ConfirmTrashModal';
 import { ShareModal } from './ShareModal';
+import { UserSharingModal } from './UserSharingModal';
 import type { Note } from '../../types/note.types';
 import styles from './NoteTreeItem.module.css';
 
@@ -21,6 +22,7 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTrashModal, setShowTrashModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showUserSharingModal, setShowUserSharingModal] = useState(false);
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below' | 'inside' | null>(null);
@@ -413,6 +415,13 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
         />
       )}
 
+      <UserSharingModal
+        isOpen={showUserSharingModal}
+        noteId={note.id}
+        noteTitle={note.title}
+        onClose={() => setShowUserSharingModal(false)}
+      />
+
       <AnimatePresence>
         {showMenu && (
           <motion.div
@@ -448,7 +457,11 @@ export function NoteTreeItem({ note, depth, index, parentId }: NoteTreeItemProps
             <div className={styles.menuDivider} />
             <button className={styles.menuItem} onClick={handleShare}>
               <span className={styles.menuIcon}>🔗</span>
-              Share
+              Share via Link
+            </button>
+            <button className={styles.menuItem} onClick={() => { setShowUserSharingModal(true); setShowMenu(false); }}>
+              <span className={styles.menuIcon}>👥</span>
+              Share with Users
             </button>
             <button className={styles.menuItem} onClick={handleCopyLink}>
               <span className={styles.menuIcon}>📎</span>

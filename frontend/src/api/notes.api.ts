@@ -119,3 +119,61 @@ export async function toggleFavorite(noteId: number): Promise<{ isFavorite: bool
   const response = await api.put<{ isFavorite: boolean }>(`/notes/${noteId}/favorite`);
   return response.data;
 }
+
+// User Sharing API
+
+export type SharePermission = 'view' | 'edit';
+
+export interface NoteShare {
+  id: number;
+  userId: number;
+  username: string;
+  email: string;
+  displayName: string | null;
+  permission: SharePermission;
+  createdAt: string;
+}
+
+export interface SharedNote {
+  id: number;
+  title: string;
+  titleEmoji: string | null;
+  content: string;
+  updatedAt: string;
+  permission: SharePermission;
+  sharedAt: string;
+  ownerUsername: string;
+  ownerDisplayName: string | null;
+}
+
+export async function getNoteShares(noteId: number): Promise<NoteShare[]> {
+  const response = await api.get<NoteShare[]>(`/notes/${noteId}/shares`);
+  return response.data;
+}
+
+export async function shareNoteWithUser(
+  noteId: number,
+  userId: number,
+  permission: SharePermission = 'view'
+): Promise<NoteShare> {
+  const response = await api.post<NoteShare>(`/notes/${noteId}/shares`, { userId, permission });
+  return response.data;
+}
+
+export async function updateSharePermission(
+  noteId: number,
+  userId: number,
+  permission: SharePermission
+): Promise<{ permission: SharePermission }> {
+  const response = await api.put<{ permission: SharePermission }>(`/notes/${noteId}/shares/${userId}`, { permission });
+  return response.data;
+}
+
+export async function removeNoteShare(noteId: number, userId: number): Promise<void> {
+  await api.delete(`/notes/${noteId}/shares/${userId}`);
+}
+
+export async function getSharedWithMeNotes(): Promise<SharedNote[]> {
+  const response = await api.get<SharedNote[]>('/notes/shared-with-me');
+  return response.data;
+}

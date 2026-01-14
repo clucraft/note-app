@@ -1036,3 +1036,258 @@ export async function toggleFavorite(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to toggle favorite' });
   }
 }
+
+// ============================================
+// User Sharing Functions
+// ============================================
+
+/**
+ * Get list of users a note is shared with
+ */
+export async function getNoteShares(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const userId = req.user!.userId;
+
+    // Verify note belongs to user
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, userId);
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    // Get all shares for this note with user info
+    const shares = db.prepare(`
+      SELECT
+        nus.id,
+        nus.shared_with_id as userId,
+        nus.permission,
+        nus.created_at,
+        u.username,
+        u.email,
+        u.display_name
+      FROM note_user_shares nus
+      JOIN users u ON u.id = nus.shared_with_id
+      WHERE nus.note_id = ?
+      ORDER BY nus.created_at DESC
+    `).all(noteId) as any[];
+
+    res.json(shares.map(s => ({
+      id: s.id,
+      userId: s.userId,
+      username: s.username,
+      email: s.email,
+      displayName: s.display_name,
+      permission: s.permission,
+      createdAt: s.created_at
+    })));
+  } catch (error) {
+    console.error('Get note shares error:', error);
+    res.status(500).json({ error: 'Failed to get note shares' });
+  }
+}
+
+const shareNoteSchema = z.object({
+  userId: z.number(),
+  permission: z.enum(['view', 'edit']).default('view')
+});
+
+/**
+ * Share a note with a user
+ */
+export async function shareNoteWithUser(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const ownerId = req.user!.userId;
+
+    const result = shareNoteSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { userId: sharedWithId, permission } = result.data;
+
+    // Can't share with yourself
+    if (sharedWithId === ownerId) {
+      res.status(400).json({ error: 'Cannot share a note with yourself' });
+      return;
+    }
+
+    // Verify note belongs to user
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, ownerId);
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    // Verify target user exists
+    const targetUser = db.prepare('SELECT id, username, email, display_name FROM users WHERE id = ?')
+      .get(sharedWithId) as any;
+
+    if (!targetUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Check if already shared
+    const existingShare = db.prepare(
+      'SELECT id FROM note_user_shares WHERE note_id = ? AND shared_with_id = ?'
+    ).get(noteId, sharedWithId);
+
+    if (existingShare) {
+      res.status(400).json({ error: 'Note is already shared with this user' });
+      return;
+    }
+
+    // Create the share
+    const insertResult = db.prepare(`
+      INSERT INTO note_user_shares (note_id, owner_id, shared_with_id, permission)
+      VALUES (?, ?, ?, ?)
+    `).run(noteId, ownerId, sharedWithId, permission);
+
+    res.status(201).json({
+      id: insertResult.lastInsertRowid,
+      userId: sharedWithId,
+      username: targetUser.username,
+      email: targetUser.email,
+      displayName: targetUser.display_name,
+      permission
+    });
+  } catch (error) {
+    console.error('Share note error:', error);
+    res.status(500).json({ error: 'Failed to share note' });
+  }
+}
+
+const updateShareSchema = z.object({
+  permission: z.enum(['view', 'edit'])
+});
+
+/**
+ * Update permission for a shared user
+ */
+export async function updateSharePermission(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const sharedWithId = parseInt(req.params.userId);
+    const ownerId = req.user!.userId;
+
+    const result = updateShareSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ error: 'Invalid input', details: result.error.errors });
+      return;
+    }
+
+    const { permission } = result.data;
+
+    // Verify note belongs to user
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, ownerId);
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    // Update the permission
+    const updateResult = db.prepare(`
+      UPDATE note_user_shares
+      SET permission = ?
+      WHERE note_id = ? AND shared_with_id = ?
+    `).run(permission, noteId, sharedWithId);
+
+    if (updateResult.changes === 0) {
+      res.status(404).json({ error: 'Share not found' });
+      return;
+    }
+
+    res.json({ permission });
+  } catch (error) {
+    console.error('Update share permission error:', error);
+    res.status(500).json({ error: 'Failed to update share permission' });
+  }
+}
+
+/**
+ * Remove a user's access to a note
+ */
+export async function removeNoteShare(req: Request, res: Response) {
+  try {
+    const noteId = parseInt(req.params.id);
+    const sharedWithId = parseInt(req.params.userId);
+    const ownerId = req.user!.userId;
+
+    // Verify note belongs to user
+    const note = db.prepare('SELECT id FROM notes WHERE id = ? AND user_id = ?')
+      .get(noteId, ownerId);
+
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' });
+      return;
+    }
+
+    // Delete the share
+    const deleteResult = db.prepare(`
+      DELETE FROM note_user_shares
+      WHERE note_id = ? AND shared_with_id = ?
+    `).run(noteId, sharedWithId);
+
+    if (deleteResult.changes === 0) {
+      res.status(404).json({ error: 'Share not found' });
+      return;
+    }
+
+    res.json({ message: 'Share removed successfully' });
+  } catch (error) {
+    console.error('Remove note share error:', error);
+    res.status(500).json({ error: 'Failed to remove share' });
+  }
+}
+
+/**
+ * Get notes shared with the current user
+ */
+export async function getSharedWithMeNotes(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+
+    // Get all notes shared with this user
+    const sharedNotes = db.prepare(`
+      SELECT
+        n.id,
+        n.title,
+        n.title_emoji,
+        n.content,
+        n.updated_at,
+        nus.permission,
+        nus.created_at as shared_at,
+        u.username as owner_username,
+        u.display_name as owner_display_name
+      FROM note_user_shares nus
+      JOIN notes n ON n.id = nus.note_id
+      JOIN users u ON u.id = nus.owner_id
+      WHERE nus.shared_with_id = ? AND n.deleted_at IS NULL
+      ORDER BY nus.created_at DESC
+    `).all(userId) as any[];
+
+    res.json(sharedNotes.map(note => ({
+      id: note.id,
+      title: note.title,
+      titleEmoji: note.title_emoji,
+      content: note.content,
+      updatedAt: note.updated_at,
+      permission: note.permission,
+      sharedAt: note.shared_at,
+      ownerUsername: note.owner_username,
+      ownerDisplayName: note.owner_display_name
+    })));
+  } catch (error) {
+    console.error('Get shared notes error:', error);
+    res.status(500).json({ error: 'Failed to get shared notes' });
+  }
+}

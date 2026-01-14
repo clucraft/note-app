@@ -21,7 +21,12 @@ import {
   getNoteVersions,
   getNoteVersion,
   restoreNoteVersion,
-  toggleFavorite
+  toggleFavorite,
+  getNoteShares,
+  shareNoteWithUser,
+  updateSharePermission,
+  removeNoteShare,
+  getSharedWithMeNotes
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -40,6 +45,7 @@ router.post('/trash/permanent-delete', permanentlyDeleteNotes);
 router.delete('/trash/empty', emptyTrash);
 router.get('/trash/settings', getAutoDeleteDays);
 router.put('/trash/settings', updateAutoDeleteDays);
+router.get('/shared-with-me', getSharedWithMeNotes);
 router.get('/:id', getNote);
 router.post('/', createNote);
 router.put('/:id', updateNote);
@@ -56,5 +62,11 @@ router.post('/:id/versions/:versionId/restore', restoreNoteVersion);
 
 // Favorites
 router.put('/:id/favorite', toggleFavorite);
+
+// User sharing routes
+router.get('/:id/shares', getNoteShares);
+router.post('/:id/shares', shareNoteWithUser);
+router.put('/:id/shares/:userId', updateSharePermission);
+router.delete('/:id/shares/:userId', removeNoteShare);
 
 export default router;
