@@ -47,7 +47,8 @@ export function NoteTree() {
     return <div className={styles.error}>{error}</div>;
   }
 
-  if (notes.length === 0) {
+  // Show empty state only if user has no notes AND no shared notes
+  if (notes.length === 0 && sharedNotes.length === 0) {
     return (
       <div className={styles.empty}>
         <p>No notes yet</p>
@@ -58,6 +59,21 @@ export function NoteTree() {
 
   return (
     <div className={styles.tree}>
+      {/* Shared with me section - show first so users see shared content even with no own notes */}
+      {sharedNotes.length > 0 && (
+        <div className={styles.sharedSection}>
+          <div className={styles.sharedHeader}>
+            <span className={styles.sharedIcon}>👥</span>
+            <span>Shared with me</span>
+          </div>
+          <div className={styles.sharedList}>
+            {sharedNotes.map((note) => (
+              <SharedNoteItem key={note.id} note={note} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Favorites section */}
       {favorites.length > 0 && (
         <div className={styles.favoritesSection}>
@@ -68,21 +84,6 @@ export function NoteTree() {
           <div className={styles.favoritesList}>
             {favorites.map((note) => (
               <FavoriteItem key={note.id} note={note} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Shared with me section */}
-      {sharedNotes.length > 0 && (
-        <div className={styles.sharedSection}>
-          <div className={styles.sharedHeader}>
-            <span className={styles.sharedIcon}>👥</span>
-            <span>Shared with me</span>
-          </div>
-          <div className={styles.sharedList}>
-            {sharedNotes.map((note) => (
-              <SharedNoteItem key={note.id} note={note} />
             ))}
           </div>
         </div>
