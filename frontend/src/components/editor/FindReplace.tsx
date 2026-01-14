@@ -104,7 +104,10 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
         </span>
         <button
           className={styles.button}
-          onClick={() => editor.commands.findPrevious()}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.commands.findPrevious();
+          }}
           disabled={results.length === 0}
           title="Previous (Shift+Enter)"
         >
@@ -112,7 +115,10 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
         </button>
         <button
           className={styles.button}
-          onClick={() => editor.commands.findNext()}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.commands.findNext();
+          }}
           disabled={results.length === 0}
           title="Next (Enter)"
         >
@@ -120,14 +126,20 @@ export function FindReplace({ editor, isOpen, onClose }: FindReplaceProps) {
         </button>
         <button
           className={`${styles.button} ${caseSensitive ? styles.active : ''}`}
-          onClick={() => setCaseSensitive(!caseSensitive)}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setCaseSensitive(!caseSensitive);
+          }}
           title="Match case"
         >
           Aa
         </button>
         <button
           className={`${styles.button} ${showReplace ? styles.active : ''}`}
-          onClick={() => setShowReplace(!showReplace)}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setShowReplace(!showReplace);
+          }}
           title="Toggle replace"
         >
           ↔
