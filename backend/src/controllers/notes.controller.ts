@@ -64,21 +64,31 @@ function hashContent(content: string): string {
 }
 
 /**
- * Save a version of the note if content has changed
+ * Save a version of the note if content has changed and enough time has passed
  * Returns true if a new version was created
  */
 function saveNoteVersion(noteId: number, userId: number, title: string, content: string): boolean {
   const contentHash = hashContent(content);
 
-  // Check if we already have this exact content as the latest version
+  // Check the latest version
   const lastVersion = db.prepare(`
-    SELECT content_hash, version_number FROM note_versions
+    SELECT content_hash, version_number, created_at FROM note_versions
     WHERE note_id = ? ORDER BY version_number DESC LIMIT 1
-  `).get(noteId) as { content_hash: string; version_number: number } | undefined;
+  `).get(noteId) as { content_hash: string; version_number: number; created_at: string } | undefined;
 
   // Skip if content hasn't changed
   if (lastVersion && lastVersion.content_hash === contentHash) {
     return false;
+  }
+
+  // Skip if last version was created less than 30 seconds ago
+  if (lastVersion) {
+    const lastVersionTime = new Date(lastVersion.created_at + 'Z').getTime();
+    const now = Date.now();
+    const secondsSinceLastVersion = (now - lastVersionTime) / 1000;
+    if (secondsSinceLastVersion < 30) {
+      return false;
+    }
   }
 
   const nextVersionNumber = (lastVersion?.version_number ?? 0) + 1;
