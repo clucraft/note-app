@@ -6,6 +6,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import routes from './routes/index.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
+import { generalLimiter } from './middleware/rateLimit.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,16 +32,6 @@ if (!fs.existsSync(uploadsDir)) {
 console.log('[Uploads] Serving static files from:', uploadsDir);
 app.use('/uploads', express.static(uploadsDir));
 
-// Debug endpoint to check uploads
-app.get('/uploads-debug', (req, res) => {
-  try {
-    const files = fs.readdirSync(uploadsDir);
-    res.json({ uploadsDir, files, exists: fs.existsSync(uploadsDir) });
-  } catch (err) {
-    res.json({ uploadsDir, error: String(err) });
-  }
-});
-
 // Parse cookies
 app.use(cookieParser());
 
@@ -49,8 +40,8 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routes
-app.use('/api', routes);
+// API routes with general rate limiting
+app.use('/api', generalLimiter, routes);
 
 // Error handling
 app.use(notFoundHandler);
