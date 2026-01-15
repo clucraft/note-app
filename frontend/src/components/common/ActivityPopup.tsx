@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   getTodayActivity,
   getActivityHistory,
@@ -8,6 +8,90 @@ import {
   type StreakInfo
 } from '../../api/activity.api';
 import styles from './ActivityPopup.module.css';
+
+// Motivational messages organized by streak tiers
+const STREAK_MESSAGES = {
+  starting: [ // 1-3 days
+    'Keep it going!',
+    'Great start!',
+    'Building momentum!',
+    'Off to strong!',
+    'Nice beginning!',
+    'First steps count!',
+    "You've got this!",
+    'Keep showing up!',
+    'Day one done!',
+    'Foundation laid!',
+  ],
+  growing: [ // 4-7 days
+    "You're on fire!",
+    'Crushing it!',
+    'In the zone!',
+    'Words are flowing!',
+    'Making it happen!',
+    'Habit forming!',
+    'On a roll!',
+    'Writing strong!',
+    'Pure dedication!',
+    'Great momentum!',
+  ],
+  solid: [ // 8-14 days
+    'Unstoppable!',
+    'Writing machine!',
+    'True commitment!',
+    'Consistency wins!',
+    'Level up!',
+    'Prolific writer!',
+    'Discipline unlocked!',
+    'Achievement unlocked!',
+    'Remarkable consistency!',
+    'Born to write!',
+  ],
+  impressive: [ // 15-30 days
+    'Legend status!',
+    'Incredible focus!',
+    "Writer's groove!",
+    'Streak champion!',
+    'Outstanding effort!',
+    'Simply amazing!',
+    'Future bestseller!',
+    'Dream in progress!',
+    'Creative fire!',
+    'Absolutely brilliant!',
+  ],
+  epic: [ // 31+ days
+    'Unbreakable!',
+    'Legendary writer!',
+    'Master of words!',
+    'Writing royalty!',
+    'Hall of fame!',
+    'Elite status!',
+    'World class!',
+    'Peak performance!',
+    'True dedication!',
+    'Inspirational!',
+  ],
+};
+
+function getStreakMessage(streak: number): string {
+  let messages: string[];
+
+  if (streak <= 3) {
+    messages = STREAK_MESSAGES.starting;
+  } else if (streak <= 7) {
+    messages = STREAK_MESSAGES.growing;
+  } else if (streak <= 14) {
+    messages = STREAK_MESSAGES.solid;
+  } else if (streak <= 30) {
+    messages = STREAK_MESSAGES.impressive;
+  } else {
+    messages = STREAK_MESSAGES.epic;
+  }
+
+  // Use streak as seed for consistent message per streak count
+  const index = streak % messages.length;
+  return messages[index];
+}
 
 interface ActivityPopupProps {
   onClose: () => void;
@@ -147,7 +231,7 @@ export function ActivityPopup({ onClose }: ActivityPopupProps) {
             </div>
             {streak && streak.currentStreak > 0 && (
               <span className={styles.streakMessage}>
-                {streak.currentStreak === 1 ? 'Keep it going!' : 'Great momentum!'}
+                {getStreakMessage(streak.currentStreak)}
               </span>
             )}
           </div>
