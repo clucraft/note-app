@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { updateProfile, updatePreferences } from '../../api/auth.api';
 import { getTwoFAStatus, setupTwoFA, enableTwoFA, disableTwoFA, type TwoFASetup } from '../../api/twofa.api';
+import { getNotesTree } from '../../api/notes.api';
+import { importDocmost, type ImportResult } from '../../api/import.api';
+import type { Note } from '../../types/note.types';
 import styles from './Profile.module.css';
 
 const LANGUAGES = [
@@ -54,6 +57,16 @@ export function Profile() {
   const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
   const [isVerifying2FA, setIsVerifying2FA] = useState(false);
 
+  // Import state
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const importFolderInputRef = useRef<HTMLInputElement>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [importParentId, setImportParentId] = useState<string>('');
+  const [preserveStructure, setPreserveStructure] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
   useEffect(() => {
     // Initialize timezones list
     const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -64,7 +77,19 @@ export function Profile() {
 
     // Load 2FA status
     loadTwoFAStatus();
+
+    // Load notes for import destination dropdown
+    loadNotes();
   }, []);
+
+  const loadNotes = async () => {
+    try {
+      const tree = await getNotesTree();
+      setNotes(tree);
+    } catch (err) {
+      console.error('Failed to load notes:', err);
+    }
+  };
 
   const loadTwoFAStatus = async () => {
     try {
@@ -273,6 +298,59 @@ export function Profile() {
     } catch (error) {
       console.error('Failed to update timezone:', error);
       setError('Failed to update timezone');
+    }
+  };
+
+  // Flatten notes tree for dropdown
+  const flattenNotes = (noteList: Note[], depth = 0): Array<{ id: number; title: string; depth: number }> => {
+    const result: Array<{ id: number; title: string; depth: number }> = [];
+    for (const note of noteList) {
+      result.push({ id: note.id, title: note.title, depth });
+      if (note.children && note.children.length > 0) {
+        result.push(...flattenNotes(note.children, depth + 1));
+      }
+    }
+    return result;
+  };
+
+  const handleImportFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setIsImporting(true);
+    setImportProgress(0);
+    setImportResult(null);
+    setError('');
+    setSuccess('');
+
+    try {
+      const fileArray = Array.from(files);
+      const result = await importDocmost(
+        fileArray,
+        {
+          parentId: importParentId ? parseInt(importParentId, 10) : null,
+          preserveStructure
+        },
+        (progress) => setImportProgress(progress)
+      );
+
+      setImportResult(result);
+
+      if (result.success) {
+        setSuccess(`Successfully imported ${result.imported.notes} notes and ${result.imported.attachments} attachments`);
+        // Refresh notes list
+        loadNotes();
+      } else {
+        setError(`Import completed with errors. Imported ${result.imported.notes} notes.`);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to import files');
+      setImportResult(null);
+    } finally {
+      setIsImporting(false);
+      setImportProgress(0);
+      // Reset file inputs
+      if (importFileInputRef.current) importFileInputRef.current.value = '';
+      if (importFolderInputRef.current) importFolderInputRef.current.value = '';
     }
   };
 
@@ -529,6 +607,107 @@ export function Profile() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className={styles.divider} />
+
+      <div className={styles.section}>
+        <h3 className={styles.label}>Import Notes</h3>
+        <p className={styles.description}>
+          Import notes from Docmost exports (.md, .html, or .zip files). Attachments and folder hierarchy will be preserved.
+        </p>
+
+        <div className={styles.importOptions}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Destination</label>
+            <select
+              className={styles.select}
+              value={importParentId}
+              onChange={(e) => setImportParentId(e.target.value)}
+              disabled={isImporting}
+            >
+              <option value="">Root level</option>
+              {flattenNotes(notes).map((note) => (
+                <option key={note.id} value={note.id}>
+                  {'  '.repeat(note.depth)}{note.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.checkboxGroup}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={preserveStructure}
+                onChange={(e) => setPreserveStructure(e.target.checked)}
+                disabled={isImporting}
+              />
+              Preserve folder structure
+            </label>
+          </div>
+
+          <div className={styles.importButtons}>
+            <button
+              className={styles.uploadButton}
+              onClick={() => importFileInputRef.current?.click()}
+              disabled={isImporting}
+            >
+              {isImporting ? 'Importing...' : 'Select Files'}
+            </button>
+            <button
+              className={styles.uploadButton}
+              onClick={() => importFolderInputRef.current?.click()}
+              disabled={isImporting}
+            >
+              Select Folder
+            </button>
+          </div>
+
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".md,.html,.htm,.zip,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.webm,.pdf"
+            multiple
+            onChange={(e) => handleImportFiles(e.target.files)}
+            className={styles.hiddenInput}
+          />
+          <input
+            ref={importFolderInputRef}
+            type="file"
+            // @ts-ignore - webkitdirectory is not in the type definitions
+            webkitdirectory=""
+            multiple
+            onChange={(e) => handleImportFiles(e.target.files)}
+            className={styles.hiddenInput}
+          />
+
+          {isImporting && (
+            <div className={styles.progressContainer}>
+              <div className={styles.progressBar}>
+                <div
+                  className={styles.progressFill}
+                  style={{ width: `${importProgress}%` }}
+                />
+              </div>
+              <span className={styles.progressText}>{importProgress}% uploaded</span>
+            </div>
+          )}
+
+          {importResult && importResult.errors.length > 0 && (
+            <div className={styles.importErrors}>
+              <p className={styles.importErrorTitle}>Some files had errors:</p>
+              <ul className={styles.importErrorList}>
+                {importResult.errors.slice(0, 5).map((err, idx) => (
+                  <li key={idx}>{err.file}: {err.error}</li>
+                ))}
+                {importResult.errors.length > 5 && (
+                  <li>...and {importResult.errors.length - 5} more errors</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

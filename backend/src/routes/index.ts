@@ -9,6 +9,7 @@ import activityRoutes from './activity.routes.js';
 import twofaRoutes from './twofa.routes.js';
 import taskRoutes from './task.routes.js';
 import settingsRoutes from './settings.routes.js';
+import importRoutes from './import.routes.js';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/activity', activityRoutes);
 router.use('/2fa', twofaRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/import', importRoutes);
 
 export default router;
