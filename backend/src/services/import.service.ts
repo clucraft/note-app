@@ -179,15 +179,16 @@ async function processFileTree(
   result: ImportResult
 ): Promise<void> {
   // First, collect all attachments and create a mapping
+  // Only map by full relative path to avoid filename collisions
   const attachmentMap = new Map<string, string>();
   const attachmentEntries = entries.filter(e => !e.isDirectory && isAttachment(e.relativePath));
 
   for (const entry of attachmentEntries) {
     try {
       const newUrl = await copyAttachmentToUploads(entry.absolutePath, path.basename(entry.relativePath));
+      // Map by full relative path only - don't add filename-only mappings
+      // as they cause collisions when multiple folders have same-named files
       attachmentMap.set(entry.relativePath, newUrl);
-      // Also map just the filename for simpler references
-      attachmentMap.set(path.basename(entry.relativePath), newUrl);
       result.imported.attachments++;
     } catch (error: any) {
       result.errors.push({ file: entry.relativePath, error: error.message });
@@ -442,34 +443,48 @@ function resolveAttachmentUrl(
   filePath: string,
   attachmentMap: Map<string, string>
 ): string | null {
-  // Normalize the URL
+  // Normalize the URL (remove leading ./)
   const normalizedUrl = url.replace(/^\.\//, '');
-
-  // Try direct match
-  if (attachmentMap.has(normalizedUrl)) {
-    return attachmentMap.get(normalizedUrl)!;
-  }
-
-  // Try just the filename
   const filename = path.basename(normalizedUrl);
-  if (attachmentMap.has(filename)) {
-    return attachmentMap.get(filename)!;
-  }
-
-  // Try resolving relative to the file's directory
   const fileDir = path.dirname(filePath);
+
+  // 1. Try resolving relative to the content file's directory FIRST
+  // This is the most likely correct match for same-named files in different folders
   const relativePath = path.join(fileDir, normalizedUrl).replace(/\\/g, '/');
   if (attachmentMap.has(relativePath)) {
     return attachmentMap.get(relativePath)!;
   }
 
-  // Try common attachment directories
-  const commonDirs = ['attachments', 'assets', 'images', 'files', 'media'];
+  // 2. Try direct match (URL as given matches a full path in the map)
+  if (attachmentMap.has(normalizedUrl)) {
+    return attachmentMap.get(normalizedUrl)!;
+  }
+
+  // 3. Try common attachment directories relative to the content file's directory
+  const commonDirs = ['attachments', 'assets', 'images', 'files', 'media', '.attachments'];
   for (const dir of commonDirs) {
-    const tryPath = `${dir}/${filename}`;
-    if (attachmentMap.has(tryPath)) {
-      return attachmentMap.get(tryPath)!;
+    // Try: contentFileDir/attachments/filename
+    const tryPath1 = path.join(fileDir, dir, filename).replace(/\\/g, '/');
+    if (attachmentMap.has(tryPath1)) {
+      return attachmentMap.get(tryPath1)!;
     }
+    // Try: attachments/filename (from root)
+    const tryPath2 = `${dir}/${filename}`;
+    if (attachmentMap.has(tryPath2)) {
+      return attachmentMap.get(tryPath2)!;
+    }
+  }
+
+  // 4. Last resort: search all attachments for one with matching filename
+  // Only use this if there's exactly ONE match to avoid ambiguity
+  const matchingPaths: string[] = [];
+  for (const [mapPath] of attachmentMap) {
+    if (path.basename(mapPath) === filename) {
+      matchingPaths.push(mapPath);
+    }
+  }
+  if (matchingPaths.length === 1) {
+    return attachmentMap.get(matchingPaths[0])!;
   }
 
   return null;
