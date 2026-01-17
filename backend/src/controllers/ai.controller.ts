@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { db } from '../database/db.js';
 import * as aiService from '../services/ai.service.js';
 import type { AISettings, AIProvider } from '../services/ai.service.js';
+import {
+  generateEmbedding,
+  bufferToEmbedding,
+  cosineSimilarity,
+  isEmbeddingsAvailable,
+  stripHtml
+} from '../services/embeddings.service.js';
 
 const aiSettingsSchema = z.object({
   provider: z.enum(['openai', 'anthropic', 'openwebui']),
@@ -218,19 +225,16 @@ export async function aiChat(req: Request, res: Response) {
       return;
     }
 
-    // Fetch all user notes for context (exclude soft-deleted notes)
-    const notes = db.prepare(`
-      SELECT id, title, content
-      FROM notes
-      WHERE user_id = ? AND deleted_at IS NULL
-      ORDER BY updated_at DESC
-    `).all(userId) as Array<{ id: number; title: string; content: string }>;
-
     const settings: AISettings = JSON.parse(user.ai_settings);
+    const userMessage = validation.data.message;
+
+    // Find relevant notes using semantic search + keyword fallback
+    const relevantNotes = await findRelevantNotes(userId, userMessage);
+
     const result = await aiService.chat(
       settings,
-      validation.data.message,
-      notes,
+      userMessage,
+      relevantNotes,
       validation.data.history
     );
 
@@ -244,4 +248,93 @@ export async function aiChat(req: Request, res: Response) {
     console.error('AI chat error:', error);
     res.status(500).json({ error: `Failed to process chat message: ${error.message || error}` });
   }
+}
+
+/**
+ * Find relevant notes for a query using semantic search with keyword fallback
+ * Returns up to 15 most relevant notes
+ */
+async function findRelevantNotes(
+  userId: number,
+  query: string
+): Promise<Array<{ id: number; title: string; content: string }>> {
+  const MAX_NOTES = 15;
+  const SIMILARITY_THRESHOLD = 0.35;
+
+  let semanticResults: Array<{ id: number; title: string; content: string; similarity: number }> = [];
+  let keywordResults: Array<{ id: number; title: string; content: string }> = [];
+
+  // Try semantic search if embeddings are available
+  if (isEmbeddingsAvailable()) {
+    try {
+      const queryEmbedding = await generateEmbedding(query);
+
+      // Get all notes with embeddings
+      const notesWithEmbeddings = db.prepare(`
+        SELECT id, title, content, embedding
+        FROM notes
+        WHERE user_id = ? AND deleted_at IS NULL AND embedding IS NOT NULL
+      `).all(userId) as Array<{ id: number; title: string; content: string; embedding: Buffer }>;
+
+      // Score and rank by similarity
+      semanticResults = notesWithEmbeddings
+        .map(note => {
+          const noteEmbedding = bufferToEmbedding(note.embedding);
+          const similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
+          return { id: note.id, title: note.title, content: note.content, similarity };
+        })
+        .filter(note => note.similarity > SIMILARITY_THRESHOLD)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, MAX_NOTES);
+    } catch (error) {
+      console.error('Semantic search failed, falling back to keyword search:', error);
+    }
+  }
+
+  // Keyword search (fallback or supplement)
+  const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 2);
+  if (searchTerms.length > 0) {
+    const searchPattern = `%${searchTerms.join('%')}%`;
+    keywordResults = db.prepare(`
+      SELECT id, title, content
+      FROM notes
+      WHERE user_id = ? AND deleted_at IS NULL
+        AND (LOWER(title) LIKE ? OR LOWER(content) LIKE ?)
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(userId, searchPattern, searchPattern, MAX_NOTES) as Array<{ id: number; title: string; content: string }>;
+  }
+
+  // Merge results: semantic first, then keyword (deduplicated)
+  const seenIds = new Set<number>();
+  const mergedResults: Array<{ id: number; title: string; content: string }> = [];
+
+  for (const note of semanticResults) {
+    if (!seenIds.has(note.id)) {
+      seenIds.add(note.id);
+      mergedResults.push({ id: note.id, title: note.title, content: note.content });
+    }
+  }
+
+  for (const note of keywordResults) {
+    if (!seenIds.has(note.id) && mergedResults.length < MAX_NOTES) {
+      seenIds.add(note.id);
+      mergedResults.push(note);
+    }
+  }
+
+  // If still no results, get most recently updated notes
+  if (mergedResults.length === 0) {
+    const recentNotes = db.prepare(`
+      SELECT id, title, content
+      FROM notes
+      WHERE user_id = ? AND deleted_at IS NULL
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(userId, MAX_NOTES) as Array<{ id: number; title: string; content: string }>;
+
+    return recentNotes;
+  }
+
+  return mergedResults;
 }

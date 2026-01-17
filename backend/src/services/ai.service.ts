@@ -181,31 +181,32 @@ export async function chat(
   notes: NoteContext[],
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<AIResponse> {
-  // Build notes context - limit to avoid token limits
+  // Build notes context from relevant notes (already filtered by semantic search)
+  // Limit content per note to fit within context windows
+  const MAX_CONTENT_LENGTH = 4000; // ~1000 tokens per note
+
   const notesContext = notes
-    .slice(0, 100) // Limit to 100 notes
     .map(note => {
-      // Strip HTML tags and limit content length (handle null/undefined content)
+      // Strip HTML tags and limit content length
       const plainContent = (note.content || '')
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 100000);
-      return `[Note: "${note.title || 'Untitled'}"]\n${plainContent}`;
+        .slice(0, MAX_CONTENT_LENGTH);
+      const truncated = plainContent.length === MAX_CONTENT_LENGTH ? '...[truncated]' : '';
+      return `[Note: "${note.title || 'Untitled'}"]\n${plainContent}${truncated}`;
     })
-    .join('\n\n');
+    .join('\n\n---\n\n');
 
-  const systemPrompt = `You are a helpful AI assistant for a note-taking application. You have access to the user's notes and can help them find information, answer questions about their notes, summarize content, and provide insights.
+  const systemPrompt = `You are a helpful AI assistant for a note-taking application. Below are the most relevant notes from the user's collection based on their question.
 
-Here are the user's notes for context:
-
-${notesContext}
+${notes.length > 0 ? `Here are ${notes.length} relevant notes:\n\n${notesContext}` : 'No relevant notes were found for this query.'}
 
 When answering questions:
-- Reference specific notes when relevant by citing them like this: [Note: "Note Title"]
-- Always cite the notes you pull information from at the end of your response
+- Reference specific notes by citing them like this: [Note: "Note Title"]
+- Cite the notes you pull information from at the end of your response
 - Be concise but thorough
-- If asked about something not in the notes, let the user know
+- If the answer isn't in the provided notes, let the user know - there may be other notes not shown
 - You can help with general questions too, not just note-related ones
 
 Format your response with citations like:
