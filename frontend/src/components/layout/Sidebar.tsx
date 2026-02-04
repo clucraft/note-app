@@ -40,14 +40,6 @@ export function Sidebar() {
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => setShowRecentlyEdited(true)}
-            title="Recently Edited"
-          >
-            &#128337;
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
             onClick={() => setShowAIChat(true)}
             title="AI Chat"
           >
@@ -61,6 +53,14 @@ export function Sidebar() {
             title="New note"
           >
             +
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowRecentlyEdited(true)}
+            title="Recently Edited"
+          >
+            &#128337;
           </Button>
         </div>
       </div>
