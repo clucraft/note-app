@@ -177,3 +177,23 @@ export async function getSharedWithMeNotes(): Promise<SharedNote[]> {
   const response = await api.get<SharedNote[]>('/notes/shared-with-me');
   return response.data;
 }
+
+// Recently Edited Notes API
+
+export type EditType = 'created' | 'title_changed' | 'content_edited';
+
+export interface RecentlyEditedNote {
+  id: number;
+  title: string;
+  titleEmoji: string | null;
+  preview: string;
+  createdAt: string;
+  updatedAt: string;
+  editsToday: number;
+  editType: EditType;
+}
+
+export async function getRecentlyEditedNotes(limit: number = 50): Promise<RecentlyEditedNote[]> {
+  const response = await api.get<RecentlyEditedNote[]>('/notes/recent', { params: { limit } });
+  return response.data;
+}

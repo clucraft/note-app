@@ -1334,3 +1334,71 @@ export async function getSharedWithMeNotes(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to get shared notes' });
   }
 }
+
+/**
+ * Get recently edited notes with metadata
+ */
+export async function getRecentlyEditedNotes(req: Request, res: Response) {
+  try {
+    const userId = req.user!.userId;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+    // Get recently edited notes with version count for today
+    const notes = db.prepare(`
+      SELECT
+        n.id,
+        n.title,
+        n.title_emoji,
+        n.content,
+        n.created_at,
+        n.updated_at,
+        (
+          SELECT COUNT(*) FROM note_versions nv
+          WHERE nv.note_id = n.id
+          AND date(nv.created_at) = date('now')
+        ) as edits_today,
+        (
+          SELECT nv.title FROM note_versions nv
+          WHERE nv.note_id = n.id
+          ORDER BY nv.created_at DESC LIMIT 1
+        ) as previous_title
+      FROM notes n
+      WHERE n.user_id = ? AND n.deleted_at IS NULL
+      ORDER BY n.updated_at DESC
+      LIMIT ?
+    `).all(userId, limit) as any[];
+
+    const formattedNotes = notes.map(note => {
+      // Extract preview from content (strip HTML, take first 100 chars)
+      const preview = (note.content || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 100);
+
+      // Determine edit type
+      let editType: 'created' | 'title_changed' | 'content_edited' = 'content_edited';
+      if (note.created_at === note.updated_at) {
+        editType = 'created';
+      } else if (note.previous_title && note.previous_title !== note.title) {
+        editType = 'title_changed';
+      }
+
+      return {
+        id: note.id,
+        title: note.title,
+        titleEmoji: note.title_emoji,
+        preview: preview + (preview.length === 100 ? '...' : ''),
+        createdAt: note.created_at,
+        updatedAt: note.updated_at,
+        editsToday: note.edits_today || 0,
+        editType
+      };
+    });
+
+    res.json(formattedNotes);
+  } catch (error) {
+    console.error('Get recently edited notes error:', error);
+    res.status(500).json({ error: 'Failed to get recently edited notes' });
+  }
+}

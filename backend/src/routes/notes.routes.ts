@@ -26,7 +26,8 @@ import {
   shareNoteWithUser,
   updateSharePermission,
   removeNoteShare,
-  getSharedWithMeNotes
+  getSharedWithMeNotes,
+  getRecentlyEditedNotes
 } from '../controllers/notes.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -36,6 +37,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', getNotesTree);
+router.get('/recent', getRecentlyEditedNotes);
 router.get('/search', searchNotes);
 router.get('/index-status', getIndexStatus);
 router.post('/reindex', reindexNotes);

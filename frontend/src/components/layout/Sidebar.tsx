@@ -3,12 +3,14 @@ import { useNotes } from '../../hooks/useNotes';
 import { NoteTree } from '../notes/NoteTree';
 import { Button } from '../common/Button';
 import { AIChatModal } from '../common/AIChatModal';
+import { RecentlyEditedModal } from '../common/RecentlyEditedModal';
 import { Calendar } from '../common/Calendar';
 import styles from './Sidebar.module.css';
 
 export function Sidebar() {
   const { createNote, isLoading, selectNote } = useNotes();
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showRecentlyEdited, setShowRecentlyEdited] = useState(false);
   const [showCalendar, setShowCalendar] = useState(() => {
     const stored = localStorage.getItem('showCalendar');
     return stored !== null ? stored === 'true' : true;
@@ -35,6 +37,14 @@ export function Sidebar() {
       <div className={styles.header}>
         <h2 className={styles.title}>Notes</h2>
         <div className={styles.headerButtons}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowRecentlyEdited(true)}
+            title="Recently Edited"
+          >
+            <span style={{ fontSize: '1rem' }}>&#128337;</span>
+          </Button>
           <Button
             size="sm"
             variant="secondary"
@@ -75,6 +85,7 @@ export function Sidebar() {
       </div>
 
       <AIChatModal isOpen={showAIChat} onClose={() => setShowAIChat(false)} />
+      <RecentlyEditedModal isOpen={showRecentlyEdited} onClose={() => setShowRecentlyEdited(false)} />
     </aside>
   );
 }
