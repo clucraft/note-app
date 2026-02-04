@@ -8,8 +8,6 @@ interface RecentlyEditedModalProps {
   onClose: () => void;
 }
 
-type TimeGroup = 'today' | 'yesterday' | 'thisWeek' | 'older';
-
 interface GroupedNotes {
   today: RecentlyEditedNote[];
   yesterday: RecentlyEditedNote[];
