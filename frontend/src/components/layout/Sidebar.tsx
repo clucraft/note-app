@@ -43,7 +43,7 @@ export function Sidebar() {
             onClick={() => setShowRecentlyEdited(true)}
             title="Recently Edited"
           >
-            <span style={{ fontSize: '1rem' }}>&#128337;</span>
+            &#128337;
           </Button>
           <Button
             size="sm"
