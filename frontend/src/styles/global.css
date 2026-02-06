@@ -238,14 +238,14 @@ input, textarea, select {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  opacity: 0.25;
+  opacity: 0.5;
   --particle-color: #3b82f6;
 }
 
 .particle-bg--contained {
   position: absolute;
   z-index: 0;
-  opacity: 0.2;
+  opacity: 0.4;
 }
 
 .particle-bg--contained div {
@@ -255,36 +255,36 @@ input, textarea, select {
 /* Theme particle colors */
 [data-theme="dark"] .particle-bg {
   --particle-color: #555555;
-  opacity: 0.5;
+  opacity: 0.7;
 }
 
 [data-theme="dark"] .particle-bg--contained {
-  opacity: 0.35;
+  opacity: 0.55;
 }
 
 [data-theme="dracula"] .particle-bg {
   --particle-color: #bd93f9;
-  opacity: 0.3;
+  opacity: 0.55;
 }
 
 [data-theme="dracula"] .particle-bg--contained {
-  opacity: 0.2;
+  opacity: 0.4;
 }
 
 [data-theme="solarized"] .particle-bg {
   --particle-color: #2aa198;
-  opacity: 0.3;
+  opacity: 0.55;
 }
 
 [data-theme="solarized"] .particle-bg--contained {
-  opacity: 0.2;
+  opacity: 0.4;
 }
 
 [data-theme="nord"] .particle-bg {
   --particle-color: #88c0d0;
-  opacity: 0.3;
+  opacity: 0.55;
 }
 
 [data-theme="nord"] .particle-bg--contained {
-  opacity: 0.2;
+  opacity: 0.4;
 }
