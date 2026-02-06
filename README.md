@@ -1,4 +1,4 @@
-# Cache Notes
+# <img src="frontend/public/favicon.svg" width="32" height="32" alt="Cache Notes" /> Cache Notes
 
 A modern, self-hosted note-taking application with hierarchical organization, rich text editing, AI integration, and security-first design.
 

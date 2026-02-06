@@ -1,3 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <text y="0.9em" font-size="90">📝</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Note page -->
+  <path d="M14 6h26l12 12v38a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4z"
+        fill="#dbeafe" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Fold area -->
+  <path d="M40 6v8a4 4 0 0 0 4 4h8L40 6z" fill="#93c5fd"/>
+  <!-- Fold line -->
+  <path d="M40 6v8a4 4 0 0 0 4 4h8" fill="none" stroke="#3b82f6" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Lightning bolt -->
+  <polygon points="36,20 25,36 31,36 26,52 39,32 33,32 38,20"
+           fill="#fbbf24" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>
