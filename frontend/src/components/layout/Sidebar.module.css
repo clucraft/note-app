@@ -1,4 +1,5 @@
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -8,6 +9,8 @@
 }
 
 .header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -30,6 +33,8 @@
 }
 
 .tree {
+  position: relative;
+  z-index: 1;
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem;
@@ -38,6 +43,8 @@
 
 /* Calendar Section */
 .calendarSection {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   border-top: 1px solid var(--border-color);
   padding: 0.5rem;

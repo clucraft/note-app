@@ -5,6 +5,7 @@ import { Button } from '../common/Button';
 import { AIChatModal } from '../common/AIChatModal';
 import { RecentlyEditedModal } from '../common/RecentlyEditedModal';
 import { Calendar } from '../common/Calendar';
+import { ParticleBackground } from '../common/ParticleBackground';
 import styles from './Sidebar.module.css';
 
 export function Sidebar() {
@@ -34,6 +35,7 @@ export function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
+      <ParticleBackground contained />
       <div className={styles.header}>
         <h2 className={styles.title}>Notes</h2>
         <div className={styles.headerButtons}>

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getRegistrationStatus } from '../../api/settings.api';
 import { Button } from '../common/Button';
+import { ParticleBackground } from '../common/ParticleBackground';
 import styles from './AuthForm.module.css';
 
 export function RegisterForm() {
@@ -68,6 +69,7 @@ export function RegisterForm() {
 
   return (
     <div className={styles.container}>
+      <ParticleBackground />
       <div className={styles.formCard}>
         <h1 className={styles.title}>Create Account</h1>
         <p className={styles.subtitle}>Start organizing your notes</p>

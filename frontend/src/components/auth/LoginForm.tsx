@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getRegistrationStatus } from '../../api/settings.api';
 import { Button } from '../common/Button';
+import { ParticleBackground } from '../common/ParticleBackground';
 import styles from './AuthForm.module.css';
 
 export function LoginForm() {
@@ -50,6 +51,7 @@ export function LoginForm() {
 
   return (
     <div className={styles.container}>
+      <ParticleBackground />
       <div className={styles.formCard}>
         <h1 className={styles.title}>
           {requiresTwoFactor ? 'Two-Factor Authentication' : 'Welcome Back'}
