@@ -451,3 +451,74 @@
 .actionDanger:hover {
   background-color: rgba(220, 53, 69, 0.1);
 }
+
+/* Save error banner */
+.saveBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-bottom: 1px solid var(--color-danger, #dc3545);
+  color: var(--color-danger, #dc3545);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.saveBannerBtn {
+  padding: 0.25rem 0.75rem;
+  background-color: var(--color-danger, #dc3545);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.saveBannerBtn:hover {
+  opacity: 0.9;
+}
+
+/* Recovery banner */
+.recoveryBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background-color: var(--color-primary-light);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+}
+
+.recoveryBannerBtn {
+  padding: 0.25rem 0.75rem;
+  background-color: var(--color-primary);
+  color: var(--color-primary-text, white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.recoveryBannerBtn:hover {
+  opacity: 0.9;
+}
+
+.recoveryBannerDismiss {
+  padding: 0.25rem 0.75rem;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.recoveryBannerDismiss:hover {
+  background-color: var(--bg-surface-hover);
+}

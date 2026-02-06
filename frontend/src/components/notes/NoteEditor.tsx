@@ -32,6 +32,8 @@ export function NoteEditor() {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [activityKey, setActivityKey] = useState(0);
+  const [saveError, setSaveError] = useState(false);
+  const [showRecovery, setShowRecovery] = useState<string | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const prevStatsRef = useRef({ charCount: 0, wordCount: 0 });
   const pendingActivityRef = useRef({ charCount: 0, wordCount: 0 });
@@ -57,8 +59,29 @@ export function NoteEditor() {
 
   // Sync local content state and reset activity tracking when note changes
   useEffect(() => {
+    setSaveError(false);
+    setShowRecovery(null);
+
     if (selectedNote) {
       setContent(initialContent);
+
+      // Check for unsaved backup
+      const backup = localStorage.getItem(`unsaved-note-${selectedNote.id}`);
+      if (backup) {
+        try {
+          const parsed = JSON.parse(backup);
+          const noteUpdated = new Date(selectedNote.updatedAt).getTime();
+          if (parsed.timestamp > noteUpdated && parsed.content !== initialContent) {
+            const ago = Math.round((Date.now() - parsed.timestamp) / 60000);
+            const timeStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`;
+            setShowRecovery(timeStr);
+          } else {
+            localStorage.removeItem(`unsaved-note-${selectedNote.id}`);
+          }
+        } catch {
+          localStorage.removeItem(`unsaved-note-${selectedNote.id}`);
+        }
+      }
 
       // Reset activity tracking baseline for new note
       const textContent = initialContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
@@ -93,7 +116,19 @@ export function NoteEditor() {
   const debouncedSaveContent = useDebouncedCallback(
     async (id: number, newContent: string) => {
       const newTitle = extractTitleFromContent(newContent);
-      await updateNote(id, { content: newContent, title: newTitle });
+      try {
+        await updateNote(id, { content: newContent, title: newTitle });
+        setSaveError(false);
+        localStorage.removeItem(`unsaved-note-${id}`);
+      } catch (err) {
+        console.error('Failed to save note:', err);
+        setSaveError(true);
+        localStorage.setItem(`unsaved-note-${id}`, JSON.stringify({
+          content: newContent,
+          title: newTitle,
+          timestamp: Date.now()
+        }));
+      }
     },
     1000
   );
@@ -517,6 +552,46 @@ export function NoteEditor() {
           </AnimatePresence>
         </div>
       </div>
+
+      {saveError && (
+        <div className={styles.saveBanner}>
+          Failed to save — your session may have expired. Content backed up locally.
+          <button className={styles.saveBannerBtn} onClick={() => window.location.href = '/login'}>
+            Re-login
+          </button>
+        </div>
+      )}
+
+      {showRecovery && (
+        <div className={styles.recoveryBanner}>
+          Unsaved changes found from {showRecovery}.
+          <button
+            className={styles.recoveryBannerBtn}
+            onClick={() => {
+              if (!selectedNote) return;
+              const backup = localStorage.getItem(`unsaved-note-${selectedNote.id}`);
+              if (backup) {
+                const parsed = JSON.parse(backup);
+                setContent(parsed.content);
+                debouncedSaveContent(selectedNote.id, parsed.content);
+                localStorage.removeItem(`unsaved-note-${selectedNote.id}`);
+              }
+              setShowRecovery(null);
+            }}
+          >
+            Restore
+          </button>
+          <button
+            className={styles.recoveryBannerDismiss}
+            onClick={() => {
+              if (selectedNote) localStorage.removeItem(`unsaved-note-${selectedNote.id}`);
+              setShowRecovery(null);
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className={`${styles.content} ${styles[editorWidth]}`}>
         <TiptapEditor

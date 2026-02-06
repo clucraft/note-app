@@ -66,6 +66,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   }, []);
 
+  // Session heartbeat - refresh token periodically to keep session alive
+  useEffect(() => {
+    if (!user) return;
+
+    const HEARTBEAT_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+    const heartbeat = setInterval(async () => {
+      try {
+        await authApi.refreshToken();
+      } catch {
+        console.warn('Session heartbeat failed - token may have expired');
+      }
+    }, HEARTBEAT_INTERVAL);
+
+    return () => clearInterval(heartbeat);
+  }, [user]);
+
   const refreshUser = useCallback(async () => {
     try {
       const userData = await authApi.getMe();
