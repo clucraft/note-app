@@ -5,6 +5,7 @@ import { updateProfile, updatePreferences } from '../../api/auth.api';
 import { getTwoFAStatus, setupTwoFA, enableTwoFA, disableTwoFA, type TwoFASetup } from '../../api/twofa.api';
 import { getNotesTree } from '../../api/notes.api';
 import { importDocmost, type ImportResult } from '../../api/import.api';
+import { exportNotes } from '../../api/export.api';
 import type { Note } from '../../types/note.types';
 import styles from './Profile.module.css';
 
@@ -66,6 +67,11 @@ export function Profile() {
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
+  // Export state
+  const [exportFormat, setExportFormat] = useState<'markdown' | 'html'>('markdown');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     // Initialize timezones list
@@ -351,6 +357,23 @@ export function Profile() {
       // Reset file inputs
       if (importFileInputRef.current) importFileInputRef.current.value = '';
       if (importFolderInputRef.current) importFolderInputRef.current.value = '';
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    setError('');
+    setSuccess('');
+
+    try {
+      await exportNotes(exportFormat);
+      setSuccess(`Notes exported as ${exportFormat === 'markdown' ? 'Markdown' : 'HTML'}`);
+    } catch (err: any) {
+      setExportError(err.response?.data?.error || 'Failed to export notes');
+      setError('Failed to export notes');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -705,6 +728,46 @@ export function Profile() {
                   <li>...and {importResult.errors.length - 5} more errors</li>
                 )}
               </ul>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.divider} />
+
+      <div className={styles.section}>
+        <h3 className={styles.label}>Export Notes</h3>
+        <p className={styles.description}>
+          Export all notes as a ZIP file with folder hierarchy and attachments preserved.
+        </p>
+
+        <div className={styles.importOptions}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Format</label>
+            <select
+              className={styles.select}
+              value={exportFormat}
+              onChange={(e) => setExportFormat(e.target.value as 'markdown' | 'html')}
+              disabled={isExporting}
+            >
+              <option value="markdown">Markdown (.md)</option>
+              <option value="html">HTML (.html)</option>
+            </select>
+          </div>
+
+          <div className={styles.importButtons}>
+            <button
+              className={styles.uploadButton}
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              {isExporting ? 'Exporting...' : 'Export All Notes'}
+            </button>
+          </div>
+
+          {exportError && (
+            <div className={styles.importErrors}>
+              <p className={styles.importErrorTitle}>{exportError}</p>
             </div>
           )}
         </div>
