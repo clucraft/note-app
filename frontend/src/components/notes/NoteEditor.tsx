@@ -70,7 +70,7 @@ export function NoteEditor() {
       if (backup) {
         try {
           const parsed = JSON.parse(backup);
-          const noteUpdated = new Date(selectedNote.updatedAt).getTime();
+          const noteUpdated = selectedNote.updatedAt ? new Date(selectedNote.updatedAt).getTime() : 0;
           if (parsed.timestamp > noteUpdated && parsed.content !== initialContent) {
             const ago = Math.round((Date.now() - parsed.timestamp) / 60000);
             const timeStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`;
