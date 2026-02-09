@@ -116,7 +116,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
             {sidebarCollapsed ? '☰' : '◀'}
           </button>
         )}
-        <img src="/favicon.svg" alt="" className={styles.logoIcon} />
+        <img src="/favicon.svg?v=2" alt="" className={styles.logoIcon} />
         <span className={styles.logoText}>Cache</span>
       </div>
 
