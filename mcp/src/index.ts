@@ -19,6 +19,9 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Parse JSON bodies — needed because reverse proxies can consume the raw stream
+app.use(express.json());
+
 // Store active transports by session ID
 const transports = new Map<string, SSEServerTransport>();
 
@@ -43,7 +46,6 @@ app.get('/sse', async (req, res) => {
   await server.connect(transport);
 });
 
-// Do NOT use express.json() — the SDK reads the raw body stream itself
 app.post('/messages', async (req, res) => {
   const sessionId = req.query.sessionId as string;
 
@@ -58,7 +60,8 @@ app.post('/messages', async (req, res) => {
     return;
   }
 
-  await transport.handlePostMessage(req, res);
+  // Pass pre-parsed body so the SDK doesn't try to read the consumed stream
+  await transport.handlePostMessage(req, res, req.body);
 });
 
 app.get('/health', (_req, res) => {
