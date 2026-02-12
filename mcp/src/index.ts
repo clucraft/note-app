@@ -47,12 +47,7 @@ app.post('/mcp', async (req, res) => {
     return;
   }
 
-  if (sessionId && !sessions.has(sessionId)) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
-  }
-
-  // New session
+  // New session (or stale sessionId — create fresh)
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
   });
