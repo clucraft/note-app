@@ -1,5 +1,6 @@
 import express from 'express';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { randomUUID } from 'crypto';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './server.js';
 import { ApiClient } from './api-client.js';
 
@@ -10,8 +11,9 @@ const app = express();
 // CORS headers for Claude Desktop
 app.use((_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Mcp-Session-Id');
+  res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
   if (_req.method === 'OPTIONS') {
     res.status(204).end();
     return;
@@ -19,49 +21,77 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Parse JSON bodies — needed because reverse proxies can consume the raw stream
 app.use(express.json());
 
-// Store active transports by session ID
-const transports = new Map<string, SSEServerTransport>();
+// Store active sessions
+const sessions = new Map<string, { transport: StreamableHTTPServerTransport }>();
 
-app.get('/sse', async (req, res) => {
-  const apiKey = (req.query.apiKey as string) || (req.headers['x-api-key'] as string);
+function getApiKey(req: express.Request): string | undefined {
+  return (req.query.apiKey as string) || (req.headers['x-api-key'] as string) || undefined;
+}
 
+// Streamable HTTP — handles both new and existing sessions
+app.post('/mcp', async (req, res) => {
+  const apiKey = getApiKey(req);
   if (!apiKey) {
-    res.status(401).json({ error: 'API key required. Pass as ?apiKey= query param or X-API-Key header.' });
+    res.status(401).json({ error: 'API key required.' });
     return;
   }
 
-  const apiClient = new ApiClient({ apiKey });
-  const server = createMcpServer(apiClient);
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
-  const transport = new SSEServerTransport('/messages', res);
-  transports.set(transport.sessionId, transport);
-
-  res.on('close', () => {
-    transports.delete(transport.sessionId);
-  });
-
-  await server.connect(transport);
-});
-
-app.post('/messages', async (req, res) => {
-  const sessionId = req.query.sessionId as string;
-
-  if (!sessionId) {
-    res.status(400).json({ error: 'sessionId query parameter required' });
+  if (sessionId && sessions.has(sessionId)) {
+    // Existing session — forward the message
+    const { transport } = sessions.get(sessionId)!;
+    await transport.handleRequest(req, res, req.body);
     return;
   }
 
-  const transport = transports.get(sessionId);
-  if (!transport) {
+  if (sessionId && !sessions.has(sessionId)) {
     res.status(404).json({ error: 'Session not found' });
     return;
   }
 
-  // Pass pre-parsed body so the SDK doesn't try to read the consumed stream
-  await transport.handlePostMessage(req, res, req.body);
+  // New session
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+  });
+
+  const apiClient = new ApiClient({ apiKey });
+  const server = createMcpServer(apiClient);
+  await server.connect(transport);
+
+  const sid = transport.sessionId!;
+  sessions.set(sid, { transport });
+
+  transport.onclose = () => {
+    sessions.delete(sid);
+  };
+
+  await transport.handleRequest(req, res, req.body);
+});
+
+// GET for SSE stream (server-initiated messages)
+app.get('/mcp', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  if (!sessionId || !sessions.has(sessionId)) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  const { transport } = sessions.get(sessionId)!;
+  await transport.handleRequest(req, res);
+});
+
+// DELETE to close session
+app.delete('/mcp', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  if (!sessionId || !sessions.has(sessionId)) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  const { transport } = sessions.get(sessionId)!;
+  await transport.handleRequest(req, res);
+  sessions.delete(sessionId);
 });
 
 app.get('/health', (_req, res) => {
@@ -70,5 +100,5 @@ app.get('/health', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Cache Notes MCP server running on port ${PORT}`);
-  console.log(`SSE endpoint: http://localhost:${PORT}/sse`);
+  console.log(`Streamable HTTP endpoint: http://localhost:${PORT}/mcp`);
 });

@@ -162,7 +162,7 @@ export function IntegrationsSettings() {
           To use with the MCP server, start it with{' '}
           <span className={styles.code}>docker compose --profile mcp up -d</span>{' '}
           then configure your MCP client with the SSE URL:{' '}
-          <span className={styles.code}>http://localhost:3002/sse?apiKey=YOUR_KEY</span>
+          <span className={styles.code}>http://localhost:3002/mcp?apiKey=YOUR_KEY</span>
         </span>
       </div>
     </div>
