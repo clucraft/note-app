@@ -6,7 +6,18 @@ import { ApiClient } from './api-client.js';
 const PORT = parseInt(process.env.PORT || '3002', 10);
 
 const app = express();
-app.use(express.json());
+
+// CORS headers for Claude Desktop
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+  if (_req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 // Store active transports by session ID
 const transports = new Map<string, SSEServerTransport>();
@@ -32,6 +43,7 @@ app.get('/sse', async (req, res) => {
   await server.connect(transport);
 });
 
+// Do NOT use express.json() — the SDK reads the raw body stream itself
 app.post('/messages', async (req, res) => {
   const sessionId = req.query.sessionId as string;
 
