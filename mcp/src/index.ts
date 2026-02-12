@@ -56,14 +56,16 @@ app.post('/mcp', async (req, res) => {
   const server = createMcpServer(apiClient);
   await server.connect(transport);
 
+  // handleRequest processes the initialize message and assigns sessionId
+  await transport.handleRequest(req, res, req.body);
+
+  // Register session AFTER handleRequest so sessionId is populated
   const sid = transport.sessionId!;
   sessions.set(sid, { transport });
 
   transport.onclose = () => {
     sessions.delete(sid);
   };
-
-  await transport.handleRequest(req, res, req.body);
 });
 
 // GET for SSE stream (server-initiated messages)
