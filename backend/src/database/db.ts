@@ -308,6 +308,28 @@ export function initializeDatabase() {
     )
   `);
 
+  // Create api_keys table for MCP / external API authentication
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      key_prefix TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      last_used_at TEXT,
+      UNIQUE(user_id, name)
+    )
+  `);
+
+  // Create index for API key lookups
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   // Initialize default settings if not present
   const insertSetting = db.prepare(`
     INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)

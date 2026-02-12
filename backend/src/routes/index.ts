@@ -11,6 +11,7 @@ import taskRoutes from './task.routes.js';
 import settingsRoutes from './settings.routes.js';
 import importRoutes from './import.routes.js';
 import exportRoutes from './export.routes.js';
+import apiKeyRoutes from './apikey.routes.js';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/tasks', taskRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/import', importRoutes);
 router.use('/export', exportRoutes);
+router.use('/api-keys', apiKeyRoutes);
 
 export default router;

@@ -34,6 +34,25 @@ services:
       retries: 3
       start_period: 10s
 
+  mcp:
+    image: ghcr.io/clucraft/note-app-mcp:latest
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - BACKEND_URL=http://backend:3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - mcp
+
 networks:
   app-network:
     driver: bridge
