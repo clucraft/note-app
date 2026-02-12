@@ -11,6 +11,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_FRONTEND: ${{ github.repository }}-frontend
   IMAGE_NAME_BACKEND: ${{ github.repository }}-backend
+  IMAGE_NAME_MCP: ${{ github.repository }}-mcp
 
 jobs:
   build-and-push:
@@ -79,5 +80,29 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # MCP Server Image
+      - name: Extract metadata for MCP
+        id: meta-mcp
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MCP }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push MCP image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./mcp
+          file: ./mcp/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-mcp.outputs.tags }}
+          labels: ${{ steps.meta-mcp.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

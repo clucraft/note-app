@@ -35,9 +35,7 @@ services:
       start_period: 10s
 
   mcp:
-    build:
-      context: ./mcp
-      dockerfile: Dockerfile
+    image: ghcr.io/clucraft/note-app-mcp:latest
     ports:
       - "3002:3002"
     environment:
