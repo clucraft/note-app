@@ -35,7 +35,6 @@ services:
       start_period: 10s
 
   mcp:
-    image: ghcr.io/clucraft/note-app-mcp:latest
     build:
       context: ./mcp
       dockerfile: Dockerfile
