@@ -162,12 +162,12 @@ oauthRouter.post('/oauth/authorize', async (req: Request, res: Response) => {
 
     const loginData = await loginRes.json() as Record<string, unknown>;
 
+    if (loginData.requiresTwoFactor) {
+      renderError(totp ? 'Invalid two-factor code. Please try again.' : 'Two-factor authentication required.', true);
+      return;
+    }
+
     if (!loginRes.ok) {
-      if (loginData.requiresTwoFactor) {
-        // Need TOTP – re-render with TOTP field
-        renderError(totp ? 'Invalid two-factor code. Please try again.' : 'Two-factor authentication required.', true);
-        return;
-      }
       renderError((loginData.error as string) ?? 'Login failed.');
       return;
     }
