@@ -41,6 +41,8 @@ services:
     environment:
       - PORT=3002
       - BACKEND_URL=http://backend:3001
+      - MCP_JWT_SECRET=${MCP_JWT_SECRET:-mcp-oauth-secret-change-me}
+      - MCP_PUBLIC_URL=https://cachemcp.basch.me
     depends_on:
       backend:
         condition: service_healthy

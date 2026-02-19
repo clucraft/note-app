@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './server.js';
 import { ApiClient } from './api-client.js';
+import { oauthRouter, extractApiKeyFromBearer } from './oauth.js';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
 
@@ -12,7 +13,7 @@ const app = express();
 app.use((_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Mcp-Session-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Mcp-Session-Id, Authorization');
   res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
   if (_req.method === 'OPTIONS') {
     res.status(204).end();
@@ -22,12 +23,19 @@ app.use((_req, res, next) => {
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// OAuth routes (must be before /mcp)
+app.use(oauthRouter);
 
 // Store active sessions
 const sessions = new Map<string, { transport: StreamableHTTPServerTransport }>();
 
 function getApiKey(req: express.Request): string | undefined {
-  return (req.query.apiKey as string) || (req.headers['x-api-key'] as string) || undefined;
+  return (req.query.apiKey as string)
+    || (req.headers['x-api-key'] as string)
+    || extractApiKeyFromBearer(req.headers.authorization)
+    || undefined;
 }
 
 // Streamable HTTP — handles both new and existing sessions
