@@ -187,12 +187,14 @@ oauthRouter.post('/oauth/authorize', async (req: Request, res: Response) => {
     });
 
     if (!keyRes.ok) {
+      const keyErr = await keyRes.json().catch(() => ({})) as Record<string, unknown>;
+      console.error('API key creation failed:', keyRes.status, keyErr);
       renderError('Failed to create API key. Please try again.');
       return;
     }
 
     const keyData = await keyRes.json() as Record<string, unknown>;
-    const rawApiKey = keyData.rawKey as string;
+    const rawApiKey = keyData.key as string;
 
     // Generate auth code
     const code = randomUUID();
