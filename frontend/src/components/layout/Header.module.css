@@ -354,3 +354,10 @@
 .dropdownItem:hover {
   background-color: var(--bg-surface-hover);
 }
+
+.dropdownVersion {
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}

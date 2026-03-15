@@ -6,6 +6,7 @@ import { useNotes } from '../../hooks/useNotes';
 import { ThemeSwitcher } from '../themes/ThemeSwitcher';
 import { searchNotes, SearchResult } from '../../api/notes.api';
 import { summarizeSearchResults } from '../../api/ai.api';
+import packageJson from '../../../package.json';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -279,6 +280,8 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: HeaderProps) {
                 <button className={styles.dropdownItem} onClick={handleLogout}>
                   Sign Out
                 </button>
+                <div className={styles.dropdownDivider} />
+                <div className={styles.dropdownVersion}>v{packageJson.version}</div>
               </motion.div>
             )}
           </AnimatePresence>

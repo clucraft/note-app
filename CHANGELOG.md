@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.1.0]
+
 ### Added
 - **MCP Server integration** for Claude and other MCP-compatible AI clients
   - New `mcp/` service with SSE transport, exposing tools: `list_notes`, `get_note`, `search_notes`, `create_note`, `update_note`, `create_task`
@@ -17,3 +19,8 @@ All notable changes to this project will be documented in this file.
   - Create, view, and revoke API keys
   - Copy-to-clipboard for new keys with one-time display warning
   - MCP setup instructions included in the UI
+- **Version display** in user menu dropdown
+
+### Fixed
+- Mermaid diagram rendering issues
+- GitHub Actions version bumps
