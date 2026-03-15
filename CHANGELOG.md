@@ -22,5 +22,5 @@ All notable changes to this project will be documented in this file.
 - **Version display** in user menu dropdown
 
 ### Fixed
-- Mermaid diagram rendering issues
+- Mermaid diagram textarea not being editable (focus/event handling)
 - GitHub Actions version bumps
