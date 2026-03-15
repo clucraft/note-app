@@ -24,6 +24,7 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
   const [error, setError] = useState<string | null>(null);
   const [svg, setSvg] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editStartedAt = useRef(0);
 
   // Sync local edit state when entering edit mode or when code changes externally
   useEffect(() => {
@@ -55,14 +56,20 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
     renderDiagram();
   }, [code, isEditing]);
 
-  // Focus textarea when entering edit mode
+  // Focus textarea when entering edit mode (delayed to avoid ProseMirror focus theft)
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
+    if (isEditing) {
+      editStartedAt.current = Date.now();
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isEditing]);
 
   const handleSave = () => {
+    // Ignore blur events that fire immediately when entering edit mode
+    if (Date.now() - editStartedAt.current < 150) return;
     updateAttributes({ code: editCode });
     setIsEditing(false);
   };
