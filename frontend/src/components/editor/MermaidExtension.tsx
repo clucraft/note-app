@@ -226,7 +226,9 @@ export const Mermaid = Node.create<MermaidOptions>({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(MermaidNodeView);
+    return ReactNodeViewRenderer(MermaidNodeView, {
+      stopEvent: () => true,
+    });
   },
 
   addCommands() {
