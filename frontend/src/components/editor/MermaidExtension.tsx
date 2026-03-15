@@ -20,10 +20,17 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
   const attrs = node.attrs as MermaidAttrs;
   const { code } = attrs;
   const [isEditing, setIsEditing] = useState(!code);
+  const [editCode, setEditCode] = useState(code);
   const [error, setError] = useState<string | null>(null);
   const [svg, setSvg] = useState<string>('');
-  const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync local edit state when entering edit mode or when code changes externally
+  useEffect(() => {
+    if (isEditing) {
+      setEditCode(code);
+    }
+  }, [isEditing, code]);
 
   // Render mermaid diagram
   useEffect(() => {
@@ -56,11 +63,14 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
   }, [isEditing]);
 
   const handleSave = () => {
+    updateAttributes({ code: editCode });
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === 'Escape') {
+      updateAttributes({ code: editCode });
       setIsEditing(false);
     }
     // Allow tab for indentation
@@ -70,9 +80,8 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
       if (textarea) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        const value = textarea.value;
-        const newValue = value.substring(0, start) + '  ' + value.substring(end);
-        updateAttributes({ code: newValue });
+        const newValue = editCode.substring(0, start) + '  ' + editCode.substring(end);
+        setEditCode(newValue);
         setTimeout(() => {
           textarea.selectionStart = textarea.selectionEnd = start + 2;
         }, 0);
@@ -106,7 +115,13 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
         >
           <span>Mermaid Diagram</span>
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              if (isEditing) {
+                updateAttributes({ code: editCode });
+              }
+              setIsEditing(!isEditing);
+            }}
             style={{
               padding: '0.25rem 0.5rem',
               fontSize: '0.75rem',
@@ -126,10 +141,11 @@ function MermaidNodeView({ node, updateAttributes, selected }: any) {
           <div style={{ padding: '0.75rem' }}>
             <textarea
               ref={textareaRef}
-              value={code}
-              onChange={(e) => updateAttributes({ code: e.target.value })}
+              value={editCode}
+              onChange={(e) => setEditCode(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSave}
+              onMouseDown={(e) => e.stopPropagation()}
               placeholder={`Enter Mermaid syntax, e.g.:
 graph TD
     A[Start] --> B{Decision}
@@ -152,7 +168,6 @@ graph TD
           </div>
         ) : (
           <div
-            ref={containerRef}
             style={{
               padding: '1rem',
               display: 'flex',
