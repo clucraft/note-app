@@ -3,10 +3,17 @@ import path from 'path';
 
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../data/notes.db');
 
-export const db: DatabaseType = new Database(dbPath);
+export let db: DatabaseType = new Database(dbPath);
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
+
+export function reinitializeDb(): void {
+  db = new Database(dbPath);
+  db.pragma('foreign_keys = ON');
+  initializeDatabase();
+  console.log('Database reinitialized successfully');
+}
 
 // Initialize database schema
 export function initializeDatabase() {

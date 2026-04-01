@@ -1,5 +1,6 @@
 import app from './app.js';
 import { initializeDatabase } from './database/db.js';
+import { startScheduler } from './services/backup.scheduler.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,6 +17,9 @@ if (!fs.existsSync(dataDir)) {
 
 // Initialize database
 initializeDatabase();
+
+// Start backup scheduler
+startScheduler();
 
 // Start server
 app.listen(PORT, () => {

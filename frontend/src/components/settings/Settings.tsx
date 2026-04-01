@@ -6,9 +6,10 @@ import { SecuritySettings } from './SecuritySettings';
 import { MembersSettings } from './MembersSettings';
 import { AISettings } from './AISettings';
 import { IntegrationsSettings } from './IntegrationsSettings';
+import { BackupSettings } from './BackupSettings';
 import styles from './Settings.module.css';
 
-type SettingsSection = 'general' | 'ai' | 'security' | 'integrations' | 'members';
+type SettingsSection = 'general' | 'ai' | 'security' | 'integrations' | 'backups' | 'members';
 
 export function Settings() {
   const { user } = useAuth();
@@ -25,6 +26,8 @@ export function Settings() {
         return <SecuritySettings />;
       case 'integrations':
         return <IntegrationsSettings />;
+      case 'backups':
+        return user?.role === 'admin' ? <BackupSettings /> : null;
       case 'members':
         return user?.role === 'admin' ? <MembersSettings /> : null;
       default:
@@ -72,6 +75,15 @@ export function Settings() {
               <span className={styles.navIcon}>🔌</span>
               Integrations
             </button>
+            {user?.role === 'admin' && (
+              <button
+                className={`${styles.navItem} ${activeSection === 'backups' ? styles.active : ''}`}
+                onClick={() => setActiveSection('backups')}
+              >
+                <span className={styles.navIcon}>💾</span>
+                Backups
+              </button>
+            )}
             {user?.role === 'admin' && (
               <button
                 className={`${styles.navItem} ${activeSection === 'members' ? styles.active : ''}`}

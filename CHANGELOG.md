@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Google Drive backup & restore** with automatic scheduled backups
+  - Service account authentication — paste JSON key in Settings, encrypted at rest (AES-256-GCM)
+  - Configurable schedule: backup every N hours (1–720), retention limit (1–1000 backups)
+  - Manual "Backup Now" button for on-demand backups
+  - Backup history table with download and restore per entry
+  - Direct ZIP upload restore for fresh instances without Drive configured
+  - Backups include SQLite database, uploads directory, and metadata
+  - Uses SQLite backup API for safe, non-locking database copies
+  - All endpoints admin-only behind `authenticate` + `requireAdmin` middleware
+- **Backups tab** in Settings (admin-only, between Integrations and Members)
+  - Google Drive connection management (key upload/remove, folder ID, test connection)
+  - Schedule configuration with enable toggle, interval, and retention settings
+  - Status display: last backup time, next scheduled time, last error
+  - Restore confirmation modal for both Drive and file upload restores
+
 ## [1.1.0]
 
 ### Added
