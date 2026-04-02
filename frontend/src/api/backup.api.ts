@@ -5,7 +5,8 @@ export interface BackupConfig {
   intervalHours: number;
   maxRetention: number;
   folderId: string;
-  hasGdriveKey: boolean;
+  hasOAuthCredentials: boolean;
+  hasClientCredentials: boolean;
   lastTimestamp: string | null;
   lastError: string | null;
   nextBackupTime: string | null;
@@ -28,13 +29,18 @@ export async function updateBackupConfig(config: Partial<Pick<BackupConfig, 'ena
   return response.data;
 }
 
-export async function uploadGdriveKey(serviceAccountJson: string): Promise<{ success: boolean; clientEmail: string }> {
-  const response = await api.put('/backups/gdrive-key', { serviceAccountJson });
+export async function saveOAuthClientCredentials(clientId: string, clientSecret: string): Promise<{ success: boolean }> {
+  const response = await api.put('/backups/oauth-credentials', { clientId, clientSecret });
   return response.data;
 }
 
-export async function deleteGdriveKey(): Promise<void> {
-  await api.delete('/backups/gdrive-key');
+export async function disconnectGdrive(): Promise<void> {
+  await api.delete('/backups/oauth-credentials');
+}
+
+export async function getOAuthUrl(): Promise<{ url: string }> {
+  const response = await api.post('/backups/oauth-url');
+  return response.data;
 }
 
 export async function testDriveConnection(): Promise<{ success: boolean; email: string }> {

@@ -4,8 +4,10 @@ import { authenticate, requireAdmin } from '../middleware/auth.middleware.js';
 import {
   getConfig,
   updateConfig,
-  uploadGdriveKey,
-  deleteGdriveKey,
+  saveOAuthClientCredentials,
+  disconnectGdrive,
+  getOAuthUrl,
+  oauthCallback,
   testConnection,
   triggerBackup,
   listBackupsHandler,
@@ -21,13 +23,17 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
 });
 
-// All routes require admin
+// OAuth callback must be before auth middleware (Google redirects here)
+router.get('/oauth2/callback', oauthCallback);
+
+// All remaining routes require admin
 router.use(authenticate, requireAdmin);
 
 router.get('/config', getConfig);
 router.put('/config', updateConfig);
-router.put('/gdrive-key', uploadGdriveKey);
-router.delete('/gdrive-key', deleteGdriveKey);
+router.put('/oauth-credentials', saveOAuthClientCredentials);
+router.delete('/oauth-credentials', disconnectGdrive);
+router.post('/oauth-url', getOAuthUrl);
 router.post('/test-connection', testConnection);
 router.post('/trigger', triggerBackup);
 router.get('/list', listBackupsHandler);

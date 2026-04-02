@@ -1,9 +1,10 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { getSetting, setSetting } from './settings.controller.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
-import { testDriveConnection, listBackups, downloadBackup } from '../services/gdrive.service.js';
+import { testDriveConnection, listBackups, downloadBackup, generateAuthUrl, exchangeCodeForTokens } from '../services/gdrive.service.js';
 import { createBackupZip, restoreFromZip } from '../services/backup.service.js';
-import { getBackupConfig, runBackup, restartScheduler } from '../services/backup.scheduler.js';
+import { getBackupConfig, getOAuthCredentials, runBackup, restartScheduler } from '../services/backup.scheduler.js';
 
 export async function getConfig(req: Request, res: Response) {
   try {
@@ -42,66 +43,138 @@ export async function updateConfig(req: Request, res: Response) {
   }
 }
 
-export async function uploadGdriveKey(req: Request, res: Response) {
+export async function saveOAuthClientCredentials(req: Request, res: Response) {
   try {
-    const { serviceAccountJson } = req.body;
-    if (!serviceAccountJson) {
-      res.status(400).json({ error: 'Service account JSON is required' });
+    const { clientId, clientSecret } = req.body;
+    if (!clientId || !clientSecret) {
+      res.status(400).json({ error: 'Client ID and Client Secret are required' });
       return;
     }
 
-    // Validate JSON
-    let parsed: any;
-    try {
-      parsed = JSON.parse(serviceAccountJson);
-    } catch {
-      res.status(400).json({ error: 'Invalid JSON format' });
-      return;
-    }
+    setSetting('backup_gdrive_client_id', encrypt(clientId));
+    setSetting('backup_gdrive_client_secret', encrypt(clientSecret));
+    // Clear any existing refresh token when credentials change
+    setSetting('backup_gdrive_refresh_token', '');
 
-    if (!parsed.client_email || !parsed.private_key) {
-      res.status(400).json({ error: 'Invalid service account key: missing client_email or private_key' });
-      return;
-    }
-
-    const encrypted = encrypt(serviceAccountJson);
-    setSetting('backup_gdrive_key', encrypted);
-
-    res.json({ success: true, clientEmail: parsed.client_email });
+    res.json({ success: true });
   } catch (error: any) {
-    console.error('Upload GDrive key error:', error);
-    res.status(500).json({ error: 'Failed to save service account key' });
+    console.error('Save OAuth credentials error:', error);
+    res.status(500).json({ error: 'Failed to save OAuth credentials' });
   }
 }
 
-export async function deleteGdriveKey(req: Request, res: Response) {
+export async function disconnectGdrive(req: Request, res: Response) {
   try {
     setSetting('backup_enabled', 'false');
-    setSetting('backup_gdrive_key', '');
+    setSetting('backup_gdrive_client_id', '');
+    setSetting('backup_gdrive_client_secret', '');
+    setSetting('backup_gdrive_refresh_token', '');
+    setSetting('backup_gdrive_oauth_state', '');
     restartScheduler();
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Delete GDrive key error:', error);
-    res.status(500).json({ error: 'Failed to remove service account key' });
+    console.error('Disconnect GDrive error:', error);
+    res.status(500).json({ error: 'Failed to disconnect Google Drive' });
+  }
+}
+
+export async function getOAuthUrl(req: Request, res: Response) {
+  try {
+    const encClientId = getSetting('backup_gdrive_client_id');
+    const encClientSecret = getSetting('backup_gdrive_client_secret');
+
+    if (!encClientId || !encClientSecret) {
+      res.status(400).json({ error: 'OAuth client credentials not configured. Save Client ID and Secret first.' });
+      return;
+    }
+
+    const clientId = decrypt(encClientId);
+    const clientSecret = decrypt(encClientSecret);
+
+    const backendUrl = process.env.BACKEND_PUBLIC_URL;
+    if (!backendUrl) {
+      res.status(500).json({ error: 'BACKEND_PUBLIC_URL environment variable is not set' });
+      return;
+    }
+
+    const redirectUri = `${backendUrl}/api/backups/oauth2/callback`;
+    const state = crypto.randomBytes(32).toString('hex');
+    setSetting('backup_gdrive_oauth_state', state);
+
+    const url = generateAuthUrl(clientId, clientSecret, redirectUri, state);
+    res.json({ url });
+  } catch (error: any) {
+    console.error('Get OAuth URL error:', error);
+    res.status(500).json({ error: 'Failed to generate OAuth URL' });
+  }
+}
+
+export async function oauthCallback(req: Request, res: Response) {
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+
+  try {
+    const { code, state, error: oauthError } = req.query;
+
+    if (oauthError) {
+      res.redirect(`${corsOrigin}/settings?gdrive_error=${encodeURIComponent(String(oauthError))}`);
+      return;
+    }
+
+    if (!code || !state) {
+      res.redirect(`${corsOrigin}/settings?gdrive_error=${encodeURIComponent('Missing code or state parameter')}`);
+      return;
+    }
+
+    // Validate CSRF state
+    const storedState = getSetting('backup_gdrive_oauth_state');
+    if (!storedState || storedState !== String(state)) {
+      res.redirect(`${corsOrigin}/settings?gdrive_error=${encodeURIComponent('Invalid state parameter (CSRF check failed)')}`);
+      return;
+    }
+
+    // Clear used state
+    setSetting('backup_gdrive_oauth_state', '');
+
+    const encClientId = getSetting('backup_gdrive_client_id');
+    const encClientSecret = getSetting('backup_gdrive_client_secret');
+
+    if (!encClientId || !encClientSecret) {
+      res.redirect(`${corsOrigin}/settings?gdrive_error=${encodeURIComponent('OAuth client credentials not found')}`);
+      return;
+    }
+
+    const clientId = decrypt(encClientId);
+    const clientSecret = decrypt(encClientSecret);
+
+    const backendUrl = process.env.BACKEND_PUBLIC_URL;
+    if (!backendUrl) {
+      res.redirect(`${corsOrigin}/settings?gdrive_error=${encodeURIComponent('BACKEND_PUBLIC_URL not configured')}`);
+      return;
+    }
+
+    const redirectUri = `${backendUrl}/api/backups/oauth2/callback`;
+    const tokens = await exchangeCodeForTokens(clientId, clientSecret, redirectUri, String(code));
+
+    setSetting('backup_gdrive_refresh_token', encrypt(tokens.refreshToken));
+
+    res.redirect(`${corsOrigin}/settings?gdrive_connected=true`);
+  } catch (error: any) {
+    console.error('OAuth callback error:', error);
+    res.redirect(`${corsOrigin}/settings?gdrive_error=${encodeURIComponent(error.message || 'OAuth callback failed')}`);
   }
 }
 
 export async function testConnection(req: Request, res: Response) {
   try {
-    const encryptedKey = getSetting('backup_gdrive_key');
+    const credentials = getOAuthCredentials();
     const folderId = getSetting('backup_gdrive_folder_id');
 
-    if (!encryptedKey) {
-      res.status(400).json({ error: 'No service account key configured' });
-      return;
-    }
     if (!folderId) {
       res.status(400).json({ error: 'No folder ID configured' });
       return;
     }
 
-    const serviceAccountJson = decrypt(encryptedKey);
-    const result = await testDriveConnection(serviceAccountJson, folderId);
+    const result = await testDriveConnection(credentials, folderId);
     res.json(result);
   } catch (error: any) {
     console.error('Test connection error:', error);
@@ -121,17 +194,16 @@ export async function triggerBackup(req: Request, res: Response) {
 
 export async function listBackupsHandler(req: Request, res: Response) {
   try {
-    const encryptedKey = getSetting('backup_gdrive_key');
+    const credentials = getOAuthCredentials();
     const folderId = getSetting('backup_gdrive_folder_id');
 
-    if (!encryptedKey || !folderId) {
+    if (!folderId) {
       res.status(400).json({ error: 'Google Drive not configured' });
       return;
     }
 
-    const serviceAccountJson = decrypt(encryptedKey);
-    const backups = await listBackups(serviceAccountJson, folderId);
-    res.json(backups);
+    const backupsList = await listBackups(credentials, folderId);
+    res.json(backupsList);
   } catch (error: any) {
     console.error('List backups error:', error);
     res.status(500).json({ error: error.message || 'Failed to list backups' });
@@ -141,15 +213,9 @@ export async function listBackupsHandler(req: Request, res: Response) {
 export async function downloadBackupHandler(req: Request, res: Response) {
   try {
     const { fileId } = req.params;
-    const encryptedKey = getSetting('backup_gdrive_key');
+    const credentials = getOAuthCredentials();
 
-    if (!encryptedKey) {
-      res.status(400).json({ error: 'Google Drive not configured' });
-      return;
-    }
-
-    const serviceAccountJson = decrypt(encryptedKey);
-    const buffer = await downloadBackup(serviceAccountJson, fileId);
+    const buffer = await downloadBackup(credentials, fileId);
 
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="backup-${fileId}.zip"`);
@@ -163,15 +229,9 @@ export async function downloadBackupHandler(req: Request, res: Response) {
 export async function restoreFromDrive(req: Request, res: Response) {
   try {
     const { fileId } = req.params;
-    const encryptedKey = getSetting('backup_gdrive_key');
+    const credentials = getOAuthCredentials();
 
-    if (!encryptedKey) {
-      res.status(400).json({ error: 'Google Drive not configured' });
-      return;
-    }
-
-    const serviceAccountJson = decrypt(encryptedKey);
-    const buffer = await downloadBackup(serviceAccountJson, fileId);
+    const buffer = await downloadBackup(credentials, fileId);
     await restoreFromZip(buffer);
 
     res.json({ success: true, message: 'Restore completed successfully' });

@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import {
   getBackupConfig,
   updateBackupConfig,
-  uploadGdriveKey,
-  deleteGdriveKey,
+  saveOAuthClientCredentials,
+  disconnectGdrive,
+  getOAuthUrl,
   testDriveConnection,
   triggerBackup,
   listDriveBackups,
@@ -23,13 +24,15 @@ export function BackupSettings() {
   const [loading, setLoading] = useState(true);
 
   // Form state
-  const [keyInput, setKeyInput] = useState('');
+  const [clientIdInput, setClientIdInput] = useState('');
+  const [clientSecretInput, setClientSecretInput] = useState('');
   const [folderIdInput, setFolderIdInput] = useState('');
   const [intervalInput, setIntervalInput] = useState(24);
   const [retentionInput, setRetentionInput] = useState(50);
 
   // Loading states
-  const [savingKey, setSavingKey] = useState(false);
+  const [savingCredentials, setSavingCredentials] = useState(false);
+  const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [triggeringBackup, setTriggeringBackup] = useState(false);
   const [loadingBackups, setLoadingBackups] = useState(false);
@@ -43,6 +46,31 @@ export function BackupSettings() {
 
   useEffect(() => {
     loadConfig();
+  }, []);
+
+  // Handle OAuth redirect result
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('gdrive_connected');
+    const oauthError = params.get('gdrive_error');
+
+    if (connected === 'true') {
+      setSuccess('Google Drive connected successfully!');
+      setError('');
+      loadConfig();
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('gdrive_connected');
+      window.history.replaceState({}, '', url.pathname + url.search);
+      setTimeout(() => setSuccess(''), 5000);
+    } else if (oauthError) {
+      setError(`Google Drive connection failed: ${oauthError}`);
+      setSuccess('');
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('gdrive_error');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
   }, []);
 
   const loadConfig = async () => {
@@ -71,30 +99,43 @@ export function BackupSettings() {
     setSuccess('');
   };
 
-  const handleSaveKey = async () => {
-    if (!keyInput.trim()) return;
-    setSavingKey(true);
+  const handleSaveCredentials = async () => {
+    if (!clientIdInput.trim() || !clientSecretInput.trim()) return;
+    setSavingCredentials(true);
     setError('');
     try {
-      const result = await uploadGdriveKey(keyInput.trim());
-      showSuccess(`Service account key saved (${result.clientEmail})`);
-      setKeyInput('');
+      await saveOAuthClientCredentials(clientIdInput.trim(), clientSecretInput.trim());
+      showSuccess('OAuth credentials saved');
+      setClientIdInput('');
+      setClientSecretInput('');
       await loadConfig();
     } catch (err: any) {
-      showError(err.response?.data?.error || 'Failed to save key');
+      showError(err.response?.data?.error || 'Failed to save credentials');
     } finally {
-      setSavingKey(false);
+      setSavingCredentials(false);
     }
   };
 
-  const handleRemoveKey = async () => {
-    if (!confirm('Remove the service account key? This will disable automatic backups.')) return;
+  const handleConnectGdrive = async () => {
+    setConnectingOAuth(true);
+    setError('');
     try {
-      await deleteGdriveKey();
-      showSuccess('Service account key removed');
+      const { url } = await getOAuthUrl();
+      window.location.href = url;
+    } catch (err: any) {
+      showError(err.response?.data?.error || 'Failed to start OAuth flow');
+      setConnectingOAuth(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Disconnect Google Drive? This will remove all OAuth credentials and disable automatic backups.')) return;
+    try {
+      await disconnectGdrive();
+      showSuccess('Google Drive disconnected');
       await loadConfig();
     } catch (err: any) {
-      showError(err.response?.data?.error || 'Failed to remove key');
+      showError(err.response?.data?.error || 'Failed to disconnect');
     }
   };
 
@@ -232,7 +273,7 @@ export function BackupSettings() {
     return <div className={styles.container}>Loading...</div>;
   }
 
-  const driveConfigured = config?.hasGdriveKey && config?.folderId;
+  const driveConfigured = config?.hasOAuthCredentials && config?.folderId;
 
   return (
     <div className={styles.container}>
@@ -247,39 +288,73 @@ export function BackupSettings() {
       {/* Section 1: Google Drive Connection */}
       <div className={styles.section}>
         <h3 className={styles.label}>Google Drive Connection</h3>
-        <p className={styles.description}>
-          Upload a Google Cloud service account JSON key to enable Drive backups.
-        </p>
 
-        {config?.hasGdriveKey ? (
+        {config?.hasOAuthCredentials ? (
+          // Fully connected
           <div>
             <span className={`${styles.statusBadge} ${styles.statusConnected}`}>
               Connected
             </span>
             <div className={styles.buttonGroup}>
-              <button className={styles.dangerButton} onClick={handleRemoveKey}>
-                Remove Key
+              <button className={styles.dangerButton} onClick={handleDisconnect}>
+                Disconnect
+              </button>
+            </div>
+          </div>
+        ) : config?.hasClientCredentials ? (
+          // Credentials saved but not yet connected via OAuth
+          <div>
+            <span className={`${styles.statusBadge} ${styles.statusDisconnected}`}>
+              Not connected
+            </span>
+            <p className={styles.description}>
+              Client credentials saved. Click below to authorize with your Google account.
+            </p>
+            <div className={styles.buttonGroup}>
+              <button
+                className={styles.button}
+                onClick={handleConnectGdrive}
+                disabled={connectingOAuth}
+              >
+                {connectingOAuth ? 'Redirecting...' : 'Connect Google Drive'}
+              </button>
+              <button className={styles.dangerButton} onClick={handleDisconnect}>
+                Remove Credentials
               </button>
             </div>
           </div>
         ) : (
+          // No credentials at all
           <div>
             <span className={`${styles.statusBadge} ${styles.statusDisconnected}`}>
               Not configured
             </span>
-            <textarea
-              className={styles.textarea}
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              placeholder='Paste service account JSON key here...'
-            />
+            <p className={styles.description}>
+              Enter your Google OAuth 2.0 Client ID and Client Secret to get started.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input
+                type="text"
+                className={styles.input}
+                value={clientIdInput}
+                onChange={(e) => setClientIdInput(e.target.value)}
+                placeholder="Client ID"
+              />
+              <input
+                type="password"
+                className={styles.input}
+                value={clientSecretInput}
+                onChange={(e) => setClientSecretInput(e.target.value)}
+                placeholder="Client Secret"
+              />
+            </div>
             <div className={styles.buttonGroup}>
               <button
                 className={styles.button}
-                onClick={handleSaveKey}
-                disabled={savingKey || !keyInput.trim()}
+                onClick={handleSaveCredentials}
+                disabled={savingCredentials || !clientIdInput.trim() || !clientSecretInput.trim()}
               >
-                {savingKey ? 'Saving...' : 'Save Key'}
+                {savingCredentials ? 'Saving...' : 'Save Credentials'}
               </button>
             </div>
           </div>
@@ -305,7 +380,7 @@ export function BackupSettings() {
           </div>
         </div>
 
-        {config?.hasGdriveKey && config?.folderId && (
+        {config?.hasOAuthCredentials && config?.folderId && (
           <div className={styles.buttonGroup}>
             <button
               className={styles.button}
@@ -320,8 +395,8 @@ export function BackupSettings() {
         <div className={styles.info}>
           <span className={styles.infoIcon}>i</span>
           <span>
-            Share your Google Drive folder with the service account email address
-            (found in your JSON key as <code>client_email</code>) and give it Editor access.
+            Create OAuth 2.0 credentials in Google Cloud Console (APIs & Services {'>'} Credentials {'>'} Create Credentials {'>'} OAuth client ID {'>'} Web application).
+            Add <code>{'{BACKEND_PUBLIC_URL}'}/api/backups/oauth2/callback</code> as an authorized redirect URI.
           </span>
         </div>
       </div>

@@ -1,28 +1,58 @@
 import { google, drive_v3 } from 'googleapis';
 import { Readable } from 'stream';
 
-interface ServiceAccountKey {
-  client_email: string;
-  private_key: string;
-  [key: string]: any;
+export interface OAuthCredentials {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
 }
 
-export function createDriveClient(serviceAccountJson: string): drive_v3.Drive {
-  const key: ServiceAccountKey = JSON.parse(serviceAccountJson);
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: key.client_email,
-      private_key: key.private_key,
-    },
-    scopes: ['https://www.googleapis.com/auth/drive'],
+export function createDriveClient(credentials: OAuthCredentials): drive_v3.Drive {
+  const oauth2Client = new google.auth.OAuth2(
+    credentials.clientId,
+    credentials.clientSecret
+  );
+  oauth2Client.setCredentials({ refresh_token: credentials.refreshToken });
+
+  return google.drive({ version: 'v3', auth: oauth2Client });
+}
+
+export function generateAuthUrl(
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+  state: string
+): string {
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  return oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: ['https://www.googleapis.com/auth/drive'],
+    state,
   });
-
-  return google.drive({ version: 'v3', auth });
 }
 
-export async function testDriveConnection(serviceAccountJson: string, folderId: string): Promise<{ success: boolean; email: string }> {
-  const key: ServiceAccountKey = JSON.parse(serviceAccountJson);
-  const drive = createDriveClient(serviceAccountJson);
+export async function exchangeCodeForTokens(
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+  code: string
+): Promise<{ refreshToken: string; accessToken: string }> {
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const { tokens } = await oauth2Client.getToken(code);
+
+  if (!tokens.refresh_token) {
+    throw new Error('No refresh token received. Please revoke access and try again.');
+  }
+
+  return {
+    refreshToken: tokens.refresh_token,
+    accessToken: tokens.access_token || '',
+  };
+}
+
+export async function testDriveConnection(credentials: OAuthCredentials, folderId: string): Promise<{ success: boolean; email: string }> {
+  const drive = createDriveClient(credentials);
 
   // Try to access the folder
   await drive.files.get({
@@ -31,16 +61,20 @@ export async function testDriveConnection(serviceAccountJson: string, folderId: 
     supportsAllDrives: true,
   });
 
-  return { success: true, email: key.client_email };
+  // Get user email from the authenticated account
+  const about = await drive.about.get({ fields: 'user' });
+  const email = about.data.user?.emailAddress || 'unknown';
+
+  return { success: true, email };
 }
 
 export async function uploadBackup(
-  serviceAccountJson: string,
+  credentials: OAuthCredentials,
   folderId: string,
   fileName: string,
   buffer: Buffer
 ): Promise<{ fileId: string; name: string }> {
-  const drive = createDriveClient(serviceAccountJson);
+  const drive = createDriveClient(credentials);
 
   const stream = new Readable();
   stream.push(buffer);
@@ -73,8 +107,8 @@ export interface DriveBackupFile {
   createdTime: string;
 }
 
-export async function listBackups(serviceAccountJson: string, folderId: string): Promise<DriveBackupFile[]> {
-  const drive = createDriveClient(serviceAccountJson);
+export async function listBackups(credentials: OAuthCredentials, folderId: string): Promise<DriveBackupFile[]> {
+  const drive = createDriveClient(credentials);
 
   const response = await drive.files.list({
     q: `'${folderId}' in parents and mimeType='application/zip' and trashed=false`,
@@ -93,8 +127,8 @@ export async function listBackups(serviceAccountJson: string, folderId: string):
   }));
 }
 
-export async function downloadBackup(serviceAccountJson: string, fileId: string): Promise<Buffer> {
-  const drive = createDriveClient(serviceAccountJson);
+export async function downloadBackup(credentials: OAuthCredentials, fileId: string): Promise<Buffer> {
+  const drive = createDriveClient(credentials);
 
   const response = await drive.files.get(
     { fileId, alt: 'media', supportsAllDrives: true },
@@ -104,17 +138,17 @@ export async function downloadBackup(serviceAccountJson: string, fileId: string)
   return Buffer.from(response.data as ArrayBuffer);
 }
 
-export async function deleteBackup(serviceAccountJson: string, fileId: string): Promise<void> {
-  const drive = createDriveClient(serviceAccountJson);
+export async function deleteBackup(credentials: OAuthCredentials, fileId: string): Promise<void> {
+  const drive = createDriveClient(credentials);
   await drive.files.delete({ fileId, supportsAllDrives: true });
 }
 
 export async function enforceRetention(
-  serviceAccountJson: string,
+  credentials: OAuthCredentials,
   folderId: string,
   maxBackups: number
 ): Promise<number> {
-  const backups = await listBackups(serviceAccountJson, folderId);
+  const backups = await listBackups(credentials, folderId);
 
   if (backups.length <= maxBackups) return 0;
 
@@ -123,7 +157,7 @@ export async function enforceRetention(
 
   for (const backup of toDelete) {
     try {
-      await deleteBackup(serviceAccountJson, backup.id);
+      await deleteBackup(credentials, backup.id);
       deleted++;
     } catch (err) {
       console.error(`Failed to delete old backup ${backup.name}:`, err);

@@ -4,9 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Google Drive backup authentication switched from service account to OAuth 2.0**
+  - Files are now owned by the user's Google account and use their storage quota
+  - Three-step setup: enter OAuth Client ID + Secret, click "Connect Google Drive" to authorize
+  - OAuth callback endpoint (`GET /api/backups/oauth2/callback`) handles token exchange with CSRF state validation
+  - Requires `BACKEND_PUBLIC_URL` environment variable for the OAuth redirect URI
+  - All credentials (client ID, client secret, refresh token) encrypted at rest (AES-256-GCM)
+  - Test Connection now shows the authenticated user's email via `drive.about.get`
+
 ### Added
 - **Google Drive backup & restore** with automatic scheduled backups
-  - Service account authentication — paste JSON key in Settings, encrypted at rest (AES-256-GCM)
+  - OAuth 2.0 authentication — enter Client ID and Secret in Settings, authorize via Google consent screen
   - Configurable schedule: backup every N hours (1–720), retention limit (1–1000 backups)
   - Manual "Backup Now" button for on-demand backups
   - Backup history table with download and restore per entry
@@ -15,7 +24,7 @@ All notable changes to this project will be documented in this file.
   - Uses SQLite backup API for safe, non-locking database copies
   - All endpoints admin-only behind `authenticate` + `requireAdmin` middleware
 - **Backups tab** in Settings (admin-only, between Integrations and Members)
-  - Google Drive connection management (key upload/remove, folder ID, test connection)
+  - Three-state Google Drive connection UI: no credentials → credentials saved → fully connected
   - Schedule configuration with enable toggle, interval, and retention settings
   - Status display: last backup time, next scheduled time, last error
   - Restore confirmation modal for both Drive and file upload restores
