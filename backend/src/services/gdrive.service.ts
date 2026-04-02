@@ -14,7 +14,7 @@ export function createDriveClient(serviceAccountJson: string): drive_v3.Drive {
       client_email: key.client_email,
       private_key: key.private_key,
     },
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
+    scopes: ['https://www.googleapis.com/auth/drive'],
   });
 
   return google.drive({ version: 'v3', auth });
@@ -28,6 +28,7 @@ export async function testDriveConnection(serviceAccountJson: string, folderId: 
   await drive.files.get({
     fileId: folderId,
     fields: 'id,name',
+    supportsAllDrives: true,
   });
 
   return { success: true, email: key.client_email };
@@ -56,6 +57,7 @@ export async function uploadBackup(
       body: stream,
     },
     fields: 'id,name',
+    supportsAllDrives: true,
   });
 
   return {
@@ -79,6 +81,8 @@ export async function listBackups(serviceAccountJson: string, folderId: string):
     fields: 'files(id,name,size,createdTime)',
     orderBy: 'createdTime desc',
     pageSize: 100,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   return (response.data.files || []).map((f) => ({
@@ -93,7 +97,7 @@ export async function downloadBackup(serviceAccountJson: string, fileId: string)
   const drive = createDriveClient(serviceAccountJson);
 
   const response = await drive.files.get(
-    { fileId, alt: 'media' },
+    { fileId, alt: 'media', supportsAllDrives: true },
     { responseType: 'arraybuffer' }
   );
 
@@ -102,7 +106,7 @@ export async function downloadBackup(serviceAccountJson: string, fileId: string)
 
 export async function deleteBackup(serviceAccountJson: string, fileId: string): Promise<void> {
   const drive = createDriveClient(serviceAccountJson);
-  await drive.files.delete({ fileId });
+  await drive.files.delete({ fileId, supportsAllDrives: true });
 }
 
 export async function enforceRetention(
