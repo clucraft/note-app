@@ -122,6 +122,15 @@ This isn't your typical "AI slop." While Claude Code assisted in development, ev
 - **Hourly Statistics** - Character and word counts per hour
 - **Cross-Device Sync** - Activity stored in database
 
+### Google Drive Backups
+- **Automatic Scheduled Backups** - Configurable interval (1–720 hours) with retention limits (1–1000 backups)
+- **OAuth 2.0 Authentication** - Files are owned by your Google account and use your storage quota
+- **Full Backup Contents** - SQLite database, uploaded files, and metadata in a single ZIP
+- **Backup History** - Browse, download, and restore from any previous backup
+- **Manual Backup** - One-click "Backup Now" for on-demand backups
+- **Restore from File** - Upload a backup ZIP directly for fresh instances without Drive configured
+- **Encrypted Credentials** - Client ID, secret, and refresh token encrypted at rest (AES-256-GCM)
+
 ### Security
 
 Cache Notes was built with security as a priority:
@@ -239,6 +248,7 @@ docker-compose -f docker-compose.dev.yml up -d
 | `DATABASE_PATH` | Path to SQLite database | `/data/notes.db` |
 | `PORT` | Backend server port | `3001` |
 | `CORS_ORIGIN` | Allowed CORS origin | `http://localhost` |
+| `BACKEND_PUBLIC_URL` | Public URL of the backend (for OAuth redirect) | `http://localhost:3001` |
 
 ## Project Structure
 
@@ -383,6 +393,22 @@ note-app/
 | GET | `/api/activity/history` | Get activity history |
 | GET | `/api/activity/streak` | Get current writing streak |
 
+### Backups (Admin)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/backups/config` | Get backup configuration |
+| PUT | `/api/backups/config` | Update backup settings |
+| PUT | `/api/backups/oauth-credentials` | Save OAuth client ID + secret |
+| DELETE | `/api/backups/oauth-credentials` | Disconnect Google Drive |
+| POST | `/api/backups/oauth-url` | Get Google OAuth consent URL |
+| GET | `/api/backups/oauth2/callback` | OAuth callback (unauthenticated) |
+| POST | `/api/backups/test-connection` | Test Drive connection |
+| POST | `/api/backups/trigger` | Trigger manual backup |
+| GET | `/api/backups/list` | List backups in Drive |
+| POST | `/api/backups/download/:fileId` | Download a backup |
+| POST | `/api/backups/restore/:fileId` | Restore from Drive backup |
+| POST | `/api/backups/restore-upload` | Restore from uploaded ZIP |
+
 ### Settings
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -425,6 +451,47 @@ note-app/
 | Dracula | Popular dark theme with purple accents |
 | Solarized | Precision colors for machines and people |
 | Nord | Arctic, bluish color palette |
+
+## Google Drive Backup Setup
+
+### 1. Create OAuth 2.0 Credentials
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a project (or select an existing one)
+3. Navigate to **APIs & Services > Library**, search for **Google Drive API**, and enable it
+4. Go to **APIs & Services > OAuth consent screen**
+   - Choose **External** user type
+   - Fill in the app name and your email
+   - Add the scope `https://www.googleapis.com/auth/drive`
+   - Add your Google account as a **test user**
+5. Go to **APIs & Services > Credentials**
+   - Click **Create Credentials > OAuth client ID**
+   - Application type: **Web application**
+   - Under **Authorized redirect URIs**, add:
+     ```
+     {BACKEND_PUBLIC_URL}/api/backups/oauth2/callback
+     ```
+     For example: `https://notes.example.com/api/backups/oauth2/callback`
+   - Save the **Client ID** and **Client Secret**
+
+### 2. Set Environment Variable
+
+Add `BACKEND_PUBLIC_URL` to your backend environment, set to the public URL where your backend is reachable (e.g. `https://notes.example.com`). This is used to construct the OAuth redirect URI.
+
+### 3. Connect in the App
+
+1. Go to **Settings > Backups**
+2. Enter your **Client ID** and **Client Secret**, click **Save Credentials**
+3. Click **Connect Google Drive** — you'll be redirected to Google's consent screen
+4. Authorize with your Google account — you'll be redirected back with a success message
+5. Enter a **Google Drive Folder ID** (the long string in the URL when you open a folder in Drive: `https://drive.google.com/drive/folders/{FOLDER_ID}`)
+6. Click **Test Connection** to verify — it should display your email
+
+### 4. Configure Schedule
+
+Enable automatic backups, set the interval (hours between backups), and the retention limit (max backups to keep). Older backups are automatically deleted when the limit is exceeded.
+
+> **Note:** While the OAuth consent screen is in "Testing" status, only users added as test users can authorize. This is fine for personal/self-hosted use — you don't need to go through Google's verification process.
 
 ## License
 
