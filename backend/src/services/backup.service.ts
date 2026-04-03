@@ -94,7 +94,10 @@ export async function restoreFromZip(buffer: Buffer): Promise<void> {
       // Clear existing uploads
       const existing = fs.readdirSync(uploadsDir);
       for (const file of existing) {
-        fs.unlinkSync(path.join(uploadsDir, file));
+        const filePath = path.join(uploadsDir, file);
+        if (fs.statSync(filePath).isFile()) {
+          fs.unlinkSync(filePath);
+        }
       }
     } else {
       fs.mkdirSync(uploadsDir, { recursive: true });
