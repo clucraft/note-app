@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **Updated axios from 1.13.2 to 1.14.0** to fix DoS vulnerability via `__proto__` key in `mergeConfig` (CVE-2026-25639, CVSS 7.5 High)
+
 ### Changed
 - **Google Drive backup authentication switched from service account to OAuth 2.0**
   - Files are now owned by the user's Google account and use their storage quota
