@@ -89,6 +89,9 @@ export async function restoreFromZip(buffer: Buffer): Promise<void> {
     db.close();
     fs.copyFileSync(tempDbPath, dbPath);
 
+    // Always reopen the DB connection before anything else can fail
+    reinitializeDb();
+
     // Extract uploads
     if (fs.existsSync(uploadsDir)) {
       // Clear existing uploads
@@ -109,9 +112,6 @@ export async function restoreFromZip(buffer: Buffer): Promise<void> {
         fs.writeFileSync(path.join(uploadsDir, fileName), entry.getData());
       }
     }
-
-    // Reinitialize database connection
-    reinitializeDb();
   } finally {
     // Clean up temp files
     try {
