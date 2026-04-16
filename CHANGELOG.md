@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **MCP server now exposes update timestamps** in tool responses
+  - `list_notes` includes `(updated: <timestamp>)` beside each note in the tree
+  - `create_note` response includes `Created` and `Updated` timestamps
+  - `update_note` response includes the new `Updated` timestamp
+  - Enables AI clients to reason about note recency (e.g., "find notes updated this week")
+
 ### Security
 - **Updated axios from 1.13.2 to 1.14.0** to fix DoS vulnerability via `__proto__` key in `mergeConfig` (CVE-2026-25639, CVSS 7.5 High)
 

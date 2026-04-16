@@ -11,7 +11,8 @@ function flattenTree(nodes: any[], depth = 0): string {
     const indent = '  '.repeat(depth);
     const emoji = node.titleEmoji ? `${node.titleEmoji} ` : '';
     const fav = node.isFavorite ? ' *' : '';
-    result += `${indent}- [${node.id}] ${emoji}${node.title}${fav}\n`;
+    const updated = node.updatedAt ? ` (updated: ${node.updatedAt})` : '';
+    result += `${indent}- [${node.id}] ${emoji}${node.title}${fav}${updated}\n`;
     if (node.children && node.children.length > 0) {
       result += flattenTree(node.children, depth + 1);
     }
@@ -28,7 +29,7 @@ export function createMcpServer(apiClient: ApiClient): McpServer {
   // Tool: list_notes
   server.tool(
     'list_notes',
-    'List all notes as a tree structure. Returns note IDs, titles, and hierarchy.',
+    'List all notes as a tree structure. Returns note IDs, titles, hierarchy, and last-updated timestamps.',
     {},
     async () => {
       try {
@@ -110,7 +111,7 @@ export function createMcpServer(apiClient: ApiClient): McpServer {
         return {
           content: [{
             type: 'text',
-            text: `Note created successfully.\nID: ${note.id}\nTitle: ${note.title}`,
+            text: `Note created successfully.\nID: ${note.id}\nTitle: ${note.title}\nCreated: ${note.createdAt}\nUpdated: ${note.updatedAt}`,
           }],
         };
       } catch (error: any) {
@@ -137,7 +138,7 @@ export function createMcpServer(apiClient: ApiClient): McpServer {
         return {
           content: [{
             type: 'text',
-            text: `Note updated successfully.\nID: ${note.id}\nTitle: ${note.title}`,
+            text: `Note updated successfully.\nID: ${note.id}\nTitle: ${note.title}\nUpdated: ${note.updatedAt}`,
           }],
         };
       } catch (error: any) {
