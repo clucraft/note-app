@@ -5,6 +5,7 @@ import { BrickBreaker } from './games/BrickBreaker';
 import { Shooter } from './games/Shooter';
 import { Stacker } from './games/Stacker';
 import { CacheCommand } from './games/CacheCommand';
+import { RescueChopper } from './games/RescueChopper';
 import { getHighScore, GameId } from './highScores';
 import styles from './Arcade.module.css';
 
@@ -20,6 +21,7 @@ const GAMES: GameDef[] = [
   { id: 'shooter', name: 'CACHE INVADERS', color: '#ff2d78' },
   { id: 'stacker', name: 'STACKER', color: '#b14aff' },
   { id: 'missile', name: 'CACHE COMMAND', color: '#ff7a2d' },
+  { id: 'chopper', name: 'RESCUE CHOPPER', color: '#4a9bff' },
 ];
 
 export default function ArcadeOverlay({ onClose }: { onClose: () => void }) {
@@ -73,6 +75,7 @@ export default function ArcadeOverlay({ onClose }: { onClose: () => void }) {
       {game === 'shooter' && <Shooter onExit={() => setGame(null)} />}
       {game === 'stacker' && <Stacker onExit={() => setGame(null)} />}
       {game === 'missile' && <CacheCommand onExit={() => setGame(null)} />}
+      {game === 'chopper' && <RescueChopper onExit={() => setGame(null)} />}
       {!game && (
         <>
           <div className={styles.title}>ARCADE</div>
