@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
@@ -7,7 +7,10 @@ import { TaskNotificationModal } from '../common/TaskNotificationModal';
 import { useNotes } from '../../hooks/useNotes';
 import { useTaskNotifications } from '../../hooks/useTaskNotifications';
 import { NotesProvider } from '../../context/NotesContext';
+import { useKonamiCode } from '../arcade/useKonamiCode';
 import styles from './AppLayout.module.css';
+
+const ArcadeOverlay = lazy(() => import('../arcade/ArcadeOverlay'));
 
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 500;
@@ -25,8 +28,11 @@ function AppLayoutContent() {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
   const [isResizing, setIsResizing] = useState(false);
+  const [arcadeOpen, setArcadeOpen] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const initialNoteHandled = useRef(false);
+
+  useKonamiCode(() => setArcadeOpen(true));
 
   useEffect(() => {
     loadNotes();
@@ -131,6 +137,12 @@ function AppLayoutContent() {
         onClose={dismissCurrentTask}
         onTaskUpdated={onTaskUpdated}
       />
+
+      {arcadeOpen && (
+        <Suspense fallback={null}>
+          <ArcadeOverlay onClose={() => setArcadeOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }
