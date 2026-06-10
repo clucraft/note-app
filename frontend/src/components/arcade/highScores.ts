@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'arcade.highScores';
 
-export type GameId = 'snake' | 'breaker' | 'shooter';
+export type GameId = 'snake' | 'breaker' | 'shooter' | 'stacker' | 'missile';
 
 function load(): Record<string, number> {
   try {

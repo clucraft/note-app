@@ -5,12 +5,15 @@ import styles from '../Arcade.module.css';
 
 const W = 480;
 const H = 560;
-const PADDLE_W = 80;
+const BASE_PADDLE_W = 80;
+const EXPANDED_PADDLE_W = 124;
 const PADDLE_H = 12;
 const PADDLE_Y = H - 36;
 const PADDLE_SPEED = 440;
 const BALL_R = 7;
 const BASE_BALL_SPEED = 330;
+const MIN_BALL_SPEED = 180;
+const MAX_BALLS = 6;
 const BRICK_ROWS = 6;
 const BRICK_COLS = 8;
 const BRICK_TOP = 70;
@@ -21,9 +24,52 @@ const BRICK_H = 18;
 const ROW_COLORS = ['#ff2d78', '#ff7a2d', '#ffe600', '#39ff14', '#00ffff', '#b14aff'];
 const ROW_POINTS = [60, 50, 40, 30, 20, 10];
 
+const CAPSULE_W = 28;
+const CAPSULE_H = 14;
+const CAPSULE_SPEED = 130;
+const DROP_CHANCE = 0.2;
+const EXPAND_SECONDS = 20;
+
+type PowerType = 'expand' | 'slow' | 'multi' | 'points' | 'life';
+
+const POWER_TYPES: { type: PowerType; letter: string; color: string; weight: number }[] = [
+  { type: 'expand', letter: 'E', color: '#00ffff', weight: 25 },
+  { type: 'slow', letter: 'S', color: '#ff7a2d', weight: 20 },
+  { type: 'multi', letter: 'M', color: '#39ff14', weight: 25 },
+  { type: 'points', letter: 'P', color: '#ffe600', weight: 20 },
+  { type: 'life', letter: 'L', color: '#ff2d78', weight: 10 },
+];
+
+function randomPowerType(): PowerType {
+  const total = POWER_TYPES.reduce((sum, p) => sum + p.weight, 0);
+  let roll = Math.random() * total;
+  for (const p of POWER_TYPES) {
+    roll -= p.weight;
+    if (roll <= 0) return p.type;
+  }
+  return 'points';
+}
+
+interface Ball {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  stuck: boolean;
+}
+
+interface Capsule {
+  x: number;
+  y: number;
+  type: PowerType;
+}
+
 interface State {
   paddleX: number;
-  ball: { x: number; y: number; vx: number; vy: number; stuck: boolean };
+  paddleW: number;
+  expandTimer: number;
+  balls: Ball[];
+  capsules: Capsule[];
   bricks: boolean[][];
   bricksLeft: number;
   score: number;
@@ -36,10 +82,17 @@ function freshBricks(): boolean[][] {
   return Array.from({ length: BRICK_ROWS }, () => Array(BRICK_COLS).fill(true));
 }
 
+function stuckBall(): Ball {
+  return { x: W / 2, y: PADDLE_Y - BALL_R, vx: 0, vy: 0, stuck: true };
+}
+
 function initialState(): State {
   return {
-    paddleX: (W - PADDLE_W) / 2,
-    ball: { x: W / 2, y: PADDLE_Y - BALL_R, vx: 0, vy: 0, stuck: true },
+    paddleX: (W - BASE_PADDLE_W) / 2,
+    paddleW: BASE_PADDLE_W,
+    expandTimer: 0,
+    balls: [stuckBall()],
+    capsules: [],
     bricks: freshBricks(),
     bricksLeft: BRICK_ROWS * BRICK_COLS,
     score: 0,
@@ -47,6 +100,14 @@ function initialState(): State {
     level: 1,
     status: 'playing',
   };
+}
+
+/** Reset paddle effects and capsules — on life lost and level cleared. */
+function resetEffects(st: State) {
+  st.paddleW = BASE_PADDLE_W;
+  st.expandTimer = 0;
+  st.capsules = [];
+  st.paddleX = Math.min(W - st.paddleW, st.paddleX);
 }
 
 export function BrickBreaker({ onExit }: { onExit: () => void }) {
@@ -65,12 +126,14 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
       setLives(3);
       return;
     }
-    if (!st.ball.stuck) return;
     const speed = BASE_BALL_SPEED + 30 * (st.level - 1);
-    const angle = (Math.random() * 60 - 30) * (Math.PI / 180);
-    st.ball.vx = speed * Math.sin(angle);
-    st.ball.vy = -speed * Math.cos(angle);
-    st.ball.stuck = false;
+    for (const b of st.balls) {
+      if (!b.stuck) continue;
+      const angle = (Math.random() * 60 - 30) * (Math.PI / 180);
+      b.vx = speed * Math.sin(angle);
+      b.vy = -speed * Math.cos(angle);
+      b.stuck = false;
+    }
   }, []);
 
   useEffect(() => {
@@ -107,9 +170,57 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
   }, [onExit, launch]);
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const st = stateRef.current;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * W;
-    stateRef.current.paddleX = Math.min(W - PADDLE_W, Math.max(0, x - PADDLE_W / 2));
+    st.paddleX = Math.min(W - st.paddleW, Math.max(0, x - st.paddleW / 2));
+  }, []);
+
+  const applyPower = useCallback((st: State, type: PowerType) => {
+    switch (type) {
+      case 'expand': {
+        st.paddleW = EXPANDED_PADDLE_W;
+        st.expandTimer = EXPAND_SECONDS;
+        st.paddleX = Math.min(W - st.paddleW, st.paddleX);
+        break;
+      }
+      case 'slow': {
+        for (const b of st.balls) {
+          if (b.stuck) continue;
+          const speed = Math.hypot(b.vx, b.vy);
+          const slowed = Math.max(MIN_BALL_SPEED, speed * 0.75);
+          b.vx = (b.vx / speed) * slowed;
+          b.vy = (b.vy / speed) * slowed;
+        }
+        break;
+      }
+      case 'multi': {
+        const moving = st.balls.filter((b) => !b.stuck);
+        for (const b of moving) {
+          if (st.balls.length >= MAX_BALLS) break;
+          for (const da of [-25, 25]) {
+            if (st.balls.length >= MAX_BALLS) break;
+            const rad = (da * Math.PI) / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            st.balls.push({
+              x: b.x,
+              y: b.y,
+              vx: b.vx * cos - b.vy * sin,
+              vy: b.vx * sin + b.vy * cos,
+              stuck: false,
+            });
+          }
+        }
+        break;
+      }
+      case 'points':
+        st.score += 500;
+        break;
+      case 'life':
+        st.lives = Math.min(6, st.lives + 1);
+        break;
+    }
   }, []);
 
   useGameLoop((dt) => {
@@ -119,13 +230,23 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
       // paddle
       if (keysRef.current.left) st.paddleX -= PADDLE_SPEED * dt;
       if (keysRef.current.right) st.paddleX += PADDLE_SPEED * dt;
-      st.paddleX = Math.min(W - PADDLE_W, Math.max(0, st.paddleX));
+      st.paddleX = Math.min(W - st.paddleW, Math.max(0, st.paddleX));
 
-      const b = st.ball;
-      if (b.stuck) {
-        b.x = st.paddleX + PADDLE_W / 2;
-        b.y = PADDLE_Y - BALL_R;
-      } else {
+      // expand wears off
+      if (st.expandTimer > 0) {
+        st.expandTimer -= dt;
+        if (st.expandTimer <= 0) {
+          st.paddleW = BASE_PADDLE_W;
+          st.expandTimer = 0;
+        }
+      }
+
+      for (const b of st.balls) {
+        if (b.stuck) {
+          b.x = st.paddleX + st.paddleW / 2;
+          b.y = PADDLE_Y - BALL_R;
+          continue;
+        }
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
@@ -149,17 +270,17 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
           b.y + BALL_R >= PADDLE_Y &&
           b.y + BALL_R <= PADDLE_Y + PADDLE_H + 8 &&
           b.x >= st.paddleX - BALL_R &&
-          b.x <= st.paddleX + PADDLE_W + BALL_R
+          b.x <= st.paddleX + st.paddleW + BALL_R
         ) {
           const speed = Math.hypot(b.vx, b.vy);
-          const rel = (b.x - (st.paddleX + PADDLE_W / 2)) / (PADDLE_W / 2);
+          const rel = (b.x - (st.paddleX + st.paddleW / 2)) / (st.paddleW / 2);
           const angle = rel * (Math.PI / 3); // up to 60°
           b.vx = speed * Math.sin(angle);
           b.vy = -speed * Math.cos(angle);
           b.y = PADDLE_Y - BALL_R;
         }
 
-        // bricks (one hit per frame)
+        // bricks (one hit per ball per frame)
         outer: for (let r = 0; r < BRICK_ROWS; r++) {
           for (let c = 0; c < BRICK_COLS; c++) {
             if (!st.bricks[r][c]) continue;
@@ -174,6 +295,13 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
               st.bricks[r][c] = false;
               st.bricksLeft--;
               st.score += ROW_POINTS[r];
+              if (Math.random() < DROP_CHANCE) {
+                st.capsules.push({
+                  x: bx + BRICK_W / 2,
+                  y: by + BRICK_H / 2,
+                  type: randomPowerType(),
+                });
+              }
               const ox = Math.min(b.x + BALL_R - bx, bx + BRICK_W - (b.x - BALL_R));
               const oy = Math.min(b.y + BALL_R - by, by + BRICK_H - (b.y - BALL_R));
               if (ox < oy) b.vx = -b.vx;
@@ -182,26 +310,44 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
             }
           }
         }
+      }
 
-        // level cleared
-        if (st.bricksLeft === 0) {
-          st.level++;
-          st.bricks = freshBricks();
-          st.bricksLeft = BRICK_ROWS * BRICK_COLS;
-          b.stuck = true;
+      // lost balls
+      st.balls = st.balls.filter((b) => b.y - BALL_R <= H);
+      if (st.balls.length === 0) {
+        st.lives--;
+        resetEffects(st);
+        if (st.lives <= 0) {
+          st.status = 'over';
+          submitHighScore('breaker', st.score);
+          setHighScore(getHighScore('breaker'));
+        } else {
+          st.balls = [stuckBall()];
         }
+      }
 
-        // ball lost
-        if (b.y - BALL_R > H) {
-          st.lives--;
-          if (st.lives <= 0) {
-            st.status = 'over';
-            submitHighScore('breaker', st.score);
-            setHighScore(getHighScore('breaker'));
-          } else {
-            b.stuck = true;
-          }
+      // capsules fall, get caught or missed
+      for (const cap of st.capsules) cap.y += CAPSULE_SPEED * dt;
+      st.capsules = st.capsules.filter((cap) => {
+        if (
+          cap.y + CAPSULE_H / 2 >= PADDLE_Y &&
+          cap.y - CAPSULE_H / 2 <= PADDLE_Y + PADDLE_H &&
+          cap.x + CAPSULE_W / 2 >= st.paddleX &&
+          cap.x - CAPSULE_W / 2 <= st.paddleX + st.paddleW
+        ) {
+          applyPower(st, cap.type);
+          return false;
         }
+        return cap.y - CAPSULE_H / 2 < H;
+      });
+
+      // level cleared
+      if (st.status === 'playing' && st.bricksLeft === 0) {
+        st.level++;
+        st.bricks = freshBricks();
+        st.bricksLeft = BRICK_ROWS * BRICK_COLS;
+        resetEffects(st);
+        st.balls = [stuckBall()];
       }
     }
 
@@ -226,21 +372,42 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
     }
     ctx.shadowBlur = 0;
 
+    // capsules
+    for (const cap of st.capsules) {
+      const def = POWER_TYPES.find((p) => p.type === cap.type)!;
+      ctx.fillStyle = def.color;
+      ctx.shadowColor = def.color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.roundRect(cap.x - CAPSULE_W / 2, cap.y - CAPSULE_H / 2, CAPSULE_W, CAPSULE_H, 7);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#0a0a12';
+      ctx.font = 'bold 11px Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(def.letter, cap.x, cap.y + 1);
+      ctx.textBaseline = 'alphabetic';
+    }
+
     // paddle
     ctx.fillStyle = '#00ffff';
     ctx.shadowColor = '#00ffff';
     ctx.shadowBlur = 10;
-    ctx.fillRect(st.paddleX, PADDLE_Y, PADDLE_W, PADDLE_H);
+    ctx.fillRect(st.paddleX, PADDLE_Y, st.paddleW, PADDLE_H);
 
-    // ball
+    // balls
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(st.ball.x, st.ball.y, BALL_R, 0, Math.PI * 2);
-    ctx.fill();
+    for (const b of st.balls) {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.shadowBlur = 0;
 
-    if (st.status === 'over' || st.ball.stuck) {
+    const anyStuck = st.balls.some((b) => b.stuck);
+    if (st.status === 'over' || anyStuck) {
       ctx.textAlign = 'center';
       if (st.status === 'over') {
         ctx.fillStyle = 'rgba(5, 5, 8, 0.7)';
