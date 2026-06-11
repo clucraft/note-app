@@ -7,7 +7,8 @@ export type GameId =
   | 'stacker'
   | 'missile'
   | 'chopper'
-  | 'runner';
+  | 'runner'
+  | 'quest';
 
 function load(): Record<string, number> {
   try {

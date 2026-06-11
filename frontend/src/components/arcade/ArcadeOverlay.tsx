@@ -7,6 +7,7 @@ import { Stacker } from './games/Stacker';
 import { CacheCommand } from './games/CacheCommand';
 import { RescueChopper } from './games/RescueChopper';
 import { Runner } from './games/Runner';
+import { Quest } from './games/Quest';
 import { NameEntry } from './NameEntry';
 import { getHighScore, GameId } from './highScores';
 import {
@@ -33,6 +34,7 @@ interface GameDef {
   id: GameId;
   name: string;
   color: string;
+  noBoard?: boolean; // progress game — no leaderboard
 }
 
 const GAMES: GameDef[] = [
@@ -43,6 +45,7 @@ const GAMES: GameDef[] = [
   { id: 'missile', name: 'CACHE COMMAND', color: '#ff7a2d' },
   { id: 'chopper', name: 'RESCUE CHOPPER', color: '#4a9bff' },
   { id: 'runner', name: 'NIGHT RUN', color: '#ff6ec7' },
+  { id: 'quest', name: 'CACHE QUEST', color: '#39ff14', noBoard: true },
 ];
 
 type Boards = Record<string, ArcadeScore[] | 'error'>;
@@ -117,6 +120,7 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
   // Fetch the leaderboard for the highlighted game while the menu is visible
   useEffect(() => {
     if (game || showShare) return;
+    if (GAMES[selected].noBoard) return;
     const id = GAMES[selected].id;
     if (boards[id]) return;
     let cancelled = false;
@@ -219,6 +223,7 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
         <RescueChopper onExit={() => setGame(null)} onScore={handleScore('chopper')} />
       )}
       {game === 'runner' && <Runner onExit={() => setGame(null)} onScore={handleScore('runner')} />}
+      {game === 'quest' && <Quest onExit={() => setGame(null)} />}
 
       {!game && showShare && (
         <div className={styles.sharePanel}>
@@ -287,15 +292,28 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
                   onClick={() => setGame(g.id)}
                 >
                   <span>{g.name}</span>
-                  <span className={styles.menuScore}>HI {getHighScore(g.id)}</span>
+                  <span className={styles.menuScore}>
+                    {g.noBoard
+                      ? localStorage.getItem('arcade.quest.save')
+                        ? 'SAVED'
+                        : 'NEW'
+                      : `HI ${getHighScore(g.id)}`}
+                  </span>
                 </button>
               ))}
             </div>
             <div className={styles.board}>
               <div className={styles.boardTitle} style={{ color: GAMES[selected].color }}>
-                TOP 10
+                {GAMES[selected].noBoard ? 'ADVENTURE' : 'TOP 10'}
               </div>
-              {!board && <div className={styles.boardEmpty}>LOADING&hellip;</div>}
+              {GAMES[selected].noBoard && (
+                <div className={styles.boardEmpty}>
+                  A NEON QUEST. PROGRESS AUTO-SAVES. NO SCORES — JUST SURVIVAL.
+                </div>
+              )}
+              {!GAMES[selected].noBoard && !board && (
+                <div className={styles.boardEmpty}>LOADING&hellip;</div>
+              )}
               {board === 'error' && <div className={styles.boardEmpty}>LEADERBOARD OFFLINE</div>}
               {Array.isArray(board) && board.length === 0 && (
                 <div className={styles.boardEmpty}>NO SCORES YET</div>
