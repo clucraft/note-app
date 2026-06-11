@@ -2,6 +2,9 @@
  * Arcade audio: a generative synthwave music engine and synthesized sound
  * effects, all built on the Web Audio API. No audio assets, no network.
  *
+ * The music engine plays one of several "tracks" — parameter patches
+ * (tempo, chords, voicing, drum density) over the same synth core.
+ *
  * Everything routes through a master gain so closing the overlay (or the
  * boss key) silences the arcade instantly.
  */
@@ -22,17 +25,163 @@ let schedulerTimer: number | null = null;
 let step = 0;
 let nextTime = 0;
 
-const BPM = 80;
-const STEP = 60 / BPM / 4; // sixteenth note
-const STEPS_PER_CHORD = 32; // two bars
-// Am — F — C — G with smooth voice leading
-const CHORDS: number[][] = [
-  [57, 60, 64],
-  [57, 60, 65],
-  [55, 60, 64],
-  [55, 59, 62],
+interface Track {
+  name: string;
+  bpm: number;
+  chords: number[][]; // midi notes per chord
+  bass: number[]; // midi root per chord
+  bassSteps: number[]; // steps within a chord (mod 32) where the bass plays
+  padType: OscillatorType;
+  padGain: number;
+  padFilter: [number, number]; // sweep range, Hz
+  arpEvery: number; // trigger an arp note every N sixteenth steps
+  arpChance: number;
+  arpOctave: number; // semitones above chord tones
+  kick: boolean;
+  hat: boolean;
+  hatEvery: number;
+}
+
+const STEPS_PER_CHORD = 32; // two bars of sixteenths
+
+const TRACKS: Track[] = [
+  {
+    name: 'MIDNIGHT DRIVE',
+    bpm: 80,
+    chords: [
+      [57, 60, 64],
+      [57, 60, 65],
+      [55, 60, 64],
+      [55, 59, 62],
+    ], // Am F C G
+    bass: [33, 29, 36, 31],
+    bassSteps: [0, 8, 16, 24],
+    padType: 'sawtooth',
+    padGain: 0.05,
+    padFilter: [450, 1100],
+    arpEvery: 2,
+    arpChance: 0.8,
+    arpOctave: 12,
+    kick: true,
+    hat: true,
+    hatEvery: 4,
+  },
+  {
+    name: 'NEON COAST',
+    bpm: 72,
+    chords: [
+      [57, 62, 65],
+      [58, 62, 65],
+      [57, 60, 65],
+      [55, 60, 64],
+    ], // Dm Bb F C
+    bass: [38, 34, 29, 36],
+    bassSteps: [0, 12, 16, 28],
+    padType: 'sawtooth',
+    padGain: 0.04,
+    padFilter: [380, 900],
+    arpEvery: 4,
+    arpChance: 0.7,
+    arpOctave: 12,
+    kick: false,
+    hat: true,
+    hatEvery: 4,
+  },
+  {
+    name: 'STARFALL',
+    bpm: 84,
+    chords: [
+      [55, 59, 64],
+      [55, 60, 64],
+      [55, 59, 62],
+      [54, 57, 62],
+    ], // Em C G D
+    bass: [28, 36, 31, 26],
+    bassSteps: [0, 8, 16, 24],
+    padType: 'sawtooth',
+    padGain: 0.05,
+    padFilter: [500, 1300],
+    arpEvery: 2,
+    arpChance: 0.9,
+    arpOctave: 12,
+    kick: true,
+    hat: true,
+    hatEvery: 4,
+  },
+  {
+    name: 'CHROME SUNSET',
+    bpm: 76,
+    chords: [
+      [53, 57, 60],
+      [55, 59, 62],
+      [57, 60, 64],
+      [55, 59, 62],
+    ], // F G Am G
+    bass: [29, 31, 33, 31],
+    bassSteps: [0, 16],
+    padType: 'triangle',
+    padGain: 0.07,
+    padFilter: [500, 1400],
+    arpEvery: 4,
+    arpChance: 0.5,
+    arpOctave: 24,
+    kick: false,
+    hat: false,
+    hatEvery: 4,
+  },
+  {
+    name: 'GRID RUNNER',
+    bpm: 88,
+    chords: [
+      [57, 60, 64],
+      [57, 60, 64],
+      [53, 57, 60],
+      [55, 59, 62],
+    ], // Am Am F G
+    bass: [33, 33, 29, 31],
+    bassSteps: [0, 4, 8, 12, 16, 20, 24, 28],
+    padType: 'sawtooth',
+    padGain: 0.045,
+    padFilter: [450, 1200],
+    arpEvery: 2,
+    arpChance: 0.85,
+    arpOctave: 12,
+    kick: true,
+    hat: true,
+    hatEvery: 2,
+  },
+  {
+    name: 'AFTERGLOW',
+    bpm: 64,
+    chords: [
+      [60, 64, 67, 71],
+      [53, 57, 60, 64],
+      [57, 60, 64, 67],
+      [55, 59, 62, 67],
+    ], // Cmaj7 Fmaj7 Am7 G6
+    bass: [36, 29, 33, 31],
+    bassSteps: [0],
+    padType: 'sawtooth',
+    padGain: 0.04,
+    padFilter: [350, 800],
+    arpEvery: 8,
+    arpChance: 0.5,
+    arpOctave: 12,
+    kick: false,
+    hat: false,
+    hatEvery: 4,
+  },
 ];
-const BASS_ROOTS = [33, 29, 36, 31];
+
+let trackIdx = 0;
+
+function track(): Track {
+  return TRACKS[trackIdx];
+}
+
+function stepSeconds(): number {
+  return 60 / track().bpm / 4;
+}
 
 function midiToFreq(m: number): number {
   return 440 * Math.pow(2, (m - 69) / 12);
@@ -57,8 +206,8 @@ function ensureContext(): AudioContext | null {
   sfxGain.connect(masterGain);
 
   // shared feedback delay for the arpeggio (the "stars going by" echo)
-  arpDelay = ctx.createDelay(1);
-  arpDelay.delayTime.value = STEP * 3;
+  arpDelay = ctx.createDelay(2);
+  arpDelay.delayTime.value = stepSeconds() * 3;
   const feedback = ctx.createGain();
   feedback.gain.value = 0.3;
   arpDelay.connect(feedback);
@@ -115,19 +264,41 @@ export function toggleSfx(): boolean {
   return sfxOn;
 }
 
+export function getTrackName(): string {
+  return track().name;
+}
+
+/** Advance to the next track; restarts the engine if it's playing. */
+export function nextTrack(): string {
+  trackIdx = (trackIdx + 1) % TRACKS.length;
+  if (schedulerTimer !== null) {
+    stopEngine();
+    startEngine();
+  }
+  return track().name;
+}
+
+/** Pick a random track — called when the arcade opens so each visit differs. */
+export function randomizeTrack(): string {
+  trackIdx = Math.floor(Math.random() * TRACKS.length);
+  return track().name;
+}
+
 // ---------------- music engine ----------------
 
 function startEngine() {
   const c = ensureContext();
   if (!c || schedulerTimer !== null || c.state !== 'running') return;
+  if (arpDelay) arpDelay.delayTime.value = stepSeconds() * 3;
   step = 0;
   nextTime = c.currentTime + 0.1;
   schedulerTimer = window.setInterval(() => {
     if (!c) return;
+    const dur = stepSeconds();
     while (nextTime < c.currentTime + 0.35) {
       scheduleStep(step, nextTime);
-      step = (step + 1) % (STEPS_PER_CHORD * CHORDS.length);
-      nextTime += STEP;
+      step = (step + 1) % (STEPS_PER_CHORD * track().chords.length);
+      nextTime += dur;
     }
   }, 100);
 }
@@ -140,29 +311,31 @@ function stopEngine() {
 }
 
 function scheduleStep(s: number, t: number) {
-  const chordIdx = Math.floor(s / STEPS_PER_CHORD) % CHORDS.length;
-  const chord = CHORDS[chordIdx];
+  const tr = track();
+  const chordIdx = Math.floor(s / STEPS_PER_CHORD) % tr.chords.length;
+  const chord = tr.chords[chordIdx];
+  const inChord = s % STEPS_PER_CHORD;
 
-  if (s % STEPS_PER_CHORD === 0) pad(chord, t, STEPS_PER_CHORD * STEP);
-  if (s % 8 === 0) bass(BASS_ROOTS[chordIdx], t);
-  if (s % 2 === 0 && Math.random() < 0.8) arp(chord, t);
-  if (s % 16 === 0 || s % 16 === 8) kick(t);
-  if (s % 4 === 2) hat(t);
+  if (inChord === 0) pad(tr, chord, t, STEPS_PER_CHORD * stepSeconds());
+  if (tr.bassSteps.includes(inChord % 32)) bass(tr.bass[chordIdx], t);
+  if (s % tr.arpEvery === 0 && Math.random() < tr.arpChance) arp(tr, chord, t);
+  if (tr.kick && (s % 16 === 0 || s % 16 === 8)) kick(t);
+  if (tr.hat && s % tr.hatEvery === Math.floor(tr.hatEvery / 2)) hat(t);
 }
 
-function pad(chord: number[], t: number, dur: number) {
+function pad(tr: Track, chord: number[], t: number, dur: number) {
   if (!ctx || !musicGain) return;
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.Q.value = 0.8;
-  filter.frequency.setValueAtTime(450, t);
-  filter.frequency.linearRampToValueAtTime(1100, t + dur * 0.5);
-  filter.frequency.linearRampToValueAtTime(450, t + dur);
+  filter.frequency.setValueAtTime(tr.padFilter[0], t);
+  filter.frequency.linearRampToValueAtTime(tr.padFilter[1], t + dur * 0.5);
+  filter.frequency.linearRampToValueAtTime(tr.padFilter[0], t + dur);
 
   const env = ctx.createGain();
   env.gain.setValueAtTime(0, t);
-  env.gain.linearRampToValueAtTime(0.05, t + 0.9);
-  env.gain.setValueAtTime(0.05, t + dur - 1.2);
+  env.gain.linearRampToValueAtTime(tr.padGain, t + 0.9);
+  env.gain.setValueAtTime(tr.padGain, t + dur - 1.2);
   env.gain.linearRampToValueAtTime(0, t + dur + 0.2);
 
   filter.connect(env);
@@ -171,7 +344,7 @@ function pad(chord: number[], t: number, dur: number) {
   for (const note of chord) {
     for (const detune of [-6, 6]) {
       const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
+      osc.type = tr.padType;
       osc.frequency.value = midiToFreq(note);
       osc.detune.value = detune;
       osc.connect(filter);
@@ -183,21 +356,22 @@ function pad(chord: number[], t: number, dur: number) {
 
 function bass(root: number, t: number) {
   if (!ctx || !musicGain) return;
+  const dur = stepSeconds();
   const osc = ctx.createOscillator();
   osc.type = 'triangle';
   osc.frequency.value = midiToFreq(root);
   const env = ctx.createGain();
   env.gain.setValueAtTime(0.16, t);
-  env.gain.exponentialRampToValueAtTime(0.001, t + STEP * 7);
+  env.gain.exponentialRampToValueAtTime(0.001, t + dur * 7);
   osc.connect(env);
   env.connect(musicGain);
   osc.start(t);
-  osc.stop(t + STEP * 8);
+  osc.stop(t + dur * 8);
 }
 
-function arp(chord: number[], t: number) {
+function arp(tr: Track, chord: number[], t: number) {
   if (!ctx || !arpDelay || !musicGain) return;
-  const note = chord[Math.floor(Math.random() * chord.length)] + 12;
+  const note = chord[Math.floor(Math.random() * chord.length)] + tr.arpOctave;
   const osc = ctx.createOscillator();
   osc.type = 'triangle';
   osc.frequency.value = midiToFreq(note);

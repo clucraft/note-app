@@ -24,6 +24,8 @@ import {
   toggleSfx,
   isMusicOn,
   isSfxOn,
+  nextTrack,
+  randomizeTrack,
 } from './audio';
 import styles from './Arcade.module.css';
 
@@ -61,9 +63,11 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
   const [copied, setCopied] = useState(false);
   const [musicOn, setMusicOn] = useState(isMusicOn());
   const [sfxOn, setSfxOn] = useState(isSfxOn());
+  // a different track greets you on every visit
+  const [trackName, setTrackName] = useState(() => randomizeTrack());
 
   // Audio lifecycle: resume/start on any gesture (browsers require one),
-  // toggle music with B and sound effects with N anywhere in the arcade,
+  // toggle music with B, sound effects with N, cycle tracks with T,
   // and silence everything the instant the overlay unmounts.
   useEffect(() => {
     unlockAudio();
@@ -72,6 +76,7 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
       const key = e.key.toLowerCase();
       if (key === 'b') setMusicOn(toggleMusic());
       else if (key === 'n') setSfxOn(toggleSfx());
+      else if (key === 't') setTrackName(nextTrack());
     };
     window.addEventListener('pointerdown', onGesture);
     window.addEventListener('keydown', onGesture);
@@ -307,7 +312,7 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
           </div>
           <div className={styles.hint}>
             &uarr;&darr; SELECT &middot; ENTER PLAY &middot; B &#9834;{musicOn ? 'ON' : 'OFF'} &middot;
-            N FX {sfxOn ? 'ON' : 'OFF'}
+            T &#9656; {trackName} &middot; N FX {sfxOn ? 'ON' : 'OFF'}
             {!standalone && (
               <>
                 {' '}
