@@ -8,11 +8,12 @@ const W = 480;
 const H = 560;
 const HORIZON_Y = 380;
 const GROUND_Y = 460;
-const PLAYER_X = 110;
+const START_X = 130;
+const MIN_X = 36;
+const SCROLL_X = 250; // running past this point scrolls the world instead
 
-const BASE_SPEED = 240;
+const BASE_SPEED = 260;
 const MAX_SPEED = 560;
-const SPEED_RAMP = 8;
 const JUMP_VY = -520;
 const GRAVITY_HELD = 1100;
 const GRAVITY = 2000;
@@ -42,19 +43,19 @@ interface Obstacle {
 
 interface Enemy {
   x: number;
-  baseY: number; // height above ground
+  baseY: number;
   type: 'drone' | 'crawler';
   phase: number;
 }
 
 interface Coin {
   x: number;
-  y: number; // height above ground
+  y: number;
 }
 
 interface Bullet {
   x: number;
-  y: number; // absolute canvas y
+  y: number;
   pierce: boolean;
 }
 
@@ -72,19 +73,20 @@ interface Particle {
 
 interface State {
   dist: number;
-  speed: number;
+  px: number;
   y: number;
   vy: number;
   sliding: boolean;
+  facing: 1 | -1;
   wallet: number;
-  bonus: number; // score from coins/kills, added to distance
+  bonus: number;
   obstacles: Obstacle[];
   enemies: Enemy[];
   coins: Coin[];
   bullets: Bullet[];
   toNext: number;
   enemyTimer: number;
-  coinTimer: number;
+  coinNext: number;
   fireCooldown: number;
   rapidTimer: number;
   laserTimer: number;
@@ -97,10 +99,11 @@ interface State {
 function initialState(): State {
   return {
     dist: 0,
-    speed: BASE_SPEED,
+    px: START_X,
     y: 0,
     vy: 0,
     sliding: false,
+    facing: 1,
     wallet: 0,
     bonus: 0,
     obstacles: [],
@@ -109,7 +112,7 @@ function initialState(): State {
     bullets: [],
     toNext: 500,
     enemyTimer: 6,
-    coinTimer: 2,
+    coinNext: 400,
     fireCooldown: 0,
     rapidTimer: 0,
     laserTimer: 0,
@@ -132,11 +135,16 @@ function totalScore(st: State): number {
   return Math.floor(st.dist / 10) + st.bonus;
 }
 
+function runSpeed(st: State): number {
+  return Math.min(MAX_SPEED, BASE_SPEED + st.dist * 0.03);
+}
+
 export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
   const jumpHeldRef = useRef(false);
   const fireHeldRef = useRef(false);
+  const moveRef = useRef({ left: false, right: false });
   const onScoreRef = useRef(onScore);
   onScoreRef.current = onScore;
   const [score, setScore] = useState(0);
@@ -171,8 +179,8 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
       st.shake = 0.25;
       sfx.explosion(true);
       sfx.over();
-      spawnBurst(st, PLAYER_X, GROUND_Y - st.y - RUN_H / 2, '#00ffff', 14, 280);
-      spawnBurst(st, PLAYER_X, GROUND_Y - st.y - RUN_H / 2, '#ff2d78', 10, 280);
+      spawnBurst(st, st.px, GROUND_Y - st.y - RUN_H / 2, '#00ffff', 14, 280);
+      spawnBurst(st, st.px, GROUND_Y - st.y - RUN_H / 2, '#ff2d78', 10, 280);
       const finalScore = totalScore(st);
       submitHighScore('runner', finalScore);
       setHighScore(getHighScore('runner'));
@@ -225,6 +233,12 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
       } else if (key === 'ArrowDown' || key === 's') {
         e.preventDefault();
         if (st.status === 'playing' && st.y === 0) st.sliding = true;
+      } else if (key === 'ArrowLeft' || key === 'a') {
+        e.preventDefault();
+        moveRef.current.left = true;
+      } else if (key === 'ArrowRight' || key === 'd') {
+        e.preventDefault();
+        moveRef.current.right = true;
       } else if (key === 'x' || key === 'f') {
         e.preventDefault();
         fireHeldRef.current = true;
@@ -242,6 +256,10 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         jumpHeldRef.current = false;
       } else if (key === 'ArrowDown' || key === 's') {
         stateRef.current.sliding = false;
+      } else if (key === 'ArrowLeft' || key === 'a') {
+        moveRef.current.left = false;
+      } else if (key === 'ArrowRight' || key === 'd') {
+        moveRef.current.right = false;
       } else if (key === 'x' || key === 'f') {
         fireHeldRef.current = false;
       }
@@ -256,14 +274,30 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
 
   useGameLoop((dt) => {
     const st = stateRef.current;
+    let scroll = 0;
 
     if (st.status === 'playing') {
-      st.speed = Math.min(MAX_SPEED, st.speed + SPEED_RAMP * dt);
-      st.dist += st.speed * dt;
+      const speed = runSpeed(st);
       st.rapidTimer = Math.max(0, st.rapidTimer - dt);
       st.laserTimer = Math.max(0, st.laserTimer - dt);
       st.invTimer = Math.max(0, st.invTimer - dt);
       st.fireCooldown = Math.max(0, st.fireCooldown - dt);
+
+      // manual running — world scrolls when pushing past mid-screen
+      if (moveRef.current.right && !moveRef.current.left) {
+        st.facing = 1;
+        const dx = speed * dt;
+        if (st.px < SCROLL_X) {
+          st.px = Math.min(SCROLL_X, st.px + dx);
+        } else {
+          scroll = dx;
+        }
+      } else if (moveRef.current.left && !moveRef.current.right) {
+        st.facing = -1;
+        st.px = Math.max(MIN_X, st.px - speed * 0.8 * dt);
+      }
+      st.dist += scroll;
+      const moving = scroll > 0 || (moveRef.current.left && st.px > MIN_X);
 
       // jump physics
       if (st.y > 0 || st.vy !== 0) {
@@ -276,9 +310,9 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
           for (let i = 0; i < 4; i++) {
             const life = 0.2 + Math.random() * 0.15;
             st.particles.push({
-              x: PLAYER_X + (Math.random() - 0.5) * 12,
+              x: st.px + (Math.random() - 0.5) * 12,
               y: GROUND_Y,
-              vx: -st.speed * 0.15,
+              vx: -scroll * 8,
               vy: -Math.random() * 60,
               life,
               maxLife: life,
@@ -290,13 +324,13 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         }
       }
 
-      // run dust
-      if (st.y === 0 && Math.random() < 0.3) {
+      // run dust only while actually running
+      if (st.y === 0 && moving && Math.random() < 0.3) {
         const life = 0.2 + Math.random() * 0.15;
         st.particles.push({
-          x: PLAYER_X - 6,
+          x: st.px - 6 * st.facing,
           y: GROUND_Y - 2,
-          vx: -st.speed * 0.2,
+          vx: -st.facing * 50,
           vy: -20 - Math.random() * 40,
           life,
           maxLife: life,
@@ -306,42 +340,38 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         });
       }
 
-      // firing
+      // firing (always to the right — that's where the run goes)
       if (fireHeldRef.current && st.fireCooldown === 0) {
         const laser = st.laserTimer > 0;
         st.fireCooldown = laser ? LASER_FIRE_CD : st.rapidTimer > 0 ? RAPID_FIRE_CD : BASE_FIRE_CD;
         const by = GROUND_Y - st.y - (st.sliding ? 10 : 26);
-        st.bullets.push({ x: PLAYER_X + 12, y: by, pierce: laser });
+        st.bullets.push({ x: st.px + 12, y: by, pierce: laser });
         sfx.zap();
       }
 
-      // ---- spawning ----
-      // obstacles, with variety
-      st.toNext -= st.speed * dt;
+      // ---- spawning (tied to world scroll, so standing still spawns nothing) ----
+      st.toNext -= scroll;
       if (st.toNext <= 0) {
         const d = st.dist;
         const roll = Math.random();
         if (d > 2400 && roll < 0.25) {
           st.obstacles.push({ x: W + 40, w: 34, h: 26, overhead: true, hp: 1 });
         } else if (d > 1500 && roll < 0.4) {
-          // tall block — needs a full jump
           st.obstacles.push({ x: W + 40, w: 20, h: 46 + Math.random() * 10, overhead: false, hp: 2 });
         } else if (d > 3000 && roll < 0.55) {
-          // staggered pair
           st.obstacles.push({ x: W + 40, w: 18, h: 28, overhead: false, hp: 1 });
           st.obstacles.push({ x: W + 130 + Math.random() * 40, w: 18, h: 36, overhead: false, hp: 1 });
         } else if (d > 5000 && roll < 0.65) {
-          // bar + block combo: slide then jump
           st.obstacles.push({ x: W + 40, w: 34, h: 26, overhead: true, hp: 1 });
           st.obstacles.push({ x: W + 200, w: 20, h: 32, overhead: false, hp: 1 });
         } else {
           const wdt = 18 + Math.random() * 16;
           st.obstacles.push({ x: W + 40, w: wdt, h: 26 + Math.random() * 16, overhead: false, hp: 1 });
         }
-        st.toNext = 280 + Math.random() * 300 + st.speed * 0.35;
+        st.toNext = 280 + Math.random() * 300 + speed * 0.35;
       }
 
-      // enemies
+      // enemies keep hunting in real time — no camping
       if (st.dist > 1200) {
         st.enemyTimer -= dt;
         if (st.enemyTimer <= 0) {
@@ -359,10 +389,10 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         }
       }
 
-      // coin rows and arcs
-      st.coinTimer -= dt;
-      if (st.coinTimer <= 0) {
-        st.coinTimer = 1.6 + Math.random() * 2.2;
+      // coins
+      st.coinNext -= scroll;
+      if (st.coinNext <= 0) {
+        st.coinNext = 380 + Math.random() * 520;
         const n = 3 + Math.floor(Math.random() * 3);
         const arc = Math.random() < 0.4;
         const baseY = arc ? 50 : 16 + Math.random() * 70;
@@ -374,15 +404,14 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
 
       // ---- movement & collisions ----
       const playerH = st.sliding ? SLIDE_H : RUN_H;
-      const px1 = PLAYER_X - RUN_W / 2 + 2;
-      const px2 = PLAYER_X + RUN_W / 2 - 2;
+      const px1 = st.px - RUN_W / 2 + 2;
+      const px2 = st.px + RUN_W / 2 - 2;
       const py1 = GROUND_Y - st.y - playerH + 2;
       const py2 = GROUND_Y - st.y - 2;
       const inv = st.invTimer > 0;
 
-      // obstacles
       for (const o of st.obstacles) {
-        o.x -= st.speed * dt;
+        o.x -= scroll;
         const oy1 = o.overhead ? GROUND_Y - 62 : GROUND_Y - o.h;
         const oy2 = o.overhead ? GROUND_Y - 62 + o.h : GROUND_Y;
         if (px2 > o.x && px1 < o.x + o.w && py2 > oy1 && py1 < oy2) {
@@ -400,16 +429,15 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
       st.obstacles = st.obstacles.filter((o) => o.hp > 0 && o.x + o.w > -20);
 
       if (st.status === 'playing') {
-        // enemies
         for (const en of st.enemies) {
-          en.x -= (st.speed + (en.type === 'crawler' ? 110 : 60)) * dt;
+          en.x -= scroll + (en.type === 'crawler' ? 110 : 60) * dt;
           en.phase += dt * 3;
           const ey = en.type === 'drone' ? en.baseY + Math.sin(en.phase) * 18 : 7;
           const ey1 = GROUND_Y - ey - 10;
           const ey2 = GROUND_Y - ey + 10;
           if (px2 > en.x - 10 && px1 < en.x + 10 && py2 > ey1 && py1 < ey2) {
             if (inv) {
-              en.phase = -999; // mark dead
+              en.phase = -999;
               spawnBurst(st, en.x, (ey1 + ey2) / 2, '#ffe600', 12, 260);
               sfx.brick();
               st.bonus += 30;
@@ -423,10 +451,8 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
       }
 
       if (st.status === 'playing') {
-        // bullets
         st.bullets = st.bullets.filter((b) => {
-          b.x += (b.pierce ? LASER_SPEED : BULLET_SPEED) * dt;
-          // vs enemies
+          b.x += (b.pierce ? LASER_SPEED : BULLET_SPEED) * dt - scroll;
           for (const en of st.enemies) {
             const ey = en.type === 'drone' ? en.baseY + Math.sin(en.phase) * 18 : 7;
             if (Math.abs(b.x - en.x) < 14 && Math.abs(b.y - (GROUND_Y - ey)) < 16) {
@@ -438,7 +464,6 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
               if (!b.pierce) return false;
             }
           }
-          // vs ground obstacles
           for (const o of st.obstacles) {
             if (o.overhead && !b.pierce) continue;
             const oy1 = o.overhead ? GROUND_Y - 62 : GROUND_Y - o.h;
@@ -459,9 +484,8 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         st.enemies = st.enemies.filter((en) => en.phase !== -999);
         st.obstacles = st.obstacles.filter((o) => o.hp > 0);
 
-        // coins
         st.coins = st.coins.filter((c) => {
-          c.x -= st.speed * dt;
+          c.x -= scroll;
           const cy = GROUND_Y - c.y;
           if (px2 + 6 > c.x - 7 && px1 - 6 < c.x + 7 && py2 + 6 > cy - 7 && py1 - 6 < cy + 7) {
             st.wallet += 1;
@@ -499,7 +523,7 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
 
     const t = performance.now() / 1000;
 
-    // stars — properly scattered
+    // stars
     for (let i = 0; i < 48; i++) {
       const sx = hash(i) % W;
       const sy = hash(i + 1337) % (HORIZON_Y - 110);
@@ -657,7 +681,6 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         ctx.shadowBlur = 8;
         ctx.fillRect(en.x - 10, ey - 7, 20, 14);
         ctx.shadowBlur = 0;
-        // scuttling legs
         const leg = Math.sin(t * 20) * 3;
         ctx.fillRect(en.x - 8 + leg, GROUND_Y - 3, 3, 3);
         ctx.fillRect(en.x + 5 - leg, GROUND_Y - 3, 3, 3);
@@ -696,22 +719,22 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
       ctx.shadowColor = color;
       ctx.shadowBlur = inv ? 16 : 10;
       if (st.sliding) {
-        ctx.fillRect(PLAYER_X - 14, py + 6, 28, ph - 6);
-        ctx.fillRect(PLAYER_X + 8, py, 8, 8);
+        ctx.fillRect(st.px - 14, py + 6, 28, ph - 6);
+        ctx.fillRect(st.px + 8 * st.facing - (st.facing < 0 ? 8 : 0), py, 8, 8);
       } else {
-        ctx.fillRect(PLAYER_X - 4, py + 10, 9, ph - 18);
-        ctx.fillRect(PLAYER_X - 4, py, 9, 9);
+        ctx.fillRect(st.px - 4, py + 10, 9, ph - 18);
+        ctx.fillRect(st.px - 4, py, 9, 9);
         if (st.y === 0) {
-          const phase = Math.sin(st.dist * 0.06);
-          ctx.fillRect(PLAYER_X - 4 + phase * 5, GROUND_Y - 10, 4, 10);
-          ctx.fillRect(PLAYER_X - phase * 5, GROUND_Y - 10, 4, 10);
+          const phase = Math.sin(st.dist * 0.06 + st.px * 0.06);
+          ctx.fillRect(st.px - 4 + phase * 5, GROUND_Y - 10, 4, 10);
+          ctx.fillRect(st.px - phase * 5, GROUND_Y - 10, 4, 10);
         } else {
-          ctx.fillRect(PLAYER_X - 7, py + ph - 12, 5, 8);
-          ctx.fillRect(PLAYER_X + 3, py + ph - 14, 5, 8);
+          ctx.fillRect(st.px - 7, py + ph - 12, 5, 8);
+          ctx.fillRect(st.px + 3, py + ph - 14, 5, 8);
         }
       }
-      // gun
-      ctx.fillRect(PLAYER_X + 4, py + (st.sliding ? 8 : 11), 10, 3);
+      // gun — always points right, where the run goes
+      ctx.fillRect(st.px + 4, py + (st.sliding ? 8 : 11), 10, 3);
       ctx.shadowBlur = 0;
     }
 
@@ -755,8 +778,8 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
         ctx.fillText(`SCORE ${totalScore(st)}`, W / 2, H / 2 + 2);
         ctx.fillText('SPACE TO RUN AGAIN', W / 2, H / 2 + 26);
       } else {
-        ctx.fillText('SPACE JUMP · DOWN SLIDE · X FIRE', W / 2, H / 2 + 2);
-        ctx.fillText('COINS BUY POWER-UPS (1/2/3) · SPACE TO RUN', W / 2, H / 2 + 24);
+        ctx.fillText('→ RUN · SPACE JUMP · ↓ SLIDE · X FIRE', W / 2, H / 2 + 2);
+        ctx.fillText('COINS BUY POWER-UPS (1/2/3) · SPACE TO START', W / 2, H / 2 + 24);
       }
     }
   });
@@ -770,8 +793,8 @@ export function Runner({ onExit, onScore }: { onExit: () => void; onScore?: (sco
       </div>
       <canvas ref={canvasRef} width={W} height={H} className={styles.canvas} />
       <div className={styles.gameHint}>
-        SPACE JUMP &middot; &darr; SLIDE &middot; X FIRE &middot; 1/2/3 BUY &middot; M MENU &middot;
-        ESC QUIT
+        &larr;&rarr; RUN &middot; SPACE JUMP &middot; &darr; SLIDE &middot; X FIRE &middot; 1/2/3 BUY
+        &middot; M MENU &middot; ESC QUIT
       </div>
     </div>
   );
