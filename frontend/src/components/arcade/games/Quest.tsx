@@ -9,22 +9,27 @@ const HUD_H = 40;
 const TILE = 32;
 
 const PLAYER_SPEED = 150;
-const PLAYER_R = 11; // collision half-size
+const PLAYER_R = 11;
 const ATTACK_TIME = 0.18;
 const ATTACK_CD = 0.35;
 const INVULN_TIME = 1.0;
 const MAX_HP_START = 6; // half-hearts
 const SAVE_KEY = 'arcade.quest.save';
+const BOMB_FUSE = 1.2;
+const BOMB_RADIUS = 46;
+const MAX_BOMBS = 8;
 
-// ---- world ----------------------------------------------------------------
-// Authored as ASCII rows; rows are padded/truncated to width and the border
-// is forced solid, so small authoring slips can't break the world.
-// . grass  , path  S sand  T tree  R rock  W water  B bridge  D dungeon door
-const RAW = [
+type MapId = 'over' | 'dun';
+
+// ---- maps -------------------------------------------------------------------
+// . grass/floor  , path  S sand  T tree  R rock  W water  B bridge
+// D dungeon entrance  C cracked rock (bombable)  # wall  L locked door
+// G gated door (bars during room fights)  E dungeon exit
+const RAW_OVER = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   'TTTRRRRRRRRRRRRRRRRRRRRRRRRRDDRRRRRRRRRRRRRRRRRRRRRRRRRRTTTT',
   'TT.....R..................R,,R..................R.......TTTT',
-  'TT..RR.................RRRR,,RRRR.....................RRTTTT',
+  'TT..RC.................RRRR,,RRRR.....................RRTTTT',
   'TT.........TT..............,,...........TT.............TTTT',
   'TT..T.......................,,..........................TTT',
   'TTT.....RR..................,,......WWWWWWWWWW..........TTT',
@@ -37,7 +42,7 @@ const RAW = [
   'TT.TT...T..........,,,,,,,,,,,...BBBBBBBBWWWWW..........TTT',
   'TT.TTT..T..........,........SS...SSSSSSSS...............TTT',
   'TT.TTTT............,.......SSS......................R...TTT',
-  'TT..TTTT..T........,........................RR..........TTT',
+  'TT..TTTT..T........,........................CR..........TTT',
   'TT...TTTTT.........,....................................TTT',
   'TT.....TTT.........,..........RR........................TTT',
   'TT.T....T..........,....................TT..............TTT',
@@ -45,100 +50,175 @@ const RAW = [
   'TT.....R...........,,,,,,,,,,,..........................TTT',
   'TT.............................,...........R...........TTT',
   'TT....TT.......................,........................TTT',
-  'TT...TTTT......................,.....TT.........RR......TTT',
+  'TT...TTTT......................,.....TT.........CR......TTT',
   'TT....TT.......................,........................TTT',
   'TT.............................,.........TT............TTT',
   'TT......................................................TTT',
   'TTT....................................................TTTT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
-const COLS = 60;
-const ROWS = RAW.length;
-const WORLD_W = COLS * TILE;
-const WORLD_H = ROWS * TILE;
-const SOLID = new Set(['T', 'R', 'W', 'D']);
 
-function buildGrid(): string[][] {
+const RAW_DUN = [
+  '########################',
+  '####................####',
+  '####................####',
+  '####................####',
+  '#########GG#############',
+  '####................####',
+  '###..................###',
+  '###..................###',
+  '###..................###',
+  '###..................###',
+  '####................####',
+  '##########LL############',
+  '####................####',
+  '####................####',
+  '####................####',
+  '##########LL############',
+  '##########....##########',
+  '##......##....##......##',
+  '##......G......G......##',
+  '##......##....##......##',
+  '##......##....##......##',
+  '##########....##########',
+  '##########....##########',
+  '#########..EE..#########',
+  '########################',
+];
+
+interface WorldMap {
+  grid: string[][];
+  cols: number;
+  rows: number;
+  solid: Set<string>;
+}
+
+const SOLID_TILES = new Set(['T', 'R', 'W', 'D', 'C', '#', 'L']);
+
+function buildMap(raw: string[], cols: number, border: string): WorldMap {
+  const rows = raw.length;
   const grid: string[][] = [];
-  for (let y = 0; y < ROWS; y++) {
-    const row = (RAW[y] || '').padEnd(COLS, '.').slice(0, COLS).split('');
-    grid.push(row);
+  for (let y = 0; y < rows; y++) {
+    grid.push((raw[y] || '').padEnd(cols, '.').slice(0, cols).split(''));
   }
-  // force a solid border no matter what the art says
-  for (let x = 0; x < COLS; x++) {
-    grid[0][x] = 'T';
-    grid[ROWS - 1][x] = 'T';
+  for (let x = 0; x < cols; x++) {
+    grid[0][x] = border;
+    grid[rows - 1][x] = border;
   }
-  for (let y = 0; y < ROWS; y++) {
-    grid[y][0] = 'T';
-    grid[y][COLS - 1] = 'T';
+  for (let y = 0; y < rows; y++) {
+    grid[y][0] = border;
+    grid[y][cols - 1] = border;
   }
-  return grid;
+  return { grid, cols, rows, solid: SOLID_TILES };
 }
 
-const GRID = buildGrid();
+// ---- structure: rooms, doors, cracks, pickups --------------------------------
 
-function tileAt(px: number, py: number): string {
-  const tx = Math.floor(px / TILE);
-  const ty = Math.floor(py / TILE);
-  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return 'T';
-  return GRID[ty][tx];
+interface Room {
+  id: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number; // tile rect, inclusive
+  gates: [number, number][];
 }
 
-function blocked(px: number, py: number): boolean {
-  return SOLID.has(tileAt(px, py));
+const ROOMS: Room[] = [
+  { id: 'room-w', x0: 2, y0: 17, x1: 8, y1: 20, gates: [[8, 18]] },
+  { id: 'room-e', x0: 15, y0: 17, x1: 21, y1: 20, gates: [[15, 18]] },
+  { id: 'boss', x0: 3, y0: 5, x1: 20, y1: 10, gates: [[9, 4], [10, 4]] },
+];
+
+// locked door pairs — bumping either tile with a key opens both
+const DOORS: { id: string; tiles: [number, number][] }[] = [
+  { id: 'door-1', tiles: [[10, 15], [11, 15]] },
+  { id: 'door-2', tiles: [[10, 11], [11, 11]] },
+];
+
+const CRACKS: { tx: number; ty: number; flag: string; loot: 'coins' | 'heart' }[] = [
+  { tx: 5, ty: 3, flag: 'crack-1', loot: 'coins' },
+  { tx: 44, ty: 16, flag: 'crack-2', loot: 'heart' },
+  { tx: 48, ty: 24, flag: 'crack-3', loot: 'coins' },
+];
+
+type PickupKind = 'key' | 'heartContainer' | 'fragment' | 'bombBag' | 'coin' | 'heart' | 'bomb';
+
+interface PickupDef {
+  kind: PickupKind;
+  map: MapId;
+  tx: number;
+  ty: number;
+  flag: string;
+  requires?: string; // flag that must be set before this spawns
 }
 
-function boxBlocked(x: number, y: number, r: number): boolean {
-  return (
-    blocked(x - r, y - r) || blocked(x + r, y - r) || blocked(x - r, y + r) || blocked(x + r, y + r)
-  );
-}
+const PICKUP_DEFS: PickupDef[] = [
+  { kind: 'key', map: 'dun', tx: 4, ty: 19, flag: 'key-w' },
+  { kind: 'key', map: 'dun', tx: 19, ty: 19, flag: 'key-e' },
+  { kind: 'heartContainer', map: 'dun', tx: 8, ty: 2, flag: 'hc-dungeon' },
+  { kind: 'fragment', map: 'dun', tx: 14, ty: 2, flag: 'frag' },
+  { kind: 'heartContainer', map: 'over', tx: 44, ty: 16, flag: 'hc-secret', requires: 'crack-2' },
+];
 
-/** Axis-separated tile collision: slide along walls. */
-function tryMove(e: { x: number; y: number }, dx: number, dy: number, r: number) {
-  if (dx !== 0 && !boxBlocked(e.x + dx, e.y, r)) e.x += dx;
-  if (dy !== 0 && !boxBlocked(e.x, e.y + dy, r)) e.y += dy;
-}
+// ---- enemies ------------------------------------------------------------------
 
-// ---- entities ---------------------------------------------------------------
-
-type EnemyType = 'blob' | 'stalker' | 'spitter';
+type EnemyType = 'blob' | 'stalker' | 'spitter' | 'bat' | 'knight' | 'guardian';
 
 interface EnemyDef {
   type: EnemyType;
+  map: MapId;
   tx: number;
   ty: number;
+  roomId?: string;
 }
 
 const ENEMY_SPAWNS: EnemyDef[] = [
-  { type: 'blob', tx: 8, ty: 5 },
-  { type: 'blob', tx: 20, ty: 17 },
-  { type: 'blob', tx: 36, ty: 17 },
-  { type: 'blob', tx: 45, ty: 20 },
-  { type: 'blob', tx: 15, ty: 22 },
-  { type: 'blob', tx: 40, ty: 4 },
-  { type: 'blob', tx: 50, ty: 8 },
-  { type: 'blob', tx: 24, ty: 24 },
-  { type: 'stalker', tx: 12, ty: 12 },
-  { type: 'stalker', tx: 33, ty: 20 },
-  { type: 'stalker', tx: 48, ty: 15 },
-  { type: 'stalker', tx: 22, ty: 6 },
-  { type: 'stalker', tx: 44, ty: 25 },
-  { type: 'spitter', tx: 10, ty: 19 },
-  { type: 'spitter', tx: 38, ty: 22 },
-  { type: 'spitter', tx: 50, ty: 5 },
-  { type: 'spitter', tx: 26, ty: 15 },
+  // overworld
+  { type: 'blob', map: 'over', tx: 8, ty: 5 },
+  { type: 'blob', map: 'over', tx: 20, ty: 17 },
+  { type: 'blob', map: 'over', tx: 36, ty: 17 },
+  { type: 'blob', map: 'over', tx: 45, ty: 20 },
+  { type: 'blob', map: 'over', tx: 15, ty: 22 },
+  { type: 'blob', map: 'over', tx: 40, ty: 4 },
+  { type: 'blob', map: 'over', tx: 50, ty: 8 },
+  { type: 'blob', map: 'over', tx: 24, ty: 24 },
+  { type: 'stalker', map: 'over', tx: 12, ty: 12 },
+  { type: 'stalker', map: 'over', tx: 33, ty: 20 },
+  { type: 'stalker', map: 'over', tx: 48, ty: 15 },
+  { type: 'stalker', map: 'over', tx: 22, ty: 6 },
+  { type: 'stalker', map: 'over', tx: 44, ty: 25 },
+  { type: 'spitter', map: 'over', tx: 10, ty: 19 },
+  { type: 'spitter', map: 'over', tx: 38, ty: 22 },
+  { type: 'spitter', map: 'over', tx: 50, ty: 5 },
+  { type: 'spitter', map: 'over', tx: 26, ty: 15 },
+  // dungeon
+  { type: 'knight', map: 'dun', tx: 4, ty: 18, roomId: 'room-w' },
+  { type: 'knight', map: 'dun', tx: 6, ty: 20, roomId: 'room-w' },
+  { type: 'bat', map: 'dun', tx: 17, ty: 18, roomId: 'room-e' },
+  { type: 'bat', map: 'dun', tx: 19, ty: 20, roomId: 'room-e' },
+  { type: 'knight', map: 'dun', tx: 18, ty: 17, roomId: 'room-e' },
+  { type: 'spitter', map: 'dun', tx: 6, ty: 13 },
+  { type: 'spitter', map: 'dun', tx: 17, ty: 13 },
+  { type: 'bat', map: 'dun', tx: 12, ty: 21 },
+  { type: 'guardian', map: 'dun', tx: 11, ty: 7, roomId: 'boss' },
 ];
 
-const ENEMY_STATS: Record<EnemyType, { hp: number; speed: number; color: string }> = {
-  blob: { hp: 1, speed: 40, color: '#39ff14' },
-  stalker: { hp: 2, speed: 78, color: '#ff2d78' },
-  spitter: { hp: 1, speed: 0, color: '#ff7a2d' },
+const ENEMY_STATS: Record<
+  EnemyType,
+  { hp: number; speed: number; color: string; dmg: number; size: number }
+> = {
+  blob: { hp: 1, speed: 40, color: '#39ff14', dmg: 1, size: 9 },
+  stalker: { hp: 2, speed: 78, color: '#ff2d78', dmg: 1, size: 10 },
+  spitter: { hp: 1, speed: 0, color: '#ff7a2d', dmg: 1, size: 9 },
+  bat: { hp: 1, speed: 115, color: '#b14aff', dmg: 1, size: 8 },
+  knight: { hp: 3, speed: 45, color: '#4a9bff', dmg: 2, size: 12 },
+  guardian: { hp: 14, speed: 0, color: '#ff00ff', dmg: 2, size: 22 },
 };
 
 interface Enemy {
   type: EnemyType;
+  map: MapId;
+  roomId?: string;
   x: number;
   y: number;
   homeX: number;
@@ -152,12 +232,15 @@ interface Enemy {
   fireTimer: number;
   kbX: number;
   kbY: number;
+  chargeTimer: number;
+  charging: boolean;
 }
 
 interface Drop {
   x: number;
   y: number;
-  kind: 'coin' | 'heart';
+  kind: PickupKind;
+  flag?: string;
   ttl: number;
 }
 
@@ -166,6 +249,13 @@ interface Bullet {
   y: number;
   vx: number;
   vy: number;
+  friendly: boolean;
+}
+
+interface Bomb {
+  x: number;
+  y: number;
+  fuse: number;
 }
 
 interface Particle {
@@ -182,11 +272,17 @@ interface Particle {
 type Facing = 'up' | 'down' | 'left' | 'right';
 
 interface State {
+  map: MapId;
   x: number;
   y: number;
   hp: number;
   maxHp: number;
   coins: number;
+  keys: number;
+  bombs: number;
+  hasBombBag: boolean;
+  hasFragment: boolean;
+  flags: Set<string>;
   facing: Facing;
   attackTimer: number;
   attackCd: number;
@@ -195,6 +291,7 @@ interface State {
   kbY: number;
   enemies: Enemy[];
   bullets: Bullet[];
+  bombsLive: Bomb[];
   drops: Drop[];
   particles: Particle[];
   message: string;
@@ -203,33 +300,79 @@ interface State {
   status: 'ready' | 'playing';
 }
 
-const SPAWN_X = 31 * TILE + 16;
-const SPAWN_Y = 25 * TILE + 16;
+const OVER_SPAWN = { x: 31 * TILE + 16, y: 25 * TILE + 16 };
+const DUN_SPAWN = { x: 11.5 * TILE + 16, y: 22 * TILE };
 
-function findWalkable(tx: number, ty: number): { x: number; y: number } {
-  for (let radius = 0; radius < 6; radius++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        const nx = tx + dx;
-        const ny = ty + dy;
-        if (nx > 1 && ny > 1 && nx < COLS - 2 && ny < ROWS - 2 && !SOLID.has(GRID[ny][nx])) {
-          return { x: nx * TILE + 16, y: ny * TILE + 16 };
-        }
-      }
-    }
-  }
-  return { x: SPAWN_X, y: SPAWN_Y };
+interface SaveData {
+  v: number;
+  map: MapId;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  coins: number;
+  keys: number;
+  bombs: number;
+  hasBombBag: boolean;
+  hasFragment: boolean;
+  flags: string[];
 }
 
-function freshEnemies(): Enemy[] {
-  return ENEMY_SPAWNS.map((def) => {
-    const pos = findWalkable(def.tx, def.ty);
+function loadSave(): SaveData | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
     return {
+      v: 2,
+      map: data.map === 'dun' ? 'dun' : 'over',
+      x: data.x ?? OVER_SPAWN.x,
+      y: data.y ?? OVER_SPAWN.y,
+      hp: data.hp ?? MAX_HP_START,
+      maxHp: data.maxHp ?? MAX_HP_START,
+      coins: data.coins ?? 0,
+      keys: data.keys ?? 0,
+      bombs: data.bombs ?? 0,
+      hasBombBag: !!data.hasBombBag,
+      hasFragment: !!data.hasFragment,
+      flags: Array.isArray(data.flags) ? data.flags : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function Quest({ onExit }: { onExit: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mapsRef = useRef<{ over: WorldMap; dun: WorldMap }>({
+    over: buildMap(RAW_OVER, 60, 'T'),
+    dun: buildMap(RAW_DUN, 24, '#'),
+  });
+
+  const buildState = useCallback((save: SaveData | null): State => {
+    const flags = new Set(save?.flags ?? []);
+    // re-apply persistent world changes
+    const maps = { over: buildMap(RAW_OVER, 60, 'T'), dun: buildMap(RAW_DUN, 24, '#') };
+    for (const door of DOORS) {
+      if (flags.has(door.id)) {
+        for (const [tx, ty] of door.tiles) maps.dun.grid[ty][tx] = '.';
+      }
+    }
+    for (const crack of CRACKS) {
+      if (flags.has(crack.flag)) maps.over.grid[crack.ty][crack.tx] = '.';
+    }
+    mapsRef.current = maps;
+
+    const enemies: Enemy[] = ENEMY_SPAWNS.filter(
+      (def) => !(def.roomId && flags.has(def.roomId))
+    ).map((def) => ({
       type: def.type,
-      x: pos.x,
-      y: pos.y,
-      homeX: pos.x,
-      homeY: pos.y,
+      map: def.map,
+      roomId: def.roomId,
+      x: def.tx * TILE + 16,
+      y: def.ty * TILE + 16,
+      homeX: def.tx * TILE + 16,
+      homeY: def.ty * TILE + 16,
       hp: ENEMY_STATS[def.type].hp,
       alive: true,
       respawn: 0,
@@ -239,60 +382,127 @@ function freshEnemies(): Enemy[] {
       fireTimer: 1,
       kbX: 0,
       kbY: 0,
+      chargeTimer: 2,
+      charging: false,
+    }));
+
+    const drops: Drop[] = PICKUP_DEFS.filter(
+      (p) => !flags.has(p.flag) && (!p.requires || flags.has(p.requires))
+    ).map((p) => ({
+      x: p.tx * TILE + 16,
+      y: p.ty * TILE + 16,
+      kind: p.kind,
+      flag: p.flag,
+      ttl: Infinity,
+    }));
+
+    return {
+      map: save?.map ?? 'over',
+      x: save?.x ?? OVER_SPAWN.x,
+      y: save?.y ?? OVER_SPAWN.y,
+      hp: Math.max(1, save?.hp ?? MAX_HP_START),
+      maxHp: save?.maxHp ?? MAX_HP_START,
+      coins: save?.coins ?? 0,
+      keys: save?.keys ?? 0,
+      bombs: save?.bombs ?? 0,
+      hasBombBag: save?.hasBombBag ?? false,
+      hasFragment: save?.hasFragment ?? false,
+      flags,
+      facing: 'up',
+      attackTimer: 0,
+      attackCd: 0,
+      invuln: 0,
+      kbX: 0,
+      kbY: 0,
+      enemies,
+      bullets: [],
+      bombsLive: [],
+      drops,
+      particles: [],
+      message: '',
+      messageTtl: 0,
+      saveTimer: 4,
+      status: 'ready',
     };
-  });
-}
+  }, []);
 
-interface SaveData {
-  x: number;
-  y: number;
-  hp: number;
-  maxHp: number;
-  coins: number;
-}
-
-function loadSave(): SaveData | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    return raw ? (JSON.parse(raw) as SaveData) : null;
-  } catch {
-    return null;
-  }
-}
-
-function initialState(save: SaveData | null): State {
-  return {
-    x: save?.x ?? SPAWN_X,
-    y: save?.y ?? SPAWN_Y,
-    hp: Math.max(1, save?.hp ?? MAX_HP_START),
-    maxHp: save?.maxHp ?? MAX_HP_START,
-    coins: save?.coins ?? 0,
-    facing: 'up',
-    attackTimer: 0,
-    attackCd: 0,
-    invuln: 0,
-    kbX: 0,
-    kbY: 0,
-    enemies: freshEnemies(),
-    bullets: [],
-    drops: [],
-    particles: [],
-    message: '',
-    messageTtl: 0,
-    saveTimer: 4,
-    status: 'ready',
-  };
-}
-
-export function Quest({ onExit }: { onExit: () => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const stateRef = useRef<State>(initialState(loadSave()));
-  const keysRef = useRef({ up: false, down: false, left: false, right: false });
+  const stateRef = useRef<State>(null as unknown as State);
+  if (stateRef.current === null) stateRef.current = buildState(loadSave());
+  const keysHeldRef = useRef({ up: false, down: false, left: false, right: false });
   const [coins, setCoins] = useState(stateRef.current.coins);
   const [hasSave] = useState(() => loadSave() !== null);
 
+  const curMap = useCallback((st: State): WorldMap => mapsRef.current[st.map], []);
+
+  const tileAt = useCallback((m: WorldMap, px: number, py: number): string => {
+    const tx = Math.floor(px / TILE);
+    const ty = Math.floor(py / TILE);
+    if (tx < 0 || ty < 0 || tx >= m.cols || ty >= m.rows) return '#';
+    return m.grid[ty][tx];
+  }, []);
+
+  const gateRoom = useCallback((tx: number, ty: number): Room | null => {
+    for (const room of ROOMS) {
+      if (room.gates.some(([gx, gy]) => gx === tx && gy === ty)) return room;
+    }
+    return null;
+  }, []);
+
+  const playerInRoom = useCallback((st: State, room: Room): boolean => {
+    const tx = st.x / TILE;
+    const ty = st.y / TILE;
+    return tx >= room.x0 && tx <= room.x1 + 1 && ty >= room.y0 && ty <= room.y1 + 1;
+  }, []);
+
+  const isSolidFor = useCallback(
+    (st: State, m: WorldMap, px: number, py: number): boolean => {
+      const ch = tileAt(m, px, py);
+      if (ch === 'G') {
+        const room = gateRoom(Math.floor(px / TILE), Math.floor(py / TILE));
+        if (!room) return false;
+        return !st.flags.has(room.id) && playerInRoom(st, room);
+      }
+      return m.solid.has(ch);
+    },
+    [tileAt, gateRoom, playerInRoom]
+  );
+
+  const boxBlocked = useCallback(
+    (st: State, x: number, y: number, r: number): boolean => {
+      const m = curMap(st);
+      return (
+        isSolidFor(st, m, x - r, y - r) ||
+        isSolidFor(st, m, x + r, y - r) ||
+        isSolidFor(st, m, x - r, y + r) ||
+        isSolidFor(st, m, x + r, y + r)
+      );
+    },
+    [curMap, isSolidFor]
+  );
+
+  const tryMove = useCallback(
+    (st: State, e: { x: number; y: number }, dx: number, dy: number, r: number) => {
+      if (dx !== 0 && !boxBlocked(st, e.x + dx, e.y, r)) e.x += dx;
+      if (dy !== 0 && !boxBlocked(st, e.x, e.y + dy, r)) e.y += dy;
+    },
+    [boxBlocked]
+  );
+
   const save = useCallback((st: State) => {
-    const data: SaveData = { x: st.x, y: st.y, hp: st.hp, maxHp: st.maxHp, coins: st.coins };
+    const data: SaveData = {
+      v: 2,
+      map: st.map,
+      x: st.x,
+      y: st.y,
+      hp: st.hp,
+      maxHp: st.maxHp,
+      coins: st.coins,
+      keys: st.keys,
+      bombs: st.bombs,
+      hasBombBag: st.hasBombBag,
+      hasFragment: st.hasFragment,
+      flags: [...st.flags],
+    };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }, []);
 
@@ -316,8 +526,195 @@ export function Quest({ onExit }: { onExit: () => void }) {
 
   const showMessage = useCallback((st: State, text: string) => {
     st.message = text;
-    st.messageTtl = 2.5;
+    st.messageTtl = 2.8;
   }, []);
+
+  const switchMap = useCallback(
+    (st: State, to: MapId) => {
+      st.map = to;
+      if (to === 'dun') {
+        st.x = DUN_SPAWN.x;
+        st.y = DUN_SPAWN.y;
+        showMessage(st, 'DUNGEON OF THE GUARDIAN');
+      } else {
+        st.x = 29 * TILE;
+        st.y = 3 * TILE;
+        showMessage(st, 'THE OVERWORLD');
+      }
+      st.bullets = [];
+      st.bombsLive = [];
+      st.kbX = 0;
+      st.kbY = 0;
+      st.invuln = 1;
+      save(st);
+      sfx.sweep();
+    },
+    [save, showMessage]
+  );
+
+  const hurtPlayer = useCallback(
+    (st: State, dmg: number, fromX: number, fromY: number) => {
+      if (st.invuln > 0) return;
+      st.hp -= dmg;
+      st.invuln = INVULN_TIME;
+      const dx = st.x - fromX;
+      const dy = st.y - fromY;
+      const d = Math.hypot(dx, dy) || 1;
+      st.kbX = (dx / d) * 220;
+      st.kbY = (dy / d) * 220;
+      sfx.thud();
+      burst(st, st.x, st.y, '#ff2d78', 8);
+      if (st.hp <= 0) {
+        sfx.over();
+        showMessage(st, 'YOU FAINTED...');
+        const spawn = st.map === 'dun' ? DUN_SPAWN : OVER_SPAWN;
+        st.x = spawn.x;
+        st.y = spawn.y;
+        st.hp = st.maxHp;
+        st.invuln = 2;
+        st.kbX = 0;
+        st.kbY = 0;
+        save(st);
+      }
+    },
+    [burst, save, showMessage]
+  );
+
+  const collectPickup = useCallback(
+    (st: State, d: Drop) => {
+      switch (d.kind) {
+        case 'coin':
+          st.coins++;
+          break;
+        case 'heart':
+          st.hp = Math.min(st.maxHp, st.hp + 2);
+          break;
+        case 'bomb':
+          st.bombs = Math.min(MAX_BOMBS, st.bombs + 1);
+          break;
+        case 'key':
+          st.keys++;
+          showMessage(st, 'YOU FOUND A KEY');
+          break;
+        case 'heartContainer':
+          st.maxHp += 2;
+          st.hp = st.maxHp;
+          showMessage(st, 'HEART CONTAINER! MAX HEARTS +1');
+          break;
+        case 'bombBag':
+          st.hasBombBag = true;
+          st.bombs = MAX_BOMBS;
+          showMessage(st, 'BOMB BAG! PRESS X TO DROP BOMBS');
+          break;
+        case 'fragment':
+          st.hasFragment = true;
+          showMessage(st, 'CACHE FRAGMENT OBTAINED... PHASE III AWAITS');
+          break;
+      }
+      if (d.flag) st.flags.add(d.flag);
+      sfx.pickup();
+      burst(st, d.x, d.y, d.kind === 'coin' ? '#ffe600' : '#00ffff', 6);
+      save(st);
+    },
+    [burst, save, showMessage]
+  );
+
+  const explodeBomb = useCallback(
+    (st: State, b: Bomb) => {
+      sfx.explosion(true);
+      burst(st, b.x, b.y, '#ffe600', 18);
+      burst(st, b.x, b.y, '#ff7a2d', 12);
+      // damage enemies
+      for (const en of st.enemies) {
+        if (!en.alive || en.map !== st.map) continue;
+        if (Math.hypot(en.x - b.x, en.y - b.y) < BOMB_RADIUS + ENEMY_STATS[en.type].size) {
+          en.hp -= 2;
+          if (en.hp <= 0) killEnemyRef.current(st, en);
+        }
+      }
+      // self-damage, as tradition demands
+      if (Math.hypot(st.x - b.x, st.y - b.y) < BOMB_RADIUS) {
+        hurtPlayer(st, 1, b.x, b.y);
+      }
+      // cracked walls
+      if (st.map === 'over') {
+        for (const crack of CRACKS) {
+          if (st.flags.has(crack.flag)) continue;
+          const cx = crack.tx * TILE + 16;
+          const cy = crack.ty * TILE + 16;
+          if (Math.hypot(cx - b.x, cy - b.y) < BOMB_RADIUS + 24) {
+            st.flags.add(crack.flag);
+            mapsRef.current.over.grid[crack.ty][crack.tx] = '.';
+            burst(st, cx, cy, '#b14aff', 16);
+            showMessage(st, 'THE ROCK CRUMBLES!');
+            if (crack.loot === 'coins') {
+              for (let i = 0; i < 5; i++) {
+                st.drops.push({
+                  x: cx + (Math.random() - 0.5) * 24,
+                  y: cy + (Math.random() - 0.5) * 24,
+                  kind: 'coin',
+                  ttl: 30,
+                });
+              }
+            } else {
+              // reveal the hidden heart container pickup
+              const def = PICKUP_DEFS.find((p) => p.requires === crack.flag);
+              if (def && !st.flags.has(def.flag)) {
+                st.drops.push({
+                  x: def.tx * TILE + 16,
+                  y: def.ty * TILE + 16,
+                  kind: def.kind,
+                  flag: def.flag,
+                  ttl: Infinity,
+                });
+              }
+            }
+            save(st);
+          }
+        }
+      }
+    },
+    [burst, hurtPlayer, save, showMessage]
+  );
+
+  const killEnemy = useCallback(
+    (st: State, en: Enemy) => {
+      en.alive = false;
+      en.respawn = 25;
+      const stats = ENEMY_STATS[en.type];
+      burst(st, en.x, en.y, stats.color, 14);
+      sfx.brick();
+      if (en.type === 'guardian') {
+        st.flags.add('boss');
+        sfx.explosion(true);
+        burst(st, en.x, en.y, '#ff00ff', 30);
+        showMessage(st, 'THE GUARDIAN FALLS!');
+        st.drops.push({ x: en.x, y: en.y, kind: 'bombBag', flag: 'bombbag', ttl: Infinity });
+        save(st);
+        return;
+      }
+      // room clear check
+      if (en.roomId) {
+        const others = st.enemies.some(
+          (o) => o !== en && o.roomId === en.roomId && o.alive
+        );
+        if (!others && !st.flags.has(en.roomId)) {
+          st.flags.add(en.roomId);
+          sfx.sweep();
+          showMessage(st, 'THE WAY OPENS');
+          save(st);
+        }
+      }
+      const roll = Math.random();
+      if (roll < 0.35) st.drops.push({ x: en.x, y: en.y, kind: 'coin', ttl: 10 });
+      else if (roll < 0.5) st.drops.push({ x: en.x, y: en.y, kind: 'heart', ttl: 10 });
+      else if (roll < 0.62 && st.hasBombBag)
+        st.drops.push({ x: en.x, y: en.y, kind: 'bomb', ttl: 10 });
+    },
+    [burst, save, showMessage]
+  );
+  const killEnemyRef = useRef(killEnemy);
+  killEnemyRef.current = killEnemy;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -328,14 +725,14 @@ export function Quest({ onExit }: { onExit: () => void }) {
         return;
       }
       const st = stateRef.current;
-      const k = keysRef.current;
+      const k = keysHeldRef.current;
       if (st.status === 'ready') {
         if (key === 'Enter') {
           e.preventDefault();
           st.status = 'playing';
         } else if (key === 'n') {
           localStorage.removeItem(SAVE_KEY);
-          stateRef.current = initialState(null);
+          stateRef.current = buildState(null);
           stateRef.current.status = 'playing';
           setCoins(0);
         }
@@ -363,12 +760,37 @@ export function Quest({ onExit }: { onExit: () => void }) {
           st.attackTimer = ATTACK_TIME;
           st.attackCd = ATTACK_CD;
           sfx.zap();
+          // full hearts: sword beam
+          if (st.hp === st.maxHp) {
+            const dir =
+              st.facing === 'up'
+                ? [0, -1]
+                : st.facing === 'down'
+                  ? [0, 1]
+                  : st.facing === 'left'
+                    ? [-1, 0]
+                    : [1, 0];
+            st.bullets.push({
+              x: st.x + dir[0] * 16,
+              y: st.y + dir[1] * 16,
+              vx: dir[0] * 330,
+              vy: dir[1] * 330,
+              friendly: true,
+            });
+          }
+        }
+      } else if (key === 'x') {
+        e.preventDefault();
+        if (st.hasBombBag && st.bombs > 0 && st.bombsLive.length < 2) {
+          st.bombs--;
+          st.bombsLive.push({ x: st.x, y: st.y, fuse: BOMB_FUSE });
+          sfx.thud();
         }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      const k = keysRef.current;
+      const k = keysHeldRef.current;
       if (key === 'ArrowUp' || key === 'w') k.up = false;
       else if (key === 'ArrowDown' || key === 's') k.down = false;
       else if (key === 'ArrowLeft' || key === 'a') k.left = false;
@@ -381,38 +803,12 @@ export function Quest({ onExit }: { onExit: () => void }) {
       window.removeEventListener('keyup', onKeyUp);
       save(stateRef.current);
     };
-  }, [onExit, save]);
-
-  const hurtPlayer = useCallback(
-    (st: State, dmg: number, fromX: number, fromY: number) => {
-      if (st.invuln > 0) return;
-      st.hp -= dmg;
-      st.invuln = INVULN_TIME;
-      const dx = st.x - fromX;
-      const dy = st.y - fromY;
-      const d = Math.hypot(dx, dy) || 1;
-      st.kbX = (dx / d) * 220;
-      st.kbY = (dy / d) * 220;
-      sfx.thud();
-      burst(st, st.x, st.y, '#ff2d78', 8);
-      if (st.hp <= 0) {
-        sfx.over();
-        showMessage(st, 'YOU FAINTED... BACK TO THE MEADOW');
-        st.x = SPAWN_X;
-        st.y = SPAWN_Y;
-        st.hp = st.maxHp;
-        st.invuln = 2;
-        st.kbX = 0;
-        st.kbY = 0;
-        save(st);
-      }
-    },
-    [burst, save, showMessage]
-  );
+  }, [onExit, save, buildState]);
 
   useGameLoop((dt) => {
     const st = stateRef.current;
-    const k = keysRef.current;
+    const k = keysHeldRef.current;
+    const m = curMap(st);
 
     if (st.status === 'playing') {
       st.attackTimer = Math.max(0, st.attackTimer - dt);
@@ -420,25 +816,52 @@ export function Quest({ onExit }: { onExit: () => void }) {
       st.invuln = Math.max(0, st.invuln - dt);
       st.messageTtl = Math.max(0, st.messageTtl - dt);
 
-      // ---- player movement ----
+      // movement
       let mx = (k.right ? 1 : 0) - (k.left ? 1 : 0);
       let my = (k.down ? 1 : 0) - (k.up ? 1 : 0);
       if (mx !== 0 && my !== 0) {
         mx *= 0.7071;
         my *= 0.7071;
       }
-      tryMove(st, mx * PLAYER_SPEED * dt + st.kbX * dt, my * PLAYER_SPEED * dt + st.kbY * dt, PLAYER_R);
+      tryMove(
+        st,
+        st,
+        mx * PLAYER_SPEED * dt + st.kbX * dt,
+        my * PLAYER_SPEED * dt + st.kbY * dt,
+        PLAYER_R
+      );
       st.kbX *= Math.max(0, 1 - 8 * dt);
       st.kbY *= Math.max(0, 1 - 8 * dt);
 
-      // dungeon door tease
+      // interactions with the tile ahead
       const aheadX = st.x + (st.facing === 'left' ? -20 : st.facing === 'right' ? 20 : 0);
       const aheadY = st.y + (st.facing === 'up' ? -20 : st.facing === 'down' ? 20 : 0);
-      if (tileAt(aheadX, aheadY) === 'D' && st.messageTtl <= 0) {
-        showMessage(st, 'THE DUNGEON IS SEALED... (PHASE II)');
+      const ahead = tileAt(m, aheadX, aheadY);
+      if (ahead === 'D' && st.map === 'over') {
+        switchMap(st, 'dun');
+      } else if (ahead === 'E' && st.map === 'dun') {
+        switchMap(st, 'over');
+      } else if (ahead === 'L') {
+        const tx = Math.floor(aheadX / TILE);
+        const ty = Math.floor(aheadY / TILE);
+        const door = DOORS.find((d) => d.tiles.some(([dx2, dy2]) => dx2 === tx && dy2 === ty));
+        if (door && !st.flags.has(door.id)) {
+          if (st.keys > 0) {
+            st.keys--;
+            st.flags.add(door.id);
+            for (const [dx2, dy2] of door.tiles) mapsRef.current.dun.grid[dy2][dx2] = '.';
+            sfx.sweep();
+            showMessage(st, 'THE DOOR UNLOCKS');
+            save(st);
+          } else if (st.messageTtl <= 0) {
+            showMessage(st, 'LOCKED... A KEY IS NEEDED');
+          }
+        }
+      } else if (ahead === 'C' && st.messageTtl <= 0) {
+        showMessage(st, st.hasBombBag ? 'THIS ROCK LOOKS WEAK...' : 'CRACKED ROCK... IF ONLY IT COULD BE BROKEN');
       }
 
-      // ---- sword hitbox ----
+      // sword hitbox
       let swordRect: [number, number, number, number] | null = null;
       if (st.attackTimer > 0) {
         const reach = 34;
@@ -449,10 +872,11 @@ export function Quest({ onExit }: { onExit: () => void }) {
         else swordRect = [st.x + 8, st.y - width / 2, reach, width];
       }
 
-      // ---- enemies ----
+      // enemies
       for (const en of st.enemies) {
+        if (en.map !== st.map) continue;
         if (!en.alive) {
-          // respawn only when the player is far away
+          if (en.roomId) continue; // room enemies stay dead (flag handles respawn rules)
           if (Math.hypot(st.x - en.homeX, st.y - en.homeY) > 400) {
             en.respawn -= dt;
             if (en.respawn <= 0) {
@@ -466,11 +890,9 @@ export function Quest({ onExit }: { onExit: () => void }) {
         }
 
         const distToPlayer = Math.hypot(st.x - en.x, st.y - en.y);
-        if (distToPlayer > 420) continue; // asleep beyond activation radius
+        if (distToPlayer > 440) continue;
 
         const stats = ENEMY_STATS[en.type];
-
-        // knockback decay
         en.kbX *= Math.max(0, 1 - 8 * dt);
         en.kbY *= Math.max(0, 1 - 8 * dt);
 
@@ -489,85 +911,160 @@ export function Quest({ onExit }: { onExit: () => void }) {
             en.dirX = d[0];
             en.dirY = d[1];
           }
-          tryMove(en, (en.dirX * stats.speed + en.kbX) * dt, (en.dirY * stats.speed + en.kbY) * dt, 10);
-        } else if (en.type === 'stalker') {
-          if (distToPlayer < 210) {
+          tryMove(st, en, (en.dirX * stats.speed + en.kbX) * dt, (en.dirY * stats.speed + en.kbY) * dt, 10);
+        } else if (en.type === 'stalker' || en.type === 'knight') {
+          if (distToPlayer < 230) {
             const dx = (st.x - en.x) / distToPlayer;
             const dy = (st.y - en.y) / distToPlayer;
-            tryMove(en, (dx * stats.speed + en.kbX) * dt, (dy * stats.speed + en.kbY) * dt, 10);
+            tryMove(st, en, (dx * stats.speed + en.kbX) * dt, (dy * stats.speed + en.kbY) * dt, 10);
           } else {
-            tryMove(en, en.kbX * dt, en.kbY * dt, 10);
+            tryMove(st, en, en.kbX * dt, en.kbY * dt, 10);
           }
-        } else {
-          tryMove(en, en.kbX * dt, en.kbY * dt, 10);
+        } else if (en.type === 'bat') {
+          en.dirTimer -= dt;
+          if (en.dirTimer <= 0) {
+            en.dirTimer = 0.4 + Math.random() * 0.4;
+            const toward = Math.random() < 0.65;
+            const ang = toward
+              ? Math.atan2(st.y - en.y, st.x - en.x) + (Math.random() - 0.5) * 1.6
+              : Math.random() * Math.PI * 2;
+            en.dirX = Math.cos(ang);
+            en.dirY = Math.sin(ang);
+          }
+          tryMove(st, en, (en.dirX * stats.speed + en.kbX) * dt, (en.dirY * stats.speed + en.kbY) * dt, 8);
+        } else if (en.type === 'spitter') {
+          tryMove(st, en, en.kbX * dt, en.kbY * dt, 10);
           en.fireTimer -= dt;
           if (en.fireTimer <= 0 && distToPlayer < 260) {
             en.fireTimer = 1.8 + Math.random();
             const dx = (st.x - en.x) / distToPlayer;
             const dy = (st.y - en.y) / distToPlayer;
-            st.bullets.push({ x: en.x, y: en.y, vx: dx * 170, vy: dy * 170 });
+            st.bullets.push({ x: en.x, y: en.y, vx: dx * 170, vy: dy * 170, friendly: false });
             sfx.zap();
+          }
+        } else if (en.type === 'guardian') {
+          en.chargeTimer -= dt;
+          if (en.charging) {
+            tryMove(st, en, en.dirX * 230 * dt, en.dirY * 230 * dt, 18);
+            if (en.chargeTimer <= 0) {
+              en.charging = false;
+              en.chargeTimer = 1.4 + Math.random() * 0.8;
+            }
+          } else {
+            tryMove(st, en, en.kbX * dt, en.kbY * dt, 18);
+            if (en.chargeTimer <= 0 && distToPlayer < 320) {
+              en.charging = true;
+              en.chargeTimer = 0.8;
+              const d = distToPlayer || 1;
+              en.dirX = (st.x - en.x) / d;
+              en.dirY = (st.y - en.y) / d;
+              sfx.thud();
+            }
+          }
+          // summon adds
+          en.fireTimer -= dt;
+          if (en.fireTimer <= 0) {
+            en.fireTimer = 6;
+            const adds = st.enemies.filter(
+              (o) => o.type === 'blob' && o.map === 'dun' && o.alive
+            ).length;
+            if (adds < 2) {
+              st.enemies.push({
+                type: 'blob',
+                map: 'dun',
+                roomId: 'boss',
+                x: en.x,
+                y: en.y,
+                homeX: en.x,
+                homeY: en.y,
+                hp: 1,
+                alive: true,
+                respawn: 0,
+                dirX: 0,
+                dirY: 0,
+                dirTimer: 0,
+                fireTimer: 1,
+                kbX: 0,
+                kbY: 0,
+                chargeTimer: 0,
+                charging: false,
+              });
+              burst(st, en.x, en.y, '#39ff14', 8);
+            }
           }
         }
 
         // sword hit
         if (swordRect) {
           const [sx, sy, sw, sh] = swordRect;
-          if (en.x > sx - 10 && en.x < sx + sw + 10 && en.y > sy - 10 && en.y < sy + sh + 10) {
+          const pad = stats.size;
+          if (en.x > sx - pad && en.x < sx + sw + pad && en.y > sy - pad && en.y < sy + sh + pad) {
+            if (st.attackTimer > ATTACK_TIME - 0.05 || en.type === 'guardian') {
+              // only register early in the swing so one swing = one hit
+            }
             en.hp--;
             const d = Math.hypot(en.x - st.x, en.y - st.y) || 1;
             en.kbX = ((en.x - st.x) / d) * 260;
             en.kbY = ((en.y - st.y) / d) * 260;
+            st.attackTimer = 0; // swing connects once
             sfx.brick();
             burst(st, en.x, en.y, stats.color, 6);
-            if (en.hp <= 0) {
-              en.alive = false;
-              en.respawn = 25;
-              burst(st, en.x, en.y, stats.color, 12);
-              const roll = Math.random();
-              if (roll < 0.4) st.drops.push({ x: en.x, y: en.y, kind: 'coin', ttl: 10 });
-              else if (roll < 0.55) st.drops.push({ x: en.x, y: en.y, kind: 'heart', ttl: 10 });
-            }
+            if (en.hp <= 0) killEnemy(st, en);
           }
         }
 
         // contact damage
-        if (en.alive && distToPlayer < 22) {
-          hurtPlayer(st, 1, en.x, en.y);
+        if (en.alive && distToPlayer < 14 + stats.size) {
+          hurtPlayer(st, stats.dmg, en.x, en.y);
         }
       }
 
-      // ---- bullets ----
+      // bullets (enemy shots and friendly sword beams)
       st.bullets = st.bullets.filter((b) => {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        if (blocked(b.x, b.y)) return false;
-        if (Math.hypot(b.x - st.x, b.y - st.y) < 16) {
+        if (isSolidFor(st, m, b.x, b.y)) return false;
+        if (b.friendly) {
+          for (const en of st.enemies) {
+            if (!en.alive || en.map !== st.map) continue;
+            if (Math.hypot(b.x - en.x, b.y - en.y) < ENEMY_STATS[en.type].size + 6) {
+              en.hp--;
+              burst(st, en.x, en.y, ENEMY_STATS[en.type].color, 6);
+              sfx.brick();
+              if (en.hp <= 0) killEnemy(st, en);
+              return false;
+            }
+          }
+        } else if (Math.hypot(b.x - st.x, b.y - st.y) < 16) {
           hurtPlayer(st, 1, b.x - b.vx, b.y - b.vy);
           return false;
         }
-        return Math.abs(b.x - st.x) < 600 && Math.abs(b.y - st.y) < 600;
+        return Math.abs(b.x - st.x) < 640 && Math.abs(b.y - st.y) < 640;
       });
 
-      // ---- drops ----
-      st.drops = st.drops.filter((d) => {
-        d.ttl -= dt;
-        if (d.ttl <= 0) return false;
-        if (Math.hypot(d.x - st.x, d.y - st.y) < 20) {
-          if (d.kind === 'coin') {
-            st.coins++;
-          } else {
-            st.hp = Math.min(st.maxHp, st.hp + 2);
-          }
-          sfx.pickup();
-          burst(st, d.x, d.y, d.kind === 'coin' ? '#ffe600' : '#ff2d78', 5);
-          save(st);
+      // bombs
+      st.bombsLive = st.bombsLive.filter((b) => {
+        b.fuse -= dt;
+        if (b.fuse <= 0) {
+          explodeBomb(st, b);
           return false;
         }
         return true;
       });
 
-      // autosave
+      // drops
+      st.drops = st.drops.filter((d) => {
+        if (d.ttl !== Infinity) {
+          d.ttl -= dt;
+          if (d.ttl <= 0) return false;
+        }
+        if (Math.hypot(d.x - st.x, d.y - st.y) < 20) {
+          collectPickup(st, d);
+          return false;
+        }
+        return true;
+      });
+
       st.saveTimer -= dt;
       if (st.saveTimer <= 0) {
         st.saveTimer = 4;
@@ -592,8 +1089,10 @@ export function Quest({ onExit }: { onExit: () => void }) {
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
     const t = performance.now() / 1000;
-    const camX = Math.max(0, Math.min(WORLD_W - VIEW_W, st.x - VIEW_W / 2));
-    const camY = Math.max(0, Math.min(WORLD_H - (VIEW_H - HUD_H), st.y - (VIEW_H - HUD_H) / 2));
+    const worldW = m.cols * TILE;
+    const worldH = m.rows * TILE;
+    const camX = Math.max(0, Math.min(worldW - VIEW_W, st.x - VIEW_W / 2));
+    const camY = Math.max(0, Math.min(worldH - (VIEW_H - HUD_H), st.y - (VIEW_H - HUD_H) / 2));
 
     ctx.save();
     ctx.translate(0, HUD_H);
@@ -602,16 +1101,71 @@ export function Quest({ onExit }: { onExit: () => void }) {
     ctx.clip();
     ctx.translate(-camX, -camY);
 
-    // tiles
     const tx0 = Math.floor(camX / TILE);
     const ty0 = Math.floor(camY / TILE);
-    const tx1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE));
-    const ty1 = Math.min(ROWS - 1, Math.ceil((camY + VIEW_H - HUD_H) / TILE));
+    const tx1 = Math.min(m.cols - 1, Math.ceil((camX + VIEW_W) / TILE));
+    const ty1 = Math.min(m.rows - 1, Math.ceil((camY + VIEW_H - HUD_H) / TILE));
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
-        const ch = GRID[ty][tx];
+        const ch = m.grid[ty][tx];
         const x = tx * TILE;
         const y = ty * TILE;
+        if (st.map === 'dun') {
+          if (ch === '#') {
+            ctx.fillStyle = '#12101f';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.strokeStyle = 'rgba(177, 74, 255, 0.25)';
+            ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+          } else {
+            ctx.fillStyle = '#0b0b14';
+            ctx.fillRect(x, y, TILE, TILE);
+            if ((tx + ty) % 2 === 0) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+              ctx.fillRect(x, y, TILE, TILE);
+            }
+          }
+          if (ch === 'L') {
+            ctx.fillStyle = '#1a1408';
+            ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            ctx.strokeStyle = '#ffe600';
+            ctx.shadowColor = '#ffe600';
+            ctx.shadowBlur = 6;
+            ctx.strokeRect(x + 6, y + 6, TILE - 12, TILE - 12);
+            ctx.beginPath();
+            ctx.arc(x + 16, y + 14, 4, 0, Math.PI * 2);
+            ctx.moveTo(x + 16, y + 16);
+            ctx.lineTo(x + 16, y + 23);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          } else if (ch === 'G') {
+            const room = gateRoom(tx, ty);
+            const closed = room && !st.flags.has(room.id) && playerInRoom(st, room);
+            if (closed) {
+              ctx.strokeStyle = '#00ffff';
+              ctx.shadowColor = '#00ffff';
+              ctx.shadowBlur = 6;
+              for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(x + 5 + i * 8, y + 2);
+                ctx.lineTo(x + 5 + i * 8, y + TILE - 2);
+                ctx.stroke();
+              }
+              ctx.shadowBlur = 0;
+            }
+          } else if (ch === 'E') {
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.strokeStyle = '#39ff14';
+            for (let i = 0; i < 3; i++) {
+              ctx.beginPath();
+              ctx.moveTo(x + 4, y + 8 + i * 8);
+              ctx.lineTo(x + TILE - 4, y + 8 + i * 8);
+              ctx.stroke();
+            }
+          }
+          continue;
+        }
+        // overworld tiles
         if (ch === ',') {
           ctx.fillStyle = '#191430';
           ctx.fillRect(x, y, TILE, TILE);
@@ -638,7 +1192,6 @@ export function Quest({ onExit }: { onExit: () => void }) {
             ctx.stroke();
           }
         } else {
-          // grass base
           ctx.fillStyle = '#07100c';
           ctx.fillRect(x, y, TILE, TILE);
           if ((tx * 7 + ty * 13) % 5 === 0) {
@@ -653,7 +1206,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
           ctx.fill();
           ctx.strokeStyle = 'rgba(57, 255, 20, 0.5)';
           ctx.stroke();
-        } else if (ch === 'R') {
+        } else if (ch === 'R' || ch === 'C') {
           ctx.fillStyle = '#171226';
           ctx.beginPath();
           ctx.moveTo(x + 6, y + 26);
@@ -662,8 +1215,16 @@ export function Quest({ onExit }: { onExit: () => void }) {
           ctx.lineTo(x + 27, y + 24);
           ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = 'rgba(177, 74, 255, 0.45)';
+          ctx.strokeStyle = ch === 'C' ? 'rgba(255, 230, 0, 0.6)' : 'rgba(177, 74, 255, 0.45)';
           ctx.stroke();
+          if (ch === 'C') {
+            ctx.strokeStyle = 'rgba(255, 230, 0, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(x + 13, y + 10);
+            ctx.lineTo(x + 16, y + 16);
+            ctx.lineTo(x + 13, y + 22);
+            ctx.stroke();
+          }
         } else if (ch === 'D') {
           ctx.fillStyle = '#000';
           ctx.fillRect(x, y, TILE, TILE);
@@ -678,33 +1239,96 @@ export function Quest({ onExit }: { onExit: () => void }) {
       }
     }
 
-    // drops
+    // drops & pickups
     for (const d of st.drops) {
-      const blink = d.ttl < 3 && Math.floor(t * 6) % 2 === 0;
+      const blink = d.ttl !== Infinity && d.ttl < 3 && Math.floor(t * 6) % 2 === 0;
       if (blink) continue;
+      const bob = Math.sin(t * 3 + d.x * 0.1) * 2;
       if (d.kind === 'coin') {
         const squish = Math.abs(Math.sin(t * 3 + d.x));
         ctx.fillStyle = '#ffe600';
         ctx.shadowColor = '#ffe600';
         ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.ellipse(d.x, d.y, 5 * Math.max(0.25, squish), 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(d.x, d.y + bob, 5 * Math.max(0.25, squish), 5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
-      } else {
+      } else if (d.kind === 'heart') {
         ctx.fillStyle = '#ff2d78';
         ctx.shadowColor = '#ff2d78';
         ctx.shadowBlur = 8;
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('♥', d.x, d.y + 4);
-        ctx.shadowBlur = 0;
+        ctx.fillText('♥', d.x, d.y + 4 + bob);
+      } else if (d.kind === 'heartContainer') {
+        ctx.fillStyle = '#ff2d78';
+        ctx.shadowColor = '#ff2d78';
+        ctx.shadowBlur = 14;
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('♥', d.x, d.y + 7 + bob);
+      } else if (d.kind === 'key') {
+        ctx.strokeStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y - 4 + bob, 4, 0, Math.PI * 2);
+        ctx.moveTo(d.x, d.y + bob);
+        ctx.lineTo(d.x, d.y + 8 + bob);
+        ctx.moveTo(d.x, d.y + 5 + bob);
+        ctx.lineTo(d.x + 4, d.y + 5 + bob);
+        ctx.stroke();
+      } else if (d.kind === 'bomb') {
+        ctx.fillStyle = '#4a9bff';
+        ctx.shadowColor = '#4a9bff';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y + bob, 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (d.kind === 'bombBag') {
+        ctx.fillStyle = '#4a9bff';
+        ctx.shadowColor = '#4a9bff';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y + bob, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0a0a12';
+        ctx.font = 'bold 10px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('B', d.x, d.y + 3 + bob);
+      } else if (d.kind === 'fragment') {
+        ctx.save();
+        ctx.translate(d.x, d.y + bob);
+        ctx.rotate(t);
+        ctx.strokeStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 16;
+        ctx.strokeRect(-7, -7, 14, 14);
+        ctx.strokeRect(-3, -3, 6, 6);
+        ctx.restore();
       }
+      ctx.shadowBlur = 0;
+    }
+
+    // bombs
+    for (const b of st.bombsLive) {
+      const flash = b.fuse < 0.4 && Math.floor(t * 10) % 2 === 0;
+      ctx.fillStyle = flash ? '#ffffff' : '#4a9bff';
+      ctx.shadowColor = '#4a9bff';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#ff7a2d';
+      ctx.beginPath();
+      ctx.moveTo(b.x + 2, b.y - 7);
+      ctx.lineTo(b.x + 6, b.y - 12);
+      ctx.stroke();
     }
 
     // enemies
     for (const en of st.enemies) {
-      if (!en.alive) continue;
+      if (!en.alive || en.map !== st.map) continue;
       const stats = ENEMY_STATS[en.type];
       ctx.fillStyle = stats.color;
       ctx.shadowColor = stats.color;
@@ -715,15 +1339,14 @@ export function Quest({ onExit }: { onExit: () => void }) {
         ctx.arc(en.x, en.y, 9 * pulse, 0, Math.PI * 2);
         ctx.fill();
       } else if (en.type === 'stalker') {
-        ctx.beginPath();
         const ang = Math.atan2(st.y - en.y, st.x - en.x);
-        ctx.moveTo(en.x + Math.cos(ang) * 12, en.y + Math.sin(ang) * 12);
+        ctx.beginPath();
         ctx.moveTo(en.x + Math.cos(ang) * 12, en.y + Math.sin(ang) * 12);
         ctx.lineTo(en.x + Math.cos(ang + 2.5) * 10, en.y + Math.sin(ang + 2.5) * 10);
         ctx.lineTo(en.x + Math.cos(ang - 2.5) * 10, en.y + Math.sin(ang - 2.5) * 10);
         ctx.closePath();
         ctx.fill();
-      } else {
+      } else if (en.type === 'spitter') {
         ctx.save();
         ctx.translate(en.x, en.y);
         ctx.rotate(Math.PI / 4);
@@ -731,17 +1354,55 @@ export function Quest({ onExit }: { onExit: () => void }) {
         ctx.restore();
         ctx.fillStyle = '#0a0a12';
         ctx.fillRect(en.x - 2, en.y - 2, 4, 4);
+      } else if (en.type === 'bat') {
+        const flap = Math.sin(t * 14 + en.homeX) * 5;
+        ctx.beginPath();
+        ctx.ellipse(en.x, en.y, 7, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(en.x - 6, en.y);
+        ctx.lineTo(en.x - 13, en.y - flap);
+        ctx.moveTo(en.x + 6, en.y);
+        ctx.lineTo(en.x + 13, en.y - flap);
+        ctx.strokeStyle = stats.color;
+        ctx.stroke();
+      } else if (en.type === 'knight') {
+        ctx.fillRect(en.x - 10, en.y - 12, 20, 24);
+        ctx.fillStyle = '#0a0a12';
+        ctx.fillRect(en.x - 6, en.y - 7, 12, 4);
+      } else if (en.type === 'guardian') {
+        const r = 22 + (en.charging ? Math.sin(t * 30) * 2 : Math.sin(t * 3) * 3);
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + t * 0.5;
+          const px2 = en.x + Math.cos(a) * r;
+          const py2 = en.y + Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(px2, py2);
+          else ctx.lineTo(px2, py2);
+        }
+        ctx.closePath();
+        ctx.fill();
+        // eye tracks the player
+        const ang = Math.atan2(st.y - en.y, st.x - en.x);
+        ctx.fillStyle = '#0a0a12';
+        ctx.beginPath();
+        ctx.arc(en.x + Math.cos(ang) * 6, en.y + Math.sin(ang) * 6, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(en.x + Math.cos(ang) * 8, en.y + Math.sin(ang) * 8, 2.5, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.shadowBlur = 0;
     }
 
     // bullets
-    ctx.fillStyle = '#ff4444';
-    ctx.shadowColor = '#ff4444';
-    ctx.shadowBlur = 6;
     for (const b of st.bullets) {
+      ctx.fillStyle = b.friendly ? '#00ffff' : '#ff4444';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, b.friendly ? 5 : 4, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.shadowBlur = 0;
@@ -767,7 +1428,6 @@ export function Quest({ onExit }: { onExit: () => void }) {
       ctx.shadowBlur = 10;
       ctx.fillRect(st.x - 9, st.y - 9, 18, 18);
       ctx.shadowBlur = 0;
-      // facing marker
       ctx.fillStyle = '#0a0a12';
       if (st.facing === 'up') ctx.fillRect(st.x - 3, st.y - 7, 6, 4);
       else if (st.facing === 'down') ctx.fillRect(st.x - 3, st.y + 3, 6, 4);
@@ -793,7 +1453,6 @@ export function Quest({ onExit }: { onExit: () => void }) {
     ctx.moveTo(0, HUD_H);
     ctx.lineTo(VIEW_W, HUD_H);
     ctx.stroke();
-    // hearts
     const fullHearts = Math.floor(st.hp / 2);
     const halfHeart = st.hp % 2 === 1;
     const totalHearts = Math.ceil(st.maxHp / 2);
@@ -819,11 +1478,40 @@ export function Quest({ onExit }: { onExit: () => void }) {
         ctx.fillText('♥', x, 27);
       }
     }
-    // coins
-    ctx.fillStyle = '#ffe600';
+    // inventory readout
     ctx.textAlign = 'right';
     ctx.font = 'bold 14px Consolas, monospace';
-    ctx.fillText(`● ${st.coins}`, VIEW_W - 14, 26);
+    let invX = VIEW_W - 14;
+    ctx.fillStyle = '#ffe600';
+    ctx.fillText(`● ${st.coins}`, invX, 26);
+    invX -= 64;
+    if (st.keys > 0) {
+      ctx.fillStyle = '#ffe600';
+      ctx.fillText(`⚷ ${st.keys}`, invX, 26);
+      invX -= 56;
+    }
+    if (st.hasBombBag) {
+      ctx.fillStyle = '#4a9bff';
+      ctx.fillText(`◉ ${st.bombs}`, invX, 26);
+      invX -= 56;
+    }
+    if (st.hasFragment) {
+      ctx.fillStyle = '#ffe600';
+      ctx.fillText('◈', invX, 26);
+    }
+
+    // boss HP bar
+    const boss = st.enemies.find((e) => e.type === 'guardian' && e.alive && e.map === st.map);
+    if (boss && Math.hypot(boss.x - st.x, boss.y - st.y) < 420) {
+      const w = 200;
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(VIEW_W / 2 - w / 2, HUD_H + 10, w, 8);
+      ctx.fillStyle = '#ff00ff';
+      ctx.shadowColor = '#ff00ff';
+      ctx.shadowBlur = 8;
+      ctx.fillRect(VIEW_W / 2 - w / 2, HUD_H + 10, (w * boss.hp) / ENEMY_STATS.guardian.hp, 8);
+      ctx.shadowBlur = 0;
+    }
 
     // message
     if (st.messageTtl > 0 && st.status === 'playing') {
@@ -850,7 +1538,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#888';
       ctx.font = '13px Consolas, monospace';
-      ctx.fillText('A NEON ADVENTURE — PHASE I', VIEW_W / 2, VIEW_H / 2 - 22);
+      ctx.fillText('A NEON ADVENTURE — PHASE II', VIEW_W / 2, VIEW_H / 2 - 22);
       ctx.fillStyle = '#00ffff';
       ctx.font = '14px Consolas, monospace';
       ctx.fillText(hasSave ? 'ENTER CONTINUE' : 'ENTER START', VIEW_W / 2, VIEW_H / 2 + 16);
@@ -860,7 +1548,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
       }
       ctx.fillStyle = '#555';
       ctx.font = '11px Consolas, monospace';
-      ctx.fillText('ARROWS MOVE · SPACE SWORD', VIEW_W / 2, VIEW_H / 2 + 74);
+      ctx.fillText('ARROWS MOVE · SPACE SWORD · X BOMB', VIEW_W / 2, VIEW_H / 2 + 74);
     }
   });
 
@@ -873,7 +1561,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
       </div>
       <canvas ref={canvasRef} width={VIEW_W} height={VIEW_H} className={styles.canvas} />
       <div className={styles.gameHint}>
-        ARROWS MOVE &middot; SPACE SWORD &middot; M MENU (SAVES) &middot; ESC QUIT
+        ARROWS MOVE &middot; SPACE SWORD &middot; X BOMB &middot; M MENU (SAVES) &middot; ESC QUIT
       </div>
     </div>
   );
