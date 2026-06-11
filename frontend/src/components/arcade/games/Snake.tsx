@@ -64,9 +64,11 @@ const KEY_DIRS: Record<string, Vec> = {
   d: { x: 1, y: 0 },
 };
 
-export function Snake({ onExit }: { onExit: () => void }) {
+export function Snake({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
+  const onScoreRef = useRef(onScore);
+  onScoreRef.current = onScore;
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => getHighScore('snake'));
 
@@ -112,6 +114,7 @@ export function Snake({ onExit }: { onExit: () => void }) {
       st.status = 'over';
       submitHighScore('snake', st.score);
       setHighScore(getHighScore('snake'));
+      onScoreRef.current?.(st.score);
       return;
     }
     st.snake.unshift(head);

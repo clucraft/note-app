@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- &uarr;&uarr;&darr;&darr;&larr;&rarr;&larr;&rarr;BA (now with more quarters)
+- &uarr;&uarr;&darr;&darr;&larr;&rarr;&larr;&rarr;BA (now with more quarters, and room for three initials)
 
 ### Changed
 - **MCP server now exposes update timestamps** in tool responses

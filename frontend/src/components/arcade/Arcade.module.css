@@ -116,3 +116,156 @@
   letter-spacing: 0.2em;
   color: #444;
 }
+
+.menuLayout {
+  display: flex;
+  align-items: flex-start;
+  gap: 2.5rem;
+}
+
+.board {
+  width: 230px;
+  padding: 0.9rem 1.2rem;
+  border: 1px solid #1a1a2e;
+  background: rgba(10, 10, 18, 0.8);
+}
+
+.boardTitle {
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  margin-bottom: 0.8rem;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.boardRow {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  color: #aaa;
+  padding: 0.15rem 0;
+}
+
+.boardRank {
+  width: 1.4em;
+  color: #555;
+  text-align: right;
+}
+
+.boardScore {
+  margin-left: auto;
+  color: #00ffff;
+}
+
+.boardEmpty {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: #444;
+  padding: 0.5rem 0;
+}
+
+.nameEntryBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 8, 0.85);
+}
+
+.nameEntry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 2rem 3rem;
+  border: 1px solid #00ffff;
+  background: #0a0a12;
+  box-shadow: 0 0 32px rgba(0, 255, 255, 0.25);
+}
+
+.nameEntryTitle {
+  font-size: 1.2rem;
+  letter-spacing: 0.4em;
+  color: #ffe600;
+  text-shadow: 0 0 8px #ffe600;
+}
+
+.nameEntryScore {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.nameEntrySub {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: #888;
+}
+
+.nameEntrySlots {
+  display: flex;
+  gap: 1rem;
+}
+
+.nameEntrySlot {
+  width: 2.4rem;
+  padding: 0.4rem 0;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #39ff14;
+  border-bottom: 3px solid #1a1a2e;
+}
+
+.nameEntrySlotActive {
+  border-bottom-color: #39ff14;
+  text-shadow: 0 0 10px #39ff14;
+  animation: arcadeBlink 0.8s step-end infinite;
+}
+
+@keyframes arcadeBlink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.nameEntryHint {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: #444;
+}
+
+.sharePanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 460px;
+}
+
+.shareStatus {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  line-height: 1.8;
+  color: #888;
+  text-align: center;
+}
+
+.shareLink {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px dashed #1a1a2e;
+  font-size: 0.75rem;
+  color: #00ffff;
+  word-break: break-all;
+  text-align: center;
+  user-select: text;
+}
+
+.sharePanel .menuItem {
+  width: 100%;
+  justify-content: center;
+}

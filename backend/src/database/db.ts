@@ -337,6 +337,23 @@ export function initializeDatabase() {
     // Ignore if already exists
   }
 
+  // Create arcade_scores table for the arcade leaderboard
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS arcade_scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game TEXT NOT NULL,
+      initials TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_arcade_scores_game ON arcade_scores(game, score DESC)`);
+  } catch (e: any) {
+    // Ignore if already exists
+  }
+
   // Initialize default settings if not present
   const insertSetting = db.prepare(`
     INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)

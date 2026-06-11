@@ -13,6 +13,7 @@ import importRoutes from './import.routes.js';
 import exportRoutes from './export.routes.js';
 import apiKeyRoutes from './apikey.routes.js';
 import backupRoutes from './backup.routes.js';
+import arcadeRoutes from './arcade.routes.js';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/import', importRoutes);
 router.use('/export', exportRoutes);
 router.use('/api-keys', apiKeyRoutes);
 router.use('/backups', backupRoutes);
+router.use('/arcade', arcadeRoutes);
 
 export default router;

@@ -93,9 +93,11 @@ function gravitySeconds(level: number): number {
   return Math.max(0.08, 0.8 * Math.pow(0.85, level - 1));
 }
 
-export function Stacker({ onExit }: { onExit: () => void }) {
+export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
+  const onScoreRef = useRef(onScore);
+  onScoreRef.current = onScore;
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => getHighScore('stacker'));
 
@@ -116,6 +118,7 @@ export function Stacker({ onExit }: { onExit: () => void }) {
       st.status = 'over';
       submitHighScore('stacker', st.score);
       setHighScore(getHighScore('stacker'));
+      onScoreRef.current?.(st.score);
     }
   }, []);
 
@@ -127,6 +130,7 @@ export function Stacker({ onExit }: { onExit: () => void }) {
           st.status = 'over';
           submitHighScore('stacker', st.score);
           setHighScore(getHighScore('stacker'));
+          onScoreRef.current?.(st.score);
           return;
         }
         st.grid[gy][st.px + x] = PIECES[st.piece].color;

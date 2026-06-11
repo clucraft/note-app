@@ -89,9 +89,11 @@ function enemyPos(e: Enemy, st: State) {
   };
 }
 
-export function Shooter({ onExit }: { onExit: () => void }) {
+export function Shooter({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
+  const onScoreRef = useRef(onScore);
+  onScoreRef.current = onScore;
   const keysRef = useRef({ left: false, right: false, fire: false });
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -150,6 +152,7 @@ export function Shooter({ onExit }: { onExit: () => void }) {
     st.status = 'over';
     submitHighScore('shooter', st.score);
     setHighScore(getHighScore('shooter'));
+    onScoreRef.current?.(st.score);
   }, []);
 
   useGameLoop((dt) => {

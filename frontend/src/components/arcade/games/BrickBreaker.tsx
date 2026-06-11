@@ -110,9 +110,11 @@ function resetEffects(st: State) {
   st.paddleX = Math.min(W - st.paddleW, st.paddleX);
 }
 
-export function BrickBreaker({ onExit }: { onExit: () => void }) {
+export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
+  const onScoreRef = useRef(onScore);
+  onScoreRef.current = onScore;
   const keysRef = useRef({ left: false, right: false });
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -321,6 +323,7 @@ export function BrickBreaker({ onExit }: { onExit: () => void }) {
           st.status = 'over';
           submitHighScore('breaker', st.score);
           setHighScore(getHighScore('breaker'));
+          onScoreRef.current?.(st.score);
         } else {
           st.balls = [stuckBall()];
         }

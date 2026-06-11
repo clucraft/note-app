@@ -162,9 +162,11 @@ function initialState(): State {
   };
 }
 
-export function RescueChopper({ onExit }: { onExit: () => void }) {
+export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
+  const onScoreRef = useRef(onScore);
+  onScoreRef.current = onScore;
   const keysRef = useRef({ left: false, right: false, up: false, down: false, fire: false });
   const [score, setScore] = useState(0);
   const [aboard, setAboard] = useState(0);
@@ -235,6 +237,7 @@ export function RescueChopper({ onExit }: { onExit: () => void }) {
       st.scoreSubmitted = true;
       submitHighScore('chopper', st.score);
       setHighScore(getHighScore('chopper'));
+      onScoreRef.current?.(st.score);
     }
   }, []);
 

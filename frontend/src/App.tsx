@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
@@ -14,6 +14,8 @@ import { Settings } from './components/settings/Settings';
 import { DeletedNotes } from './components/trash/DeletedNotes';
 import { Profile } from './components/profile/Profile';
 import './styles/global.css';
+
+const ArcadePage = lazy(() => import('./components/arcade/ArcadePage'));
 
 // Syncs user's custom colors from AuthContext to ThemeContext
 function CustomColorsSync() {
@@ -35,6 +37,14 @@ function AppRoutes() {
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
         <Route path="/shared/:token" element={<SharedNotePage />} />
+        <Route
+          path="/arcade/:token"
+          element={
+            <Suspense fallback={null}>
+              <ArcadePage />
+            </Suspense>
+          }
+        />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<AppLayout />} />
           <Route path="/profile" element={<Profile />} />

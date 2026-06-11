@@ -83,9 +83,11 @@ function startWave(st: State, wave: number) {
   st.enemies = [];
 }
 
-export function CacheCommand({ onExit }: { onExit: () => void }) {
+export function CacheCommand({ onExit, onScore }: { onExit: () => void; onScore?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<State>(initialState());
+  const onScoreRef = useRef(onScore);
+  onScoreRef.current = onScore;
   const [score, setScore] = useState(0);
   const [wave, setWave] = useState(1);
   const [ammo, setAmmo] = useState(AMMO_PER_WAVE);
@@ -142,6 +144,7 @@ export function CacheCommand({ onExit }: { onExit: () => void }) {
     st.status = 'over';
     submitHighScore('missile', st.score);
     setHighScore(getHighScore('missile'));
+    onScoreRef.current?.(st.score);
   }, []);
 
   useGameLoop((dt) => {
