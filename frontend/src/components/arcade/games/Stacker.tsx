@@ -39,6 +39,17 @@ function rotatedCells(piece: number, rot: number): [number, number][] {
 
 type Status = 'ready' | 'playing' | 'over';
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+}
+
 interface State {
   grid: (string | null)[][];
   piece: number;
@@ -52,6 +63,7 @@ interface State {
   lines: number;
   level: number;
   status: Status;
+  particles: Particle[];
 }
 
 function drawFromBag(bag: number[]): number {
@@ -76,6 +88,7 @@ function initialState(): State {
     lines: 0,
     level: 1,
     status: 'ready',
+    particles: [],
   };
 }
 
@@ -135,13 +148,34 @@ export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (sc
         }
         st.grid[gy][st.px + x] = PIECES[st.piece].color;
       }
-      const kept = st.grid.filter((row) => row.some((c) => !c));
-      const cleared = ROWS - kept.length;
-      if (cleared > 0) {
+      const fullRows: number[] = [];
+      st.grid.forEach((row, y) => {
+        if (row.every((c) => c)) fullRows.push(y);
+      });
+      if (fullRows.length > 0) {
+        // burst each cleared cell into shards of its own color
+        for (const y of fullRows) {
+          st.grid[y].forEach((color, x) => {
+            for (let i = 0; i < 3; i++) {
+              const life = 0.45 + Math.random() * 0.4;
+              st.particles.push({
+                x: FIELD_X + x * CELL + CELL / 2,
+                y: FIELD_Y + y * CELL + CELL / 2,
+                vx: (Math.random() - 0.5) * 280,
+                vy: -30 - Math.random() * 200,
+                life,
+                maxLife: life,
+                size: 2 + Math.random() * 3,
+                color: color!,
+              });
+            }
+          });
+        }
+        const kept = st.grid.filter((_, y) => !fullRows.includes(y));
         while (kept.length < ROWS) kept.unshift(Array(COLS).fill(null));
         st.grid = kept;
-        st.lines += cleared;
-        st.score += LINE_POINTS[cleared] * st.level;
+        st.lines += fullRows.length;
+        st.score += LINE_POINTS[fullRows.length] * st.level;
         st.level = 1 + Math.floor(st.lines / 10);
       }
       spawn(st);
@@ -211,6 +245,16 @@ export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (sc
         }
       }
     }
+
+    // particles keep animating regardless of game state
+    for (const p of st.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 600 * dt;
+      p.life -= dt;
+    }
+    st.particles = st.particles.filter((p) => p.life > 0);
+
     setScore(st.score);
 
     const ctx = canvasRef.current?.getContext('2d');
@@ -270,6 +314,17 @@ export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (sc
         if (st.py + y >= 0) drawCell(st.px + x, st.py + y, PIECES[st.piece].color);
       }
     }
+
+    // line-clear particles
+    for (const p of st.particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 6;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
 
     // side panel
     const panelX = FIELD_X + COLS * CELL + 24;
