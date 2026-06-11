@@ -16,6 +16,7 @@ const GAME_MAX_SCORE: Record<string, number> = {
   stacker: 1000000,
   missile: 500000,
   chopper: 100000,
+  runner: 100000,
 };
 
 const postScoreSchema = z.object({

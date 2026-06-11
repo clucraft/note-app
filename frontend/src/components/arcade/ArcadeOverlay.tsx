@@ -6,6 +6,7 @@ import { Shooter } from './games/Shooter';
 import { Stacker } from './games/Stacker';
 import { CacheCommand } from './games/CacheCommand';
 import { RescueChopper } from './games/RescueChopper';
+import { Runner } from './games/Runner';
 import { NameEntry } from './NameEntry';
 import { getHighScore, GameId } from './highScores';
 import {
@@ -39,6 +40,7 @@ const GAMES: GameDef[] = [
   { id: 'stacker', name: 'STACKER', color: '#b14aff' },
   { id: 'missile', name: 'CACHE COMMAND', color: '#ff7a2d' },
   { id: 'chopper', name: 'RESCUE CHOPPER', color: '#4a9bff' },
+  { id: 'runner', name: 'NIGHT RUN', color: '#ff6ec7' },
 ];
 
 type Boards = Record<string, ArcadeScore[] | 'error'>;
@@ -211,6 +213,7 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
       {game === 'chopper' && (
         <RescueChopper onExit={() => setGame(null)} onScore={handleScore('chopper')} />
       )}
+      {game === 'runner' && <Runner onExit={() => setGame(null)} onScore={handleScore('runner')} />}
 
       {!game && showShare && (
         <div className={styles.sharePanel}>
