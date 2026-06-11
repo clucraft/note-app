@@ -64,12 +64,24 @@ interface Capsule {
   type: PowerType;
 }
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+}
+
 interface State {
   paddleX: number;
   paddleW: number;
   expandTimer: number;
   balls: Ball[];
   capsules: Capsule[];
+  particles: Particle[];
   bricks: boolean[][];
   bricksLeft: number;
   score: number;
@@ -93,6 +105,7 @@ function initialState(): State {
     expandTimer: 0,
     balls: [stuckBall()],
     capsules: [],
+    particles: [],
     bricks: freshBricks(),
     bricksLeft: BRICK_ROWS * BRICK_COLS,
     score: 0,
@@ -297,6 +310,19 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
               st.bricks[r][c] = false;
               st.bricksLeft--;
               st.score += ROW_POINTS[r];
+              for (let i = 0; i < 8; i++) {
+                const life = 0.4 + Math.random() * 0.35;
+                st.particles.push({
+                  x: bx + Math.random() * BRICK_W,
+                  y: by + Math.random() * BRICK_H,
+                  vx: (Math.random() - 0.5) * 240,
+                  vy: -40 - Math.random() * 160,
+                  life,
+                  maxLife: life,
+                  size: 2 + Math.random() * 3,
+                  color: ROW_COLORS[r],
+                });
+              }
               if (Math.random() < DROP_CHANCE) {
                 st.capsules.push({
                   x: bx + BRICK_W / 2,
@@ -354,6 +380,15 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
       }
     }
 
+    // particles keep animating regardless of game state
+    for (const p of st.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 600 * dt;
+      p.life -= dt;
+    }
+    st.particles = st.particles.filter((p) => p.life > 0);
+
     setScore(st.score);
     setLives(st.lives);
 
@@ -373,6 +408,17 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
         ctx.fillRect(bx, by, BRICK_W, BRICK_H);
       }
     }
+    ctx.shadowBlur = 0;
+
+    // brick shards
+    for (const p of st.particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 6;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
     // capsules
