@@ -19,7 +19,7 @@ const BOMB_FUSE = 1.2;
 const BOMB_RADIUS = 46;
 const MAX_BOMBS = 8;
 
-type MapId = 'over' | 'dun';
+type MapId = 'over' | 'dun' | 'dun2';
 
 // ---- maps -------------------------------------------------------------------
 // . grass/floor  , path  S sand  T tree  R rock  W water  B bridge
@@ -37,7 +37,7 @@ const RAW_OVER = [
   'TT...TT.....................,,...WWWWWWWWWWWWWWWW.......TTT',
   'TT..TTTT..T.................,,...WWWWWWWWWWWWWWWWW......TTT',
   'TT.TTTT.....................,,..SSWWWWWWWWWWWWWWWW......TTT',
-  'TT.TT...T..R................,,..SSSWWWWWWWWWWWWWW.......TTT',
+  'TT.TT...T..O................,,..SSSWWWWWWWWWWWWWW.......TTT',
   'TT.TT..T....................,,...SSSWWWWWWWWWWWW........TTT',
   'TT.TT...T..........,,,,,,,,,,,...BBBBBBBBWWWWW..........TTT',
   'TT.TTT..T..........,........SS...SSSSSSSS...............TTT',
@@ -93,7 +93,35 @@ interface WorldMap {
   solid: Set<string>;
 }
 
-const SOLID_TILES = new Set(['T', 'R', 'W', 'D', 'C', '#', 'L']);
+const SOLID_TILES = new Set(['T', 'R', 'W', 'D', 'C', '#', 'L', 'O', 'V']);
+
+// Dungeon 2 — the Drowned Keep, hidden under a cracked rock
+const RAW_DUN2 = [
+  '########################',
+  '####................####',
+  '####................####',
+  '####................####',
+  '#########GG#############',
+  '####................####',
+  '###...WW......WW.....###',
+  '###...WW......WW.....###',
+  '###..................###',
+  '###..................###',
+  '####................####',
+  '##########LL############',
+  '####.....WWWW.......####',
+  '####.....W..W.......####',
+  '####.....W..W.......####',
+  '####.....WWWW.......####',
+  '##########....##########',
+  '##......##....##......##',
+  '##......G......G......##',
+  '##......##....##......##',
+  '##......##....##......##',
+  '##########....##########',
+  '#########..EE..#########',
+  '########################',
+];
 
 function buildMap(raw: string[], cols: number, border: string): WorldMap {
   const rows = raw.length;
@@ -112,10 +140,44 @@ function buildMap(raw: string[], cols: number, border: string): WorldMap {
   return { grid, cols, rows, solid: SOLID_TILES };
 }
 
+/** If an entity is inside solid tiles (bad spawn, stale save), move it to the nearest walkable tile. */
+function unstick(e: { x: number; y: number }, m: WorldMap) {
+  const solidAt = (px: number, py: number) => {
+    const tx = Math.floor(px / TILE);
+    const ty = Math.floor(py / TILE);
+    if (tx < 0 || ty < 0 || tx >= m.cols || ty >= m.rows) return true;
+    return SOLID_TILES.has(m.grid[ty][tx]);
+  };
+  const r = PLAYER_R;
+  const stuck =
+    solidAt(e.x - r, e.y - r) ||
+    solidAt(e.x + r, e.y - r) ||
+    solidAt(e.x - r, e.y + r) ||
+    solidAt(e.x + r, e.y + r);
+  if (!stuck) return;
+  const ctx0 = Math.floor(e.x / TILE);
+  const cty0 = Math.floor(e.y / TILE);
+  for (let radius = 1; radius < 12; radius++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const tx = ctx0 + dx;
+        const ty = cty0 + dy;
+        if (tx < 1 || ty < 1 || tx >= m.cols - 1 || ty >= m.rows - 1) continue;
+        if (!SOLID_TILES.has(m.grid[ty][tx])) {
+          e.x = tx * TILE + 16;
+          e.y = ty * TILE + 16;
+          return;
+        }
+      }
+    }
+  }
+}
+
 // ---- structure: rooms, doors, cracks, pickups --------------------------------
 
 interface Room {
   id: string;
+  map: MapId;
   x0: number;
   y0: number;
   x1: number;
@@ -124,24 +186,36 @@ interface Room {
 }
 
 const ROOMS: Room[] = [
-  { id: 'room-w', x0: 2, y0: 17, x1: 8, y1: 20, gates: [[8, 18]] },
-  { id: 'room-e', x0: 15, y0: 17, x1: 21, y1: 20, gates: [[15, 18]] },
-  { id: 'boss', x0: 3, y0: 5, x1: 20, y1: 10, gates: [[9, 4], [10, 4]] },
+  { id: 'room-w', map: 'dun', x0: 2, y0: 17, x1: 8, y1: 20, gates: [[8, 18]] },
+  { id: 'room-e', map: 'dun', x0: 15, y0: 17, x1: 21, y1: 20, gates: [[15, 18]] },
+  { id: 'boss', map: 'dun', x0: 3, y0: 5, x1: 20, y1: 10, gates: [[9, 4], [10, 4]] },
+  { id: 'room-bow', map: 'dun2', x0: 2, y0: 17, x1: 8, y1: 20, gates: [[8, 18]] },
+  { id: 'room-k2', map: 'dun2', x0: 15, y0: 17, x1: 21, y1: 20, gates: [[15, 18]] },
+  { id: 'boss2', map: 'dun2', x0: 3, y0: 5, x1: 20, y1: 10, gates: [[9, 4], [10, 4]] },
 ];
 
 // locked door pairs — bumping either tile with a key opens both
-const DOORS: { id: string; tiles: [number, number][] }[] = [
-  { id: 'door-1', tiles: [[10, 15], [11, 15]] },
-  { id: 'door-2', tiles: [[10, 11], [11, 11]] },
+const DOORS: { id: string; map: MapId; tiles: [number, number][] }[] = [
+  { id: 'door-1', map: 'dun', tiles: [[10, 15], [11, 15]] },
+  { id: 'door-2', map: 'dun', tiles: [[10, 11], [11, 11]] },
+  { id: 'door-3', map: 'dun2', tiles: [[10, 11], [11, 11]] },
 ];
 
-const CRACKS: { tx: number; ty: number; flag: string; loot: 'coins' | 'heart' }[] = [
+const CRACKS: { tx: number; ty: number; flag: string; loot: 'coins' | 'heart' | 'stairs' }[] = [
   { tx: 5, ty: 3, flag: 'crack-1', loot: 'coins' },
   { tx: 44, ty: 16, flag: 'crack-2', loot: 'heart' },
-  { tx: 48, ty: 24, flag: 'crack-3', loot: 'coins' },
+  { tx: 48, ty: 24, flag: 'crack-3', loot: 'stairs' },
 ];
 
-type PickupKind = 'key' | 'heartContainer' | 'fragment' | 'bombBag' | 'coin' | 'heart' | 'bomb';
+type PickupKind =
+  | 'key'
+  | 'heartContainer'
+  | 'fragment'
+  | 'bombBag'
+  | 'bow'
+  | 'coin'
+  | 'heart'
+  | 'bomb';
 
 interface PickupDef {
   kind: PickupKind;
@@ -158,11 +232,23 @@ const PICKUP_DEFS: PickupDef[] = [
   { kind: 'heartContainer', map: 'dun', tx: 8, ty: 2, flag: 'hc-dungeon' },
   { kind: 'fragment', map: 'dun', tx: 14, ty: 2, flag: 'frag' },
   { kind: 'heartContainer', map: 'over', tx: 44, ty: 16, flag: 'hc-secret', requires: 'crack-2' },
+  { kind: 'bow', map: 'dun2', tx: 4, ty: 19, flag: 'bow' },
+  { kind: 'key', map: 'dun2', tx: 19, ty: 19, flag: 'key-d2' },
+  { kind: 'heartContainer', map: 'dun2', tx: 8, ty: 2, flag: 'hc-dun2' },
+  { kind: 'fragment', map: 'dun2', tx: 14, ty: 2, flag: 'frag2' },
 ];
 
 // ---- enemies ------------------------------------------------------------------
 
-type EnemyType = 'blob' | 'stalker' | 'spitter' | 'bat' | 'knight' | 'guardian';
+type EnemyType =
+  | 'blob'
+  | 'stalker'
+  | 'spitter'
+  | 'bat'
+  | 'knight'
+  | 'guardian'
+  | 'shade'
+  | 'warden';
 
 interface EnemyDef {
   type: EnemyType;
@@ -201,6 +287,17 @@ const ENEMY_SPAWNS: EnemyDef[] = [
   { type: 'spitter', map: 'dun', tx: 17, ty: 13 },
   { type: 'bat', map: 'dun', tx: 12, ty: 21 },
   { type: 'guardian', map: 'dun', tx: 11, ty: 7, roomId: 'boss' },
+  // drowned keep
+  { type: 'knight', map: 'dun2', tx: 4, ty: 18, roomId: 'room-bow' },
+  { type: 'shade', map: 'dun2', tx: 6, ty: 20, roomId: 'room-bow' },
+  { type: 'shade', map: 'dun2', tx: 17, ty: 18, roomId: 'room-k2' },
+  { type: 'bat', map: 'dun2', tx: 19, ty: 20, roomId: 'room-k2' },
+  { type: 'bat', map: 'dun2', tx: 18, ty: 17, roomId: 'room-k2' },
+  { type: 'spitter', map: 'dun2', tx: 5, ty: 13 },
+  { type: 'spitter', map: 'dun2', tx: 18, ty: 13 },
+  { type: 'bat', map: 'dun2', tx: 12, ty: 21 },
+  { type: 'shade', map: 'dun2', tx: 12, ty: 13 },
+  { type: 'warden', map: 'dun2', tx: 11, ty: 8, roomId: 'boss2' },
 ];
 
 const ENEMY_STATS: Record<
@@ -213,6 +310,8 @@ const ENEMY_STATS: Record<
   bat: { hp: 1, speed: 115, color: '#b14aff', dmg: 1, size: 8 },
   knight: { hp: 3, speed: 45, color: '#4a9bff', dmg: 2, size: 12 },
   guardian: { hp: 14, speed: 0, color: '#ff00ff', dmg: 2, size: 22 },
+  shade: { hp: 2, speed: 0, color: '#9d8aff', dmg: 1, size: 10 },
+  warden: { hp: 18, speed: 0, color: '#00ff99', dmg: 2, size: 22 },
 };
 
 interface Enemy {
@@ -250,6 +349,8 @@ interface Bullet {
   vx: number;
   vy: number;
   friendly: boolean;
+  dmg: number;
+  arrow?: boolean;
 }
 
 interface Bomb {
@@ -281,11 +382,13 @@ interface State {
   keys: number;
   bombs: number;
   hasBombBag: boolean;
-  hasFragment: boolean;
+  hasBow: boolean;
+  fragments: number;
   flags: Set<string>;
   facing: Facing;
   attackTimer: number;
   attackCd: number;
+  bowCd: number;
   invuln: number;
   kbX: number;
   kbY: number;
@@ -301,7 +404,9 @@ interface State {
 }
 
 const OVER_SPAWN = { x: 31 * TILE + 16, y: 25 * TILE + 16 };
-const DUN_SPAWN = { x: 11.5 * TILE + 16, y: 22 * TILE };
+const DUN_SPAWN = { x: 11.5 * TILE + 16, y: 21 * TILE };
+const DUN_EXIT_OVER = { x: 28 * TILE, y: 3 * TILE }; // on the path below the door
+const DUN2_EXIT_OVER = { x: 48 * TILE + 16, y: 25 * TILE + 16 }; // below the bombed rock
 
 interface SaveData {
   v: number;
@@ -314,7 +419,8 @@ interface SaveData {
   keys: number;
   bombs: number;
   hasBombBag: boolean;
-  hasFragment: boolean;
+  hasBow: boolean;
+  fragments: number;
   flags: string[];
 }
 
@@ -324,8 +430,8 @@ function loadSave(): SaveData | null {
     if (!raw) return null;
     const data = JSON.parse(raw);
     return {
-      v: 2,
-      map: data.map === 'dun' ? 'dun' : 'over',
+      v: 3,
+      map: data.map === 'dun' ? 'dun' : data.map === 'dun2' ? 'dun2' : 'over',
       x: data.x ?? OVER_SPAWN.x,
       y: data.y ?? OVER_SPAWN.y,
       hp: data.hp ?? MAX_HP_START,
@@ -334,7 +440,8 @@ function loadSave(): SaveData | null {
       keys: data.keys ?? 0,
       bombs: data.bombs ?? 0,
       hasBombBag: !!data.hasBombBag,
-      hasFragment: !!data.hasFragment,
+      hasBow: !!data.hasBow,
+      fragments: data.fragments ?? (data.hasFragment ? 1 : 0),
       flags: Array.isArray(data.flags) ? data.flags : [],
     };
   } catch {
@@ -344,22 +451,29 @@ function loadSave(): SaveData | null {
 
 export function Quest({ onExit }: { onExit: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mapsRef = useRef<{ over: WorldMap; dun: WorldMap }>({
+  const mapsRef = useRef<{ over: WorldMap; dun: WorldMap; dun2: WorldMap }>({
     over: buildMap(RAW_OVER, 60, 'T'),
     dun: buildMap(RAW_DUN, 24, '#'),
+    dun2: buildMap(RAW_DUN2, 24, '#'),
   });
 
   const buildState = useCallback((save: SaveData | null): State => {
     const flags = new Set(save?.flags ?? []);
     // re-apply persistent world changes
-    const maps = { over: buildMap(RAW_OVER, 60, 'T'), dun: buildMap(RAW_DUN, 24, '#') };
+    const maps = {
+      over: buildMap(RAW_OVER, 60, 'T'),
+      dun: buildMap(RAW_DUN, 24, '#'),
+      dun2: buildMap(RAW_DUN2, 24, '#'),
+    };
     for (const door of DOORS) {
       if (flags.has(door.id)) {
-        for (const [tx, ty] of door.tiles) maps.dun.grid[ty][tx] = '.';
+        for (const [tx, ty] of door.tiles) maps[door.map === 'dun2' ? 'dun2' : 'dun'].grid[ty][tx] = '.';
       }
     }
     for (const crack of CRACKS) {
-      if (flags.has(crack.flag)) maps.over.grid[crack.ty][crack.tx] = '.';
+      if (flags.has(crack.flag)) {
+        maps.over.grid[crack.ty][crack.tx] = crack.loot === 'stairs' ? 'V' : '.';
+      }
     }
     mapsRef.current = maps;
 
@@ -396,7 +510,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
       ttl: Infinity,
     }));
 
-    return {
+    const st: State = {
       map: save?.map ?? 'over',
       x: save?.x ?? OVER_SPAWN.x,
       y: save?.y ?? OVER_SPAWN.y,
@@ -406,11 +520,13 @@ export function Quest({ onExit }: { onExit: () => void }) {
       keys: save?.keys ?? 0,
       bombs: save?.bombs ?? 0,
       hasBombBag: save?.hasBombBag ?? false,
-      hasFragment: save?.hasFragment ?? false,
+      hasBow: save?.hasBow ?? false,
+      fragments: save?.fragments ?? 0,
       flags,
       facing: 'up',
       attackTimer: 0,
       attackCd: 0,
+      bowCd: 0,
       invuln: 0,
       kbX: 0,
       kbY: 0,
@@ -424,6 +540,8 @@ export function Quest({ onExit }: { onExit: () => void }) {
       saveTimer: 4,
       status: 'ready',
     };
+    unstick(st, maps[st.map]);
+    return st;
   }, []);
 
   const stateRef = useRef<State>(null as unknown as State);
@@ -441,9 +559,9 @@ export function Quest({ onExit }: { onExit: () => void }) {
     return m.grid[ty][tx];
   }, []);
 
-  const gateRoom = useCallback((tx: number, ty: number): Room | null => {
+  const gateRoom = useCallback((map: MapId, tx: number, ty: number): Room | null => {
     for (const room of ROOMS) {
-      if (room.gates.some(([gx, gy]) => gx === tx && gy === ty)) return room;
+      if (room.map === map && room.gates.some(([gx, gy]) => gx === tx && gy === ty)) return room;
     }
     return null;
   }, []);
@@ -458,7 +576,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
     (st: State, m: WorldMap, px: number, py: number): boolean => {
       const ch = tileAt(m, px, py);
       if (ch === 'G') {
-        const room = gateRoom(Math.floor(px / TILE), Math.floor(py / TILE));
+        const room = gateRoom(st.map, Math.floor(px / TILE), Math.floor(py / TILE));
         if (!room) return false;
         return !st.flags.has(room.id) && playerInRoom(st, room);
       }
@@ -490,7 +608,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
 
   const save = useCallback((st: State) => {
     const data: SaveData = {
-      v: 2,
+      v: 3,
       map: st.map,
       x: st.x,
       y: st.y,
@@ -500,7 +618,8 @@ export function Quest({ onExit }: { onExit: () => void }) {
       keys: st.keys,
       bombs: st.bombs,
       hasBombBag: st.hasBombBag,
-      hasFragment: st.hasFragment,
+      hasBow: st.hasBow,
+      fragments: st.fragments,
       flags: [...st.flags],
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -531,16 +650,23 @@ export function Quest({ onExit }: { onExit: () => void }) {
 
   const switchMap = useCallback(
     (st: State, to: MapId) => {
+      const from = st.map;
       st.map = to;
       if (to === 'dun') {
         st.x = DUN_SPAWN.x;
         st.y = DUN_SPAWN.y;
         showMessage(st, 'DUNGEON OF THE GUARDIAN');
+      } else if (to === 'dun2') {
+        st.x = DUN_SPAWN.x;
+        st.y = DUN_SPAWN.y;
+        showMessage(st, 'THE DROWNED KEEP');
       } else {
-        st.x = 29 * TILE;
-        st.y = 3 * TILE;
+        const exit = from === 'dun2' ? DUN2_EXIT_OVER : DUN_EXIT_OVER;
+        st.x = exit.x;
+        st.y = exit.y;
         showMessage(st, 'THE OVERWORLD');
       }
+      unstick(st, mapsRef.current[st.map]);
       st.bullets = [];
       st.bombsLive = [];
       st.kbX = 0;
@@ -606,9 +732,21 @@ export function Quest({ onExit }: { onExit: () => void }) {
           st.bombs = MAX_BOMBS;
           showMessage(st, 'BOMB BAG! PRESS X TO DROP BOMBS');
           break;
+        case 'bow':
+          st.hasBow = true;
+          showMessage(st, 'THE BOW! PRESS Z TO LOOSE ARROWS');
+          break;
         case 'fragment':
-          st.hasFragment = true;
-          showMessage(st, 'CACHE FRAGMENT OBTAINED... PHASE III AWAITS');
+          st.fragments++;
+          if (st.fragments >= 2) {
+            st.flags.add('complete');
+            showMessage(st, 'THE CACHE IS RESTORED — QUEST COMPLETE!');
+            sfx.sweep();
+            burst(st, st.x, st.y, '#ffe600', 40);
+            burst(st, st.x, st.y, '#00ffff', 30);
+          } else {
+            showMessage(st, 'A CACHE FRAGMENT... ANOTHER LIES HIDDEN');
+          }
           break;
       }
       if (d.flag) st.flags.add(d.flag);
@@ -644,10 +782,15 @@ export function Quest({ onExit }: { onExit: () => void }) {
           const cy = crack.ty * TILE + 16;
           if (Math.hypot(cx - b.x, cy - b.y) < BOMB_RADIUS + 24) {
             st.flags.add(crack.flag);
-            mapsRef.current.over.grid[crack.ty][crack.tx] = '.';
+            mapsRef.current.over.grid[crack.ty][crack.tx] = crack.loot === 'stairs' ? 'V' : '.';
             burst(st, cx, cy, '#b14aff', 16);
-            showMessage(st, 'THE ROCK CRUMBLES!');
-            if (crack.loot === 'coins') {
+            showMessage(
+              st,
+              crack.loot === 'stairs' ? 'A HIDDEN STAIRWAY IS REVEALED!' : 'THE ROCK CRUMBLES!'
+            );
+            if (crack.loot === 'stairs') {
+              // nothing else — the stairway itself is the prize
+            } else if (crack.loot === 'coins') {
               for (let i = 0; i < 5; i++) {
                 st.drops.push({
                   x: cx + (Math.random() - 0.5) * 24,
@@ -690,6 +833,14 @@ export function Quest({ onExit }: { onExit: () => void }) {
         burst(st, en.x, en.y, '#ff00ff', 30);
         showMessage(st, 'THE GUARDIAN FALLS!');
         st.drops.push({ x: en.x, y: en.y, kind: 'bombBag', flag: 'bombbag', ttl: Infinity });
+        save(st);
+        return;
+      }
+      if (en.type === 'warden') {
+        st.flags.add('boss2');
+        sfx.explosion(true);
+        burst(st, en.x, en.y, '#00ff99', 30);
+        showMessage(st, 'THE WARDEN FALLS!');
         save(st);
         return;
       }
@@ -776,6 +927,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
               vx: dir[0] * 330,
               vy: dir[1] * 330,
               friendly: true,
+              dmg: 1,
             });
           }
         }
@@ -785,6 +937,50 @@ export function Quest({ onExit }: { onExit: () => void }) {
           st.bombs--;
           st.bombsLive.push({ x: st.x, y: st.y, fuse: BOMB_FUSE });
           sfx.thud();
+        }
+      } else if (key === 'z') {
+        e.preventDefault();
+        if (st.hasBow && st.bowCd <= 0) {
+          st.bowCd = 0.5;
+          const dir =
+            st.facing === 'up'
+              ? [0, -1]
+              : st.facing === 'down'
+                ? [0, 1]
+                : st.facing === 'left'
+                  ? [-1, 0]
+                  : [1, 0];
+          st.bullets.push({
+            x: st.x + dir[0] * 16,
+            y: st.y + dir[1] * 16,
+            vx: dir[0] * 430,
+            vy: dir[1] * 430,
+            friendly: true,
+            dmg: 2,
+            arrow: true,
+          });
+          sfx.zap();
+        }
+      } else if (key === 'Enter') {
+        e.preventDefault();
+        // merchant trade when facing the cave
+        const m2 = mapsRef.current[st.map];
+        const ax = st.x + (st.facing === 'left' ? -20 : st.facing === 'right' ? 20 : 0);
+        const ay = st.y + (st.facing === 'up' ? -20 : st.facing === 'down' ? 20 : 0);
+        const tx = Math.floor(ax / TILE);
+        const ty = Math.floor(ay / TILE);
+        if (tx >= 0 && ty >= 0 && tx < m2.cols && ty < m2.rows && m2.grid[ty][tx] === 'O') {
+          if (st.coins >= 15) {
+            st.coins -= 15;
+            st.hp = st.maxHp;
+            if (st.hasBombBag) st.bombs = MAX_BOMBS;
+            sfx.pickup();
+            showMessage(st, 'MERCHANT: STOCKED UP! SAFE TRAVELS');
+            save(st);
+          } else {
+            sfx.thud();
+            showMessage(st, 'MERCHANT: COME BACK WITH 15 COINS');
+          }
         }
       }
     };
@@ -813,6 +1009,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
     if (st.status === 'playing') {
       st.attackTimer = Math.max(0, st.attackTimer - dt);
       st.attackCd = Math.max(0, st.attackCd - dt);
+      st.bowCd = Math.max(0, st.bowCd - dt);
       st.invuln = Math.max(0, st.invuln - dt);
       st.messageTtl = Math.max(0, st.messageTtl - dt);
 
@@ -839,17 +1036,21 @@ export function Quest({ onExit }: { onExit: () => void }) {
       const ahead = tileAt(m, aheadX, aheadY);
       if (ahead === 'D' && st.map === 'over') {
         switchMap(st, 'dun');
-      } else if (ahead === 'E' && st.map === 'dun') {
+      } else if (ahead === 'V' && st.map === 'over') {
+        switchMap(st, 'dun2');
+      } else if (ahead === 'E' && st.map !== 'over') {
         switchMap(st, 'over');
       } else if (ahead === 'L') {
         const tx = Math.floor(aheadX / TILE);
         const ty = Math.floor(aheadY / TILE);
-        const door = DOORS.find((d) => d.tiles.some(([dx2, dy2]) => dx2 === tx && dy2 === ty));
+        const door = DOORS.find(
+          (d) => d.map === st.map && d.tiles.some(([dx2, dy2]) => dx2 === tx && dy2 === ty)
+        );
         if (door && !st.flags.has(door.id)) {
           if (st.keys > 0) {
             st.keys--;
             st.flags.add(door.id);
-            for (const [dx2, dy2] of door.tiles) mapsRef.current.dun.grid[dy2][dx2] = '.';
+            for (const [dx2, dy2] of door.tiles) m.grid[dy2][dx2] = '.';
             sfx.sweep();
             showMessage(st, 'THE DOOR UNLOCKS');
             save(st);
@@ -859,6 +1060,8 @@ export function Quest({ onExit }: { onExit: () => void }) {
         }
       } else if (ahead === 'C' && st.messageTtl <= 0) {
         showMessage(st, st.hasBombBag ? 'THIS ROCK LOOKS WEAK...' : 'CRACKED ROCK... IF ONLY IT COULD BE BROKEN');
+      } else if (ahead === 'O' && st.messageTtl <= 0) {
+        showMessage(st, 'MERCHANT: 15 COINS FILLS HEARTS & BOMBS — PRESS ENTER');
       }
 
       // sword hitbox
@@ -939,7 +1142,80 @@ export function Quest({ onExit }: { onExit: () => void }) {
             en.fireTimer = 1.8 + Math.random();
             const dx = (st.x - en.x) / distToPlayer;
             const dy = (st.y - en.y) / distToPlayer;
-            st.bullets.push({ x: en.x, y: en.y, vx: dx * 170, vy: dy * 170, friendly: false });
+            st.bullets.push({
+              x: en.x,
+              y: en.y,
+              vx: dx * 170,
+              vy: dy * 170,
+              friendly: false,
+              dmg: 1,
+            });
+            sfx.zap();
+          }
+        } else if (en.type === 'shade') {
+          // teleports near the player, fires, repeats
+          en.dirTimer -= dt;
+          if (en.dirTimer <= 0) {
+            en.dirTimer = 2.4 + Math.random();
+            for (let attempt = 0; attempt < 6; attempt++) {
+              const ang = Math.random() * Math.PI * 2;
+              const d2 = 90 + Math.random() * 80;
+              const nx = st.x + Math.cos(ang) * d2;
+              const ny = st.y + Math.sin(ang) * d2;
+              if (!boxBlocked(st, nx, ny, 10)) {
+                burst(st, en.x, en.y, '#9d8aff', 6);
+                en.x = nx;
+                en.y = ny;
+                burst(st, en.x, en.y, '#9d8aff', 6);
+                const dist2 = Math.hypot(st.x - en.x, st.y - en.y) || 1;
+                st.bullets.push({
+                  x: en.x,
+                  y: en.y,
+                  vx: ((st.x - en.x) / dist2) * 190,
+                  vy: ((st.y - en.y) / dist2) * 190,
+                  friendly: false,
+                  dmg: 1,
+                });
+                sfx.zap();
+                break;
+              }
+            }
+          }
+          tryMove(st, en, en.kbX * dt, en.kbY * dt, 10);
+        } else if (en.type === 'warden') {
+          en.chargeTimer -= dt;
+          if (en.charging) {
+            tryMove(st, en, en.dirX * 200 * dt, en.dirY * 200 * dt, 18);
+            if (en.chargeTimer <= 0) {
+              en.charging = false;
+              en.chargeTimer = 1.6 + Math.random() * 0.8;
+            }
+          } else {
+            tryMove(st, en, en.kbX * dt, en.kbY * dt, 18);
+            if (en.chargeTimer <= 0 && distToPlayer < 320) {
+              en.charging = true;
+              en.chargeTimer = 0.8;
+              const d = distToPlayer || 1;
+              en.dirX = (st.x - en.x) / d;
+              en.dirY = (st.y - en.y) / d;
+              sfx.thud();
+            }
+          }
+          // radial bullet ring
+          en.fireTimer -= dt;
+          if (en.fireTimer <= 0) {
+            en.fireTimer = 3.5;
+            for (let i = 0; i < 8; i++) {
+              const a = (i / 8) * Math.PI * 2;
+              st.bullets.push({
+                x: en.x,
+                y: en.y,
+                vx: Math.cos(a) * 150,
+                vy: Math.sin(a) * 150,
+                friendly: false,
+                dmg: 1,
+              });
+            }
             sfx.zap();
           }
         } else if (en.type === 'guardian') {
@@ -1028,7 +1304,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
           for (const en of st.enemies) {
             if (!en.alive || en.map !== st.map) continue;
             if (Math.hypot(b.x - en.x, b.y - en.y) < ENEMY_STATS[en.type].size + 6) {
-              en.hp--;
+              en.hp -= b.dmg;
               burst(st, en.x, en.y, ENEMY_STATS[en.type].color, 6);
               sfx.brick();
               if (en.hp <= 0) killEnemy(st, en);
@@ -1110,12 +1386,23 @@ export function Quest({ onExit }: { onExit: () => void }) {
         const ch = m.grid[ty][tx];
         const x = tx * TILE;
         const y = ty * TILE;
-        if (st.map === 'dun') {
+        if (st.map !== 'over') {
+          const wallEdge =
+            st.map === 'dun2' ? 'rgba(0, 255, 153, 0.25)' : 'rgba(177, 74, 255, 0.25)';
           if (ch === '#') {
-            ctx.fillStyle = '#12101f';
+            ctx.fillStyle = st.map === 'dun2' ? '#0e1420' : '#12101f';
             ctx.fillRect(x, y, TILE, TILE);
-            ctx.strokeStyle = 'rgba(177, 74, 255, 0.25)';
+            ctx.strokeStyle = wallEdge;
             ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+          } else if (ch === 'W') {
+            ctx.fillStyle = '#03202e';
+            ctx.fillRect(x, y, TILE, TILE);
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.25)';
+            ctx.beginPath();
+            const wy = y + 16 + Math.sin(t * 2 + tx * 1.3 + ty) * 4;
+            ctx.moveTo(x + 4, wy);
+            ctx.lineTo(x + TILE - 4, wy);
+            ctx.stroke();
           } else {
             ctx.fillStyle = '#0b0b14';
             ctx.fillRect(x, y, TILE, TILE);
@@ -1138,7 +1425,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
             ctx.stroke();
             ctx.shadowBlur = 0;
           } else if (ch === 'G') {
-            const room = gateRoom(tx, ty);
+            const room = gateRoom(st.map, tx, ty);
             const closed = room && !st.flags.has(room.id) && playerInRoom(st, room);
             if (closed) {
               ctx.strokeStyle = '#00ffff';
@@ -1225,15 +1512,34 @@ export function Quest({ onExit }: { onExit: () => void }) {
             ctx.lineTo(x + 13, y + 22);
             ctx.stroke();
           }
-        } else if (ch === 'D') {
+        } else if (ch === 'D' || ch === 'V') {
           ctx.fillStyle = '#000';
           ctx.fillRect(x, y, TILE, TILE);
-          ctx.strokeStyle = '#ff00ff';
-          ctx.shadowColor = '#ff00ff';
+          ctx.strokeStyle = ch === 'D' ? '#ff00ff' : '#00ff99';
+          ctx.shadowColor = ctx.strokeStyle;
           ctx.shadowBlur = 10;
           ctx.beginPath();
           ctx.arc(x + 16, y + 30, 13, Math.PI, 0);
           ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else if (ch === 'O') {
+          ctx.fillStyle = '#171226';
+          ctx.beginPath();
+          ctx.moveTo(x + 2, y + 28);
+          ctx.lineTo(x + 6, y + 6);
+          ctx.lineTo(x + 26, y + 6);
+          ctx.lineTo(x + 30, y + 28);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.arc(x + 16, y + 28, 9, Math.PI, 0);
+          ctx.fill();
+          // lantern
+          ctx.fillStyle = '#ffe600';
+          ctx.shadowColor = '#ffe600';
+          ctx.shadowBlur = 8 + Math.sin(t * 4) * 3;
+          ctx.fillRect(x + 14, y + 8, 4, 4);
           ctx.shadowBlur = 0;
         }
       }
@@ -1295,6 +1601,17 @@ export function Quest({ onExit }: { onExit: () => void }) {
         ctx.font = 'bold 10px Consolas, monospace';
         ctx.textAlign = 'center';
         ctx.fillText('B', d.x, d.y + 3 + bob);
+      } else if (d.kind === 'bow') {
+        ctx.strokeStyle = '#39ff14';
+        ctx.shadowColor = '#39ff14';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(d.x - 2, d.y + bob, 9, -Math.PI / 2.6, Math.PI / 2.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(d.x + 1, d.y - 8 + bob);
+        ctx.lineTo(d.x + 1, d.y + 8 + bob);
+        ctx.stroke();
       } else if (d.kind === 'fragment') {
         ctx.save();
         ctx.translate(d.x, d.y + bob);
@@ -1370,7 +1687,19 @@ export function Quest({ onExit }: { onExit: () => void }) {
         ctx.fillRect(en.x - 10, en.y - 12, 20, 24);
         ctx.fillStyle = '#0a0a12';
         ctx.fillRect(en.x - 6, en.y - 7, 12, 4);
-      } else if (en.type === 'guardian') {
+      } else if (en.type === 'shade') {
+        ctx.globalAlpha = 0.55 + Math.sin(t * 4 + en.homeX) * 0.2;
+        ctx.beginPath();
+        ctx.arc(en.x, en.y - 2, 9, Math.PI, 0);
+        for (let i = 0; i < 3; i++) {
+          ctx.arc(en.x + 9 - i * 6 - 3, en.y + 7 + Math.sin(t * 6 + i) * 2, 3, 0, Math.PI);
+        }
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#0a0a12';
+        ctx.fillRect(en.x - 5, en.y - 4, 3, 3);
+        ctx.fillRect(en.x + 2, en.y - 4, 3, 3);
+      } else if (en.type === 'guardian' || en.type === 'warden') {
         const r = 22 + (en.charging ? Math.sin(t * 30) * 2 : Math.sin(t * 3) * 3);
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
@@ -1398,6 +1727,20 @@ export function Quest({ onExit }: { onExit: () => void }) {
 
     // bullets
     for (const b of st.bullets) {
+      if (b.arrow) {
+        const len = 12;
+        const d = Math.hypot(b.vx, b.vy) || 1;
+        ctx.strokeStyle = '#ffe600';
+        ctx.shadowColor = '#ffe600';
+        ctx.shadowBlur = 6;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(b.x - (b.vx / d) * len, b.y - (b.vy / d) * len);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        continue;
+      }
       ctx.fillStyle = b.friendly ? '#00ffff' : '#ff4444';
       ctx.shadowColor = ctx.fillStyle;
       ctx.shadowBlur = 6;
@@ -1495,21 +1838,29 @@ export function Quest({ onExit }: { onExit: () => void }) {
       ctx.fillText(`◉ ${st.bombs}`, invX, 26);
       invX -= 56;
     }
-    if (st.hasFragment) {
+    if (st.hasBow) {
+      ctx.fillStyle = '#39ff14';
+      ctx.fillText('➳', invX, 26);
+      invX -= 36;
+    }
+    if (st.fragments > 0) {
       ctx.fillStyle = '#ffe600';
-      ctx.fillText('◈', invX, 26);
+      ctx.fillText(`◈ ${st.fragments}`, invX, 26);
     }
 
     // boss HP bar
-    const boss = st.enemies.find((e) => e.type === 'guardian' && e.alive && e.map === st.map);
+    const boss = st.enemies.find(
+      (e) => (e.type === 'guardian' || e.type === 'warden') && e.alive && e.map === st.map
+    );
     if (boss && Math.hypot(boss.x - st.x, boss.y - st.y) < 420) {
       const w = 200;
+      const color = ENEMY_STATS[boss.type].color;
       ctx.fillStyle = '#1a1a2e';
       ctx.fillRect(VIEW_W / 2 - w / 2, HUD_H + 10, w, 8);
-      ctx.fillStyle = '#ff00ff';
-      ctx.shadowColor = '#ff00ff';
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
       ctx.shadowBlur = 8;
-      ctx.fillRect(VIEW_W / 2 - w / 2, HUD_H + 10, (w * boss.hp) / ENEMY_STATS.guardian.hp, 8);
+      ctx.fillRect(VIEW_W / 2 - w / 2, HUD_H + 10, (w * boss.hp) / ENEMY_STATS[boss.type].hp, 8);
       ctx.shadowBlur = 0;
     }
 
@@ -1538,7 +1889,13 @@ export function Quest({ onExit }: { onExit: () => void }) {
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#888';
       ctx.font = '13px Consolas, monospace';
-      ctx.fillText('A NEON ADVENTURE — PHASE II', VIEW_W / 2, VIEW_H / 2 - 22);
+      ctx.fillText(
+        stateRef.current.flags.has('complete')
+          ? '★ QUEST COMPLETE ★'
+          : 'A NEON ADVENTURE — PHASE III',
+        VIEW_W / 2,
+        VIEW_H / 2 - 22
+      );
       ctx.fillStyle = '#00ffff';
       ctx.font = '14px Consolas, monospace';
       ctx.fillText(hasSave ? 'ENTER CONTINUE' : 'ENTER START', VIEW_W / 2, VIEW_H / 2 + 16);
@@ -1548,7 +1905,7 @@ export function Quest({ onExit }: { onExit: () => void }) {
       }
       ctx.fillStyle = '#555';
       ctx.font = '11px Consolas, monospace';
-      ctx.fillText('ARROWS MOVE · SPACE SWORD · X BOMB', VIEW_W / 2, VIEW_H / 2 + 74);
+      ctx.fillText('ARROWS MOVE · SPACE SWORD · X BOMB · Z BOW', VIEW_W / 2, VIEW_H / 2 + 74);
     }
   });
 
