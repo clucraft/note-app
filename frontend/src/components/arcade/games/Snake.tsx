@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from '../useGameLoop';
 import { getHighScore, submitHighScore } from '../highScores';
+import { sfx } from '../audio';
 import styles from '../Arcade.module.css';
 
 const COLS = 24;
@@ -114,11 +115,13 @@ export function Snake({ onExit, onScore }: { onExit: () => void; onScore?: (scor
       st.status = 'over';
       submitHighScore('snake', st.score);
       setHighScore(getHighScore('snake'));
+      sfx.over();
       onScoreRef.current?.(st.score);
       return;
     }
     st.snake.unshift(head);
     if (head.x === st.food.x && head.y === st.food.y) {
+      sfx.pickup();
       st.score += 10;
       st.tickMs = Math.max(MIN_TICK_MS, st.tickMs - 2);
       st.food = randomFood(st.snake);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from '../useGameLoop';
 import { getHighScore, submitHighScore } from '../highScores';
+import { sfx } from '../audio';
 import styles from '../Arcade.module.css';
 
 const W = 480;
@@ -152,6 +153,7 @@ export function Shooter({ onExit, onScore }: { onExit: () => void; onScore?: (sc
     st.status = 'over';
     submitHighScore('shooter', st.score);
     setHighScore(getHighScore('shooter'));
+    sfx.over();
     onScoreRef.current?.(st.score);
   }, []);
 
@@ -169,6 +171,7 @@ export function Shooter({ onExit, onScore }: { onExit: () => void; onScore?: (sc
       if (keysRef.current.fire && st.fireCooldown <= 0 && st.bullets.length < MAX_PLAYER_BULLETS) {
         st.bullets.push({ x: st.playerX + PLAYER_W / 2, y: PLAYER_Y - 4 });
         st.fireCooldown = FIRE_COOLDOWN;
+        sfx.zap();
       }
 
       // march
@@ -218,6 +221,7 @@ export function Shooter({ onExit, onScore }: { onExit: () => void; onScore?: (sc
           if (b.x > p.x && b.x < p.x + ENEMY_W && b.y > p.y && b.y < p.y + ENEMY_H) {
             e.alive = false;
             st.score += ROW_POINTS[e.row];
+            sfx.brick();
             b.y = -100; // consumed
             break;
           }
@@ -239,6 +243,7 @@ export function Shooter({ onExit, onScore }: { onExit: () => void; onScore?: (sc
             if (st.lives <= 0) {
               gameOver(st);
             } else {
+              sfx.explosion();
               st.invulnTimer = 1.5;
             }
             break;
@@ -253,6 +258,7 @@ export function Shooter({ onExit, onScore }: { onExit: () => void; onScore?: (sc
 
       // wave cleared
       if (st.status === 'playing' && alive.length === 0) {
+        sfx.sweep();
         st.wave++;
         st.enemies = freshEnemies();
         st.offsetX = 0;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from '../useGameLoop';
 import { getHighScore, submitHighScore } from '../highScores';
+import { sfx } from '../audio';
 import styles from '../Arcade.module.css';
 
 const W = 480;
@@ -269,14 +270,17 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
         if (b.x - BALL_R < 0) {
           b.x = BALL_R;
           b.vx = Math.abs(b.vx);
+          sfx.bounce(700);
         }
         if (b.x + BALL_R > W) {
           b.x = W - BALL_R;
           b.vx = -Math.abs(b.vx);
+          sfx.bounce(700);
         }
         if (b.y - BALL_R < 0) {
           b.y = BALL_R;
           b.vy = Math.abs(b.vy);
+          sfx.bounce(700);
         }
 
         // paddle
@@ -293,6 +297,7 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
           b.vx = speed * Math.sin(angle);
           b.vy = -speed * Math.cos(angle);
           b.y = PADDLE_Y - BALL_R;
+          sfx.bounce(440);
         }
 
         // bricks (one hit per ball per frame)
@@ -310,6 +315,7 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
               st.bricks[r][c] = false;
               st.bricksLeft--;
               st.score += ROW_POINTS[r];
+              sfx.brick();
               for (let i = 0; i < 8; i++) {
                 const life = 0.4 + Math.random() * 0.35;
                 st.particles.push({
@@ -349,8 +355,10 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
           st.status = 'over';
           submitHighScore('breaker', st.score);
           setHighScore(getHighScore('breaker'));
+          sfx.over();
           onScoreRef.current?.(st.score);
         } else {
+          sfx.thud();
           st.balls = [stuckBall()];
         }
       }
@@ -364,6 +372,7 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
           cap.x + CAPSULE_W / 2 >= st.paddleX &&
           cap.x - CAPSULE_W / 2 <= st.paddleX + st.paddleW
         ) {
+          sfx.pickup();
           applyPower(st, cap.type);
           return false;
         }
@@ -372,6 +381,7 @@ export function BrickBreaker({ onExit, onScore }: { onExit: () => void; onScore?
 
       // level cleared
       if (st.status === 'playing' && st.bricksLeft === 0) {
+        sfx.sweep();
         st.level++;
         st.bricks = freshBricks();
         st.bricksLeft = BRICK_ROWS * BRICK_COLS;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from '../useGameLoop';
 import { getHighScore, submitHighScore } from '../highScores';
+import { sfx } from '../audio';
 import styles from '../Arcade.module.css';
 
 const W = 480;
@@ -237,6 +238,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
       st.scoreSubmitted = true;
       submitHighScore('chopper', st.score);
       setHighScore(getHighScore('chopper'));
+      sfx.over();
       onScoreRef.current?.(st.score);
     }
   }, []);
@@ -245,6 +247,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
     (st: State) => {
       const ch = st.chopper;
       st.explosions.push({ x: ch.x, y: ch.y, r: 4, maxR: 34 });
+      sfx.explosion(true);
       st.dead += st.aboard;
       st.aboard = 0;
       st.choppers--;
@@ -333,6 +336,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
           st.fireCooldown = FIRE_COOLDOWN;
           if (ch.facing !== 0) {
             if (st.bullets.length < 4) {
+              sfx.zap();
               st.bullets.push({
                 x: ch.x + ch.facing * 22,
                 y: ch.y - 2,
@@ -377,6 +381,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
           h.x += dir * HOSTAGE_RUN * dt;
           if (Math.abs(h.x - ch.x) < BOARD_DIST) {
             st.aboard++;
+            sfx.pickup();
             return false; // climbed in
           }
         } else {
@@ -397,6 +402,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
           st.aboard--;
           st.saved++;
           st.score += 50;
+          sfx.bounce(900);
           st.runners.push({ x: ch.x - 14, ttl: 1.6, phase: Math.random() * 10 });
         }
       } else {
@@ -454,7 +460,12 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
             b.y > GROUND_Y - BARRACK_H
           ) {
             bar.hp--;
-            if (bar.hp <= 0) st.score += 150;
+            if (bar.hp <= 0) {
+              st.score += 150;
+              sfx.brick();
+            } else {
+              sfx.thud();
+            }
             return false;
           }
         }
@@ -465,6 +476,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
             if (t.hp <= 0) {
               st.score += 100;
               st.explosions.push({ x: t.x, y: GROUND_Y - 8, r: 3, maxR: 20 });
+              sfx.explosion();
             }
             return false;
           }
@@ -494,6 +506,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
         if (b.y >= GROUND_Y - 2 || hitTank) {
           const bx = hitTank ? hitTank.x : b.x;
           st.explosions.push({ x: bx, y: GROUND_Y - 4, r: 4, maxR: 28 });
+          sfx.explosion();
           for (const t of st.tanks) {
             if (Math.abs(t.x - bx) < 30) {
               t.hp = 0;
@@ -529,6 +542,7 @@ export function RescueChopper({ onExit, onScore }: { onExit: () => void; onScore
         }
         if (s.y >= GROUND_Y) {
           st.explosions.push({ x: s.x, y: GROUND_Y - 4, r: 3, maxR: 16 });
+          sfx.explosion();
           st.hostages = st.hostages.filter((h) => {
             if (Math.abs(h.x - s.x) < 14) {
               st.dead++;

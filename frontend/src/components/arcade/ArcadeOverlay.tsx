@@ -16,6 +16,14 @@ import {
   enableArcadeShare,
   disableArcadeShare,
 } from '../../api/arcade.api';
+import {
+  unlockAudio,
+  stopAllAudio,
+  toggleMusic,
+  toggleSfx,
+  isMusicOn,
+  isSfxOn,
+} from './audio';
 import styles from './Arcade.module.css';
 
 interface GameDef {
@@ -49,6 +57,30 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
   const [showShare, setShowShare] = useState(false);
   const [share, setShare] = useState<{ enabled: boolean; token: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [musicOn, setMusicOn] = useState(isMusicOn());
+  const [sfxOn, setSfxOn] = useState(isSfxOn());
+
+  // Audio lifecycle: resume/start on any gesture (browsers require one),
+  // toggle music with B and sound effects with N anywhere in the arcade,
+  // and silence everything the instant the overlay unmounts.
+  useEffect(() => {
+    unlockAudio();
+    const onGesture = () => unlockAudio();
+    const onToggleKey = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'b') setMusicOn(toggleMusic());
+      else if (key === 'n') setSfxOn(toggleSfx());
+    };
+    window.addEventListener('pointerdown', onGesture);
+    window.addEventListener('keydown', onGesture);
+    window.addEventListener('keydown', onToggleKey);
+    return () => {
+      window.removeEventListener('pointerdown', onGesture);
+      window.removeEventListener('keydown', onGesture);
+      window.removeEventListener('keydown', onToggleKey);
+      stopAllAudio();
+    };
+  }, []);
 
   // Boss key: Esc instantly closes the whole overlay (in-app), or backs out
   // to the menu (standalone page, where there is nothing to close into).
@@ -271,7 +303,8 @@ export default function ArcadeOverlay({ onClose, shareToken, standalone }: Arcad
             </div>
           </div>
           <div className={styles.hint}>
-            &uarr;&darr; SELECT &middot; ENTER PLAY
+            &uarr;&darr; SELECT &middot; ENTER PLAY &middot; B &#9834;{musicOn ? 'ON' : 'OFF'} &middot;
+            N FX {sfxOn ? 'ON' : 'OFF'}
             {!standalone && (
               <>
                 {' '}

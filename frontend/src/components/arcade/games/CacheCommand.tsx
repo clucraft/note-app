@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from '../useGameLoop';
 import { getHighScore, submitHighScore } from '../highScores';
+import { sfx } from '../audio';
 import styles from '../Arcade.module.css';
 
 const W = 480;
@@ -130,6 +131,7 @@ export function CacheCommand({ onExit, onScore }: { onExit: () => void; onScore?
     const dy = ty - BATTERY_TOP;
     const dist = Math.hypot(dx, dy) || 1;
     st.ammo--;
+    sfx.zap();
     st.shots.push({
       x: BATTERY_X,
       y: BATTERY_TOP,
@@ -144,6 +146,7 @@ export function CacheCommand({ onExit, onScore }: { onExit: () => void; onScore?
     st.status = 'over';
     submitHighScore('missile', st.score);
     setHighScore(getHighScore('missile'));
+    sfx.over();
     onScoreRef.current?.(st.score);
   }, []);
 
@@ -184,6 +187,7 @@ export function CacheCommand({ onExit, onScore }: { onExit: () => void; onScore?
       st.shots = st.shots.filter((s) => {
         if (Math.hypot(s.x - s.tx, s.y - s.ty) < 10) {
           st.blasts.push({ x: s.tx, y: s.ty, r: 2, growing: true });
+          sfx.explosion();
           return false;
         }
         return true;
@@ -211,17 +215,21 @@ export function CacheCommand({ onExit, onScore }: { onExit: () => void; onScore?
         if (hit) {
           st.score += 25 * st.wave;
           st.blasts.push({ x: e.x, y: e.y, r: 2, growing: true });
+          sfx.brick();
           continue;
         }
 
         // ground impact
         if (e.y >= GROUND_Y) {
           st.blasts.push({ x: e.x, y: GROUND_Y, r: 2, growing: true });
+          let cityHit = false;
           CITY_XS.forEach((cx, i) => {
             if (st.cities[i] && Math.abs(e.x - cx) < CITY_W / 2 + 10) {
               st.cities[i] = false;
+              cityHit = true;
             }
           });
+          sfx.explosion(cityHit);
           continue;
         }
         survivors.push(e);
@@ -242,6 +250,7 @@ export function CacheCommand({ onExit, onScore }: { onExit: () => void; onScore?
         if (st.waveClearTimer === 0) {
           st.score += st.cities.filter(Boolean).length * 100 + st.ammo * 5;
           st.waveClearTimer = 2;
+          sfx.sweep();
         }
         st.waveClearTimer -= dt;
         if (st.waveClearTimer <= 0) {

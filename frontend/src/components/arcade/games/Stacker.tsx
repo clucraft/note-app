@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from '../useGameLoop';
 import { getHighScore, submitHighScore } from '../highScores';
+import { sfx } from '../audio';
 import styles from '../Arcade.module.css';
 
 const COLS = 10;
@@ -131,6 +132,7 @@ export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (sc
       st.status = 'over';
       submitHighScore('stacker', st.score);
       setHighScore(getHighScore('stacker'));
+      sfx.over();
       onScoreRef.current?.(st.score);
     }
   }, []);
@@ -143,6 +145,7 @@ export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (sc
           st.status = 'over';
           submitHighScore('stacker', st.score);
           setHighScore(getHighScore('stacker'));
+          sfx.over();
           onScoreRef.current?.(st.score);
           return;
         }
@@ -152,8 +155,10 @@ export function Stacker({ onExit, onScore }: { onExit: () => void; onScore?: (sc
       st.grid.forEach((row, y) => {
         if (row.every((c) => c)) fullRows.push(y);
       });
-      if (fullRows.length > 0) {
-        // burst each cleared cell into shards of its own color
+      if (fullRows.length === 0) {
+        sfx.thud();
+      } else {
+        sfx.explosion(fullRows.length === 4);
         for (const y of fullRows) {
           st.grid[y].forEach((color, x) => {
             for (let i = 0; i < 3; i++) {
