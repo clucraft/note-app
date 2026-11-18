@@ -11,6 +11,12 @@ All notable changes to this project will be documented in this file.
   - Plain-text input is converted to paragraphs so line breaks are preserved; HTML is appended as-is
   - `update_note` description now states that it replaces the note's entire content
 
+### Fixed
+- **MCP clients no longer get stuck on "Server not initialized" after the MCP service restarts**
+  - Sessions were held in memory, so a restart left connected clients sending a session ID the server no longer knew, which it rejected with a 400 they could not recover from
+  - The server is now stateless: each request gets its own server and transport, authenticated by that request's API key, and any session ID a client sends is ignored
+  - `GET /mcp` and `DELETE /mcp` now return 405, since there is no server-initiated stream or session to end
+
 ### Changed
 - **MCP server now exposes update timestamps** in tool responses
   - `list_notes` includes `(updated: <timestamp>)` beside each note in the tree

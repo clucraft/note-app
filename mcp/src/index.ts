@@ -1,5 +1,4 @@
 import express from 'express';
-import { randomUUID } from 'crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './server.js';
 import { ApiClient } from './api-client.js';
@@ -13,8 +12,9 @@ const app = express();
 app.use((_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Mcp-Session-Id, Authorization');
-  res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
+  // Mcp-Session-Id stays allowed: clients that connected to an older,
+  // session-based build of this server still send it.
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Mcp-Session-Id, Mcp-Protocol-Version, Authorization');
   if (_req.method === 'OPTIONS') {
     res.status(204).end();
     return;
@@ -28,9 +28,6 @@ app.use(express.urlencoded({ extended: true }));
 // OAuth routes (must be before /mcp)
 app.use(oauthRouter);
 
-// Store active sessions
-const sessions = new Map<string, { transport: StreamableHTTPServerTransport }>();
-
 function getApiKey(req: express.Request): string | undefined {
   return (req.query.apiKey as string)
     || (req.headers['x-api-key'] as string)
@@ -38,7 +35,18 @@ function getApiKey(req: express.Request): string | undefined {
     || undefined;
 }
 
-// Streamable HTTP — handles both new and existing sessions
+function methodNotAllowed(_req: express.Request, res: express.Response): void {
+  res.status(405).set('Allow', 'POST').json({
+    jsonrpc: '2.0',
+    error: { code: -32000, message: 'Method not allowed.' },
+    id: null,
+  });
+}
+
+// Stateless Streamable HTTP. Every request gets its own server and transport,
+// authenticated by that request's API key, and nothing is kept in memory
+// between requests — so restarting this service cannot strand a connected
+// client. A session ID sent by a client is ignored.
 app.post('/mcp', async (req, res) => {
   const apiKey = getApiKey(req);
   if (!apiKey) {
@@ -46,58 +54,34 @@ app.post('/mcp', async (req, res) => {
     return;
   }
 
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-  if (sessionId && sessions.has(sessionId)) {
-    // Existing session — forward the message
-    const { transport } = sessions.get(sessionId)!;
-    await transport.handleRequest(req, res, req.body);
-    return;
-  }
-
-  // New session (or stale sessionId — create fresh)
+  const server = createMcpServer(new ApiClient({ apiKey }));
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
+    sessionIdGenerator: undefined,
   });
 
-  const apiClient = new ApiClient({ apiKey });
-  const server = createMcpServer(apiClient);
-  await server.connect(transport);
+  res.on('close', () => {
+    transport.close().catch(() => {});
+    server.close().catch(() => {});
+  });
 
-  // handleRequest processes the initialize message and assigns sessionId
-  await transport.handleRequest(req, res, req.body);
-
-  // Register session AFTER handleRequest so sessionId is populated
-  const sid = transport.sessionId!;
-  sessions.set(sid, { transport });
-
-  transport.onclose = () => {
-    sessions.delete(sid);
-  };
-});
-
-// GET for SSE stream (server-initiated messages)
-app.get('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !sessions.has(sessionId)) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (error) {
+    console.error('MCP request error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error' },
+        id: null,
+      });
+    }
   }
-  const { transport } = sessions.get(sessionId)!;
-  await transport.handleRequest(req, res);
 });
 
-// DELETE to close session
-app.delete('/mcp', async (req, res) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !sessions.has(sessionId)) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
-  }
-  const { transport } = sessions.get(sessionId)!;
-  await transport.handleRequest(req, res);
-  sessions.delete(sessionId);
-});
+// No server-initiated stream and no sessions to end in stateless mode.
+app.get('/mcp', methodNotAllowed);
+app.delete('/mcp', methodNotAllowed);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
