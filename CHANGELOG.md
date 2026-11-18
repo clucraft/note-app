@@ -16,6 +16,10 @@ All notable changes to this project will be documented in this file.
   - Sessions were held in memory, so a restart left connected clients sending a session ID the server no longer knew, which it rejected with a 400 they could not recover from
   - The server is now stateless: each request gets its own server and transport, authenticated by that request's API key, and any session ID a client sends is ignored
   - `GET /mcp` and `DELETE /mcp` now return 405, since there is no server-initiated stream or session to end
+- **MCP OAuth logins no longer fail with "Unknown client_id" after the MCP service restarts**
+  - Client registrations were held in memory, so a restart forgot every registered client and rejected its next login
+  - The `client_id` issued by `/oauth/register` is now a signed token that carries the registration, so nothing is stored and it stays valid across restarts while `MCP_JWT_SECRET` is unchanged
+  - Clients registered before this change are not recoverable: if one has to log in again, remove and re-add the connector once
 
 ### Changed
 - **MCP server now exposes update timestamps** in tool responses

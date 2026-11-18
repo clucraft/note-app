@@ -11,7 +11,7 @@ const ACCESS_TOKEN_TTL = '1h';
 const REFRESH_TOKEN_TTL = '30d';
 const AUTH_CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// --- In-memory stores ---
+// --- Clients and auth codes ---
 
 interface RegisteredClient {
   client_id: string;
@@ -32,8 +32,44 @@ interface AuthCode {
   expiresAt: number;
 }
 
-const clients = new Map<string, RegisteredClient>();
+// Auth codes are short-lived (5 minutes), so keeping them in memory is fine.
 const authCodes = new Map<string, AuthCode>();
+
+// Client registrations are NOT stored. The client_id handed out by
+// /oauth/register is a signed token that carries the registration itself, so
+// it stays valid across restarts and container recreation (as long as
+// MCP_JWT_SECRET is unchanged). Registration is open to anyone, so the
+// signature grants nothing a fresh registration wouldn't — it only lets this
+// server recognise a registration it issued earlier.
+const MAX_REDIRECT_URIS = 10;
+const MAX_REDIRECT_URI_LENGTH = 2048;
+const MAX_CLIENT_NAME_LENGTH = 100;
+
+function issueClientId(redirectUris: string[], clientName?: string): string {
+  return jwt.sign({ type: 'client', redirect_uris: redirectUris, client_name: clientName }, JWT_SECRET);
+}
+
+function resolveClient(clientId: string | undefined): RegisteredClient | null {
+  if (!clientId) return null;
+  try {
+    const payload = jwt.verify(clientId, JWT_SECRET) as jwt.JwtPayload & {
+      type?: string;
+      redirect_uris?: unknown;
+      client_name?: string;
+    };
+    if (payload.type !== 'client' || !Array.isArray(payload.redirect_uris)) return null;
+    return {
+      client_id: clientId,
+      client_name: payload.client_name,
+      redirect_uris: payload.redirect_uris as string[],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      token_endpoint_auth_method: 'none',
+    };
+  } catch {
+    return null;
+  }
+}
 
 // Periodic cleanup of expired auth codes
 setInterval(() => {
@@ -77,17 +113,15 @@ oauthRouter.post('/oauth/register', (req: Request, res: Response) => {
     res.status(400).json({ error: 'invalid_client_metadata', error_description: 'redirect_uris required' });
     return;
   }
+  const urisValid = redirect_uris.length <= MAX_REDIRECT_URIS
+    && redirect_uris.every((uri) => typeof uri === 'string' && uri.length > 0 && uri.length <= MAX_REDIRECT_URI_LENGTH);
+  if (!urisValid) {
+    res.status(400).json({ error: 'invalid_redirect_uri', error_description: 'redirect_uris must be a short list of URL strings' });
+    return;
+  }
 
-  const clientId = `client_${randomUUID()}`;
-  const client: RegisteredClient = {
-    client_id: clientId,
-    client_name: client_name ?? undefined,
-    redirect_uris,
-    grant_types: ['authorization_code', 'refresh_token'],
-    response_types: ['code'],
-    token_endpoint_auth_method: 'none',
-  };
-  clients.set(clientId, client);
+  const clientName = typeof client_name === 'string' ? client_name.slice(0, MAX_CLIENT_NAME_LENGTH) : undefined;
+  const client = resolveClient(issueClientId(redirect_uris, clientName))!;
 
   res.status(201).json(client);
 });
@@ -319,10 +353,10 @@ function validateAuthorizeParams(
   codeChallengeMethod: string | undefined,
   responseType?: string | undefined,
 ): string | null {
-  if (!clientId || !clients.has(clientId)) return 'Unknown client_id';
+  const client = resolveClient(clientId);
+  if (!client) return 'Unknown client_id';
   if (!redirectUri) return 'redirect_uri required';
 
-  const client = clients.get(clientId)!;
   if (!client.redirect_uris.includes(redirectUri)) return 'redirect_uri not registered for this client';
   if (!codeChallenge) return 'code_challenge required (PKCE)';
   if (codeChallengeMethod !== 'S256') return 'code_challenge_method must be S256';
