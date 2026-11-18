@@ -20,6 +20,29 @@ function flattenTree(nodes: any[], depth = 0): string {
   return result;
 }
 
+/**
+ * Notes are stored as HTML. Content that already contains markup is passed
+ * through; plain text is escaped and split into paragraphs so line breaks
+ * survive instead of collapsing into a single run of text.
+ */
+function toHtmlFragment(content: string): string {
+  if (/<[a-z][^>]*>/i.test(content)) {
+    return content;
+  }
+  return content
+    .split(/\r?\n\s*\r?\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0)
+    .map((block) => {
+      const escaped = block
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      return `<p>${escaped.replace(/\r?\n/g, '<br>')}</p>`;
+    })
+    .join('');
+}
+
 export function createMcpServer(apiClient: ApiClient): McpServer {
   const server = new McpServer({
     name: 'cache-notes',
@@ -126,11 +149,11 @@ export function createMcpServer(apiClient: ApiClient): McpServer {
   // Tool: update_note
   server.tool(
     'update_note',
-    'Update an existing note\'s title or content.',
+    'Update an existing note\'s title or content. Content REPLACES the note\'s entire existing content — to add to a note without overwriting it, use append_to_note instead.',
     {
       id: z.number().describe('The note ID to update'),
       title: z.string().optional().describe('New title'),
-      content: z.string().optional().describe('New content (HTML or plain text)'),
+      content: z.string().optional().describe('New content (HTML or plain text). Replaces all existing content.'),
     },
     async ({ id, title, content }) => {
       try {
@@ -139,6 +162,42 @@ export function createMcpServer(apiClient: ApiClient): McpServer {
           content: [{
             type: 'text',
             text: `Note updated successfully.\nID: ${note.id}\nTitle: ${note.title}\nUpdated: ${note.updatedAt}`,
+          }],
+        };
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text', text: `Error: ${error.message}` }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Tool: append_to_note
+  server.tool(
+    'append_to_note',
+    'Append content to the end of an existing note, keeping everything already in it. Use this to add an update, log entry, or new section without resending the whole note.',
+    {
+      id: z.number().describe('The note ID to append to'),
+      content: z.string().describe('Content to add at the end of the note (HTML preferred; plain text is converted to paragraphs)'),
+    },
+    async ({ id, content }) => {
+      try {
+        const addition = toHtmlFragment(content);
+        if (!addition) {
+          return {
+            content: [{ type: 'text', text: 'Error: content to append is empty.' }],
+            isError: true,
+          };
+        }
+        const existing = await apiClient.getNote(id);
+        const note = await apiClient.updateNote(id, {
+          content: (existing.content || '') + addition,
+        });
+        return {
+          content: [{
+            type: 'text',
+            text: `Content appended successfully.\nID: ${note.id}\nTitle: ${note.title}\nUpdated: ${note.updatedAt}`,
           }],
         };
       } catch (error: any) {

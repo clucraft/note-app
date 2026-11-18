@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - &uarr;&uarr;&darr;&darr;&larr;&rarr;&larr;&rarr;BA (now with more quarters, and room for three initials)
+- **MCP `append_to_note` tool** for adding to an existing note without overwriting it
+  - Appends content to the end of the note; everything already in it is kept
+  - Plain-text input is converted to paragraphs so line breaks are preserved; HTML is appended as-is
+  - `update_note` description now states that it replaces the note's entire content
 
 ### Changed
 - **MCP server now exposes update timestamps** in tool responses
